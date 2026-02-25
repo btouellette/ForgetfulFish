@@ -20,14 +20,4 @@
 - Any privacy or region requirements (GDPR, COPPA, etc.) now?
 
 ## Team Workflow
-- Preference for monorepo (`pnpm` + `turbo`) vs single app repo structure?
 - CI preference (GitHub Actions assumed unless you prefer another system).
-
-## Answered (see `docs/DECISIONS_LOG.md`)
-- TypeScript fullstack selected.
-- Basic accounts included in v1.
-- Auth methods selected: email magic link + Google OAuth.
-- Private rooms first; quick-match later.
-- Strict rules enforcement selected.
-- Auto-pass with optional override selected.
-- Redis deferred until scale.

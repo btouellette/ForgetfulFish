@@ -2,6 +2,14 @@
 
 These rules define how AI agents should operate in this repository.
 
+## Conciseness (High Priority)
+- CONCISENESS IS MANDATORY.
+- Be concise by default in both code changes and written responses.
+- Do not create new docs when an existing doc can be updated.
+- Avoid duplicating the same decision across multiple files; keep one source of truth and link to it.
+- Keep docs task-focused and short; remove stale or repeated sections when editing.
+- In user updates, prefer short status + key outcomes over long narrative.
+
 ## Core Workflow
 - Start with tests for every new feature or behavior change (test-first by default).
 - If behavior is a bug fix, first add or update a failing test that reproduces the bug.
@@ -19,6 +27,11 @@ These rules define how AI agents should operate in this repository.
 - Preserve existing behavior unless a requirement explicitly changes it.
 - Do not introduce breaking API/protocol changes without documenting them.
 - Never commit secrets or credentials.
+
+## Decision Confirmation
+- Confirm major technology choices with the user before implementing them (frameworks, runtime, database, deployment model).
+- If the user has already approved a choice, record it in `docs/DECISIONS_LOG.md` and proceed.
+- If there is ambiguity in stack direction, pause and ask before scaffolding.
 
 ## Documentation Requirements
 - Update relevant docs when behavior, architecture, or decisions change.

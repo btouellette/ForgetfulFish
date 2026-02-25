@@ -1,11 +1,12 @@
-# Forgetful Fish Planning Docs
+# Docs Index
 
-- `docs/PROJECT_OVERVIEW.md`: goals, scope, variant rules, decklist, success criteria.
-- `docs/ARCHITECTURE_PLAN.md`: system boundaries, authoritative server model, state/event design.
-- `docs/TECH_DECISIONS_DRAFT.md`: recommended stack and alternatives.
-- `docs/DECISIONS_LOG.md`: accepted decisions and defaults.
-- `docs/AUTH_STRATEGY.md`: v1 auth methods and security requirements.
-- `docs/AUTH_API_CONTRACT.md`: auth endpoints, payloads, and security controls.
-- `docs/AI_TOOLING_RULES.md`: repo rules for AI-assisted implementation.
-- `docs/ROADMAP_DRAFT.md`: phased implementation plan.
-- `docs/OPEN_QUESTIONS.md`: unresolved product/technical decisions.
+- `docs/DECISIONS_LOG.md` (source of truth): approved product/tech decisions.
+- `docs/PROJECT_OVERVIEW.md`: product scope, variant rules, canonical decklist.
+- `docs/ARCHITECTURE_PLAN.md`: system boundaries and runtime model.
+- `docs/TECH_DECISIONS_DRAFT.md`: current stack and key rationale.
+- `docs/AUTH_API_CONTRACT.md`: auth strategy, route contract, and security controls.
+- `docs/ROADMAP_DRAFT.md`: phased delivery plan.
+- `docs/OPEN_QUESTIONS.md`: unresolved items only.
+- `docs/NEXTJS_RULES.md`: Next.js boundary rules.
+- `docs/AI_TOOLING_RULES.md`: AI workflow and quality rules.
+- `docs/PROJECT_INIT_AND_TOOLING.md`: current tooling baseline.

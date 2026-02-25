@@ -10,3 +10,4 @@ All AI coding agents working in this repository must follow:
 - Keep changes scoped and deterministic.
 - Update docs and decisions when behavior or architecture changes.
 - Run relevant tests before declaring completion (or explicitly report what was not run).
+- Keep communication and documentation concise; avoid duplicating guidance across files.

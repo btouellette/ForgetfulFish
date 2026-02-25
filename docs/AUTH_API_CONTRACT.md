@@ -1,69 +1,44 @@
-# Forgetful Fish Webapp - Auth API Contract (v1 Draft)
+# Auth (v1)
 
-This contract assumes `Auth.js` with the Prisma adapter, Google provider, and email magic-link provider. We use library-owned auth routes instead of custom token/OAuth implementations.
+## Strategy
+- Methods: email magic link + Google OAuth.
+- Identity: both methods map to one canonical user.
+- Implementation: Auth.js (`next-auth`) + Prisma adapter.
+- Rule: use library auth/session behavior; do not build custom token/OAuth/session crypto.
 
-## Libraries
-- `next-auth` (Auth.js) for session, providers, CSRF, callback handling.
-- `@auth/prisma-adapter` for persistence.
-- `nodemailer` transport or provider SDK (for example Resend) for magic-link email delivery.
+## Data Model
+- `users`
+- `auth_accounts`
+- `auth_sessions`
+- `auth_magic_links`
 
-## Route Surface
+## UX
+- Sign-in offers `Continue with Google` and `Email me a magic link`.
+- Successful auth redirects to lobby (or preserved callback URL).
 
-### `POST /api/auth/signin/email`
-- Purpose: request a magic link.
-- Body:
-```json
-{
-  "email": "player@example.com",
-  "callbackUrl": "/lobby"
-}
-```
-- Success: `200` with generic success payload (never reveals whether email exists).
-- Errors:
-  - `400` invalid email format
-  - `429` rate limited
-  - `500` provider/transient failure
+## API Contract
 
-### `GET /api/auth/signin/google`
-- Purpose: begin Google OAuth login.
-- Behavior: 302 redirect to Google consent screen.
+Auth routes are owned by Auth.js.
 
-### `GET /api/auth/callback/google`
-- Purpose: OAuth callback endpoint.
-- Behavior: handled by Auth.js; on success creates/links account and redirects to `callbackUrl`.
+## Routes
+- `POST /api/auth/signin/email`: request magic link (non-enumerating response).
+- `GET /api/auth/signin/google`: start Google OAuth.
+- `GET /api/auth/callback/email`: verify magic link.
+- `GET /api/auth/callback/google`: OAuth callback.
+- `GET /api/auth/session`: return session or `null`.
+- `POST /api/auth/signout`: revoke current session.
 
-### `GET /api/auth/callback/email`
-- Purpose: magic-link verification callback endpoint.
-- Behavior: handled by Auth.js; token is single-use and expiration-checked.
+## Request/Response Rules
+- Magic link request body: `{ email, callbackUrl }`.
+- `GET /api/auth/session` includes `user.id`, `email`, optional profile fields, and `expires`.
+- Unauthenticated session response is `null`.
 
-### `GET /api/auth/session`
-- Purpose: fetch current session for UI bootstrap.
-- Success `200`:
-```json
-{
-  "user": {
-    "id": "ckxyz...",
-    "email": "player@example.com",
-    "name": "Player One",
-    "image": null
-  },
-  "expires": "2026-03-25T10:00:00.000Z"
-}
-```
-- Unauthenticated: `200` with `null` body (Auth.js default behavior).
+## Security Rules
+- Keep Auth.js CSRF protections enabled.
+- Rate limit magic-link requests by IP + email tuple.
+- Do not leak account existence in email signin responses.
+- Do not log raw tokens, OAuth codes, or full magic links.
 
-### `POST /api/auth/signout`
-- Purpose: end the current session.
-- Success: `200` and session cookie invalidated.
-
-## Security and Abuse Controls
-- CSRF protection uses Auth.js defaults on sensitive endpoints.
-- Rate limiting required on magic-link request route by IP and email tuple.
-- Email response is non-enumerating (same message for existing/non-existing accounts).
-- OAuth validation handled by provider metadata plus Auth.js callback checks.
-- Never log raw auth tokens, OAuth codes, or magic-link URLs.
-
-## Session Contract for App Code
-- Session strategy: database sessions (`auth_sessions`) for server-side revocation.
-- App authorization uses `session.user.id` as canonical actor id.
-- Room/game APIs must reject unauthenticated requests with `401`.
+## App Authorization Contract
+- Session user id is canonical actor id.
+- Room/game endpoints reject unauthenticated requests with `401`.

@@ -10,6 +10,7 @@
 - Rules enforcement: strict engine validation (illegal actions blocked).
 - Priority UX: auto-pass by default with optional manual override/hold priority.
 - Redis: defer until scale/multi-instance needs arise.
+- Next.js boundary rule: strict client/server segregation with explicit API/WebSocket contracts; no Server Actions.
 
 ## Notes
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.
