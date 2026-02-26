@@ -5,7 +5,7 @@ import { prisma } from "@forgetful-fish/database";
 
 import { buildAuthProviders, resolveAuthRedirect } from "./lib/auth-config";
 
-const authEmailFrom = process.env.AUTH_EMAIL_FROM ?? "Forgetful Fish <noreply@forgetful.fish>";
+const authEmailFrom = process.env.AUTH_EMAIL_FROM ?? "Forgetful Fish <noreply@forgetfulfish.com>";
 const authEmailServer = process.env.AUTH_EMAIL_SERVER ?? "smtp://localhost:1025";
 const googleClientId = process.env.GOOGLE_CLIENT_ID ?? "";
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET ?? "";
