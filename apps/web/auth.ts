@@ -7,8 +7,6 @@ import { getAuthEnvironment } from "./lib/auth-env";
 import { isGoogleAuthEnabled, resolveAuthRedirect } from "./lib/auth-config";
 import { sendMagicLinkEmail } from "./lib/magic-link-email";
 
-const authEnv = getAuthEnvironment();
-
 function sanitizeError(error: unknown) {
   if (error instanceof Error) {
     return {
@@ -28,6 +26,7 @@ let handlersPromise: Promise<ReturnType<typeof NextAuth>["handlers"]> | undefine
 export function getAuthHandlers() {
   if (!handlersPromise) {
     handlersPromise = (async () => {
+      const authEnv = getAuthEnvironment();
       const { prisma } = await import("@forgetful-fish/database");
 
       return NextAuth({
