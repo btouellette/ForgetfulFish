@@ -12,5 +12,11 @@
 - Redis: defer until scale/multi-instance needs arise.
 - Next.js boundary rule: strict client/server segregation with explicit API/WebSocket contracts; no Server Actions.
 
+## 2026-02-26 Tooling Baseline Update
+
+- Frontend stack baseline moved to Next.js 16 (`apps/web`) with flat ESLint config.
+- Repo runtime baseline set to Node `22.13.0` via `.nvmrc` and `package.json` engines.
+
 ## Notes
+
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.

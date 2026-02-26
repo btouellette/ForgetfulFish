@@ -1,11 +1,24 @@
+import { defineConfig, globalIgnores } from "eslint/config";
+
 import tseslint from "@typescript-eslint/eslint-plugin";
 import parser from "@typescript-eslint/parser";
-import eslintConfigPrettier from "eslint-config-prettier";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import prettier from "eslint-config-prettier/flat";
 
-export default [
-  {
-    ignores: ["dist/**", ".next/**", "coverage/**", "node_modules/**"]
-  },
+const webNextConfigs = nextVitals.map((config) => ({
+  ...config,
+  files: ["apps/web/**/*.{js,jsx,ts,tsx}"],
+  settings: {
+    ...config.settings,
+    next: {
+      ...config.settings?.next,
+      rootDir: ["apps/web/", "./"]
+    }
+  }
+}));
+
+export default defineConfig([
+  globalIgnores(["dist/**", "**/.next/**", "coverage/**", "node_modules/**"]),
   {
     files: ["**/*.ts", "**/*.tsx"],
     languageOptions: {
@@ -19,15 +32,13 @@ export default [
       "@typescript-eslint": tseslint
     },
     rules: {
-      "@typescript-eslint/consistent-type-imports": [
-        "error",
-        { "prefer": "type-imports" }
-      ],
+      "@typescript-eslint/consistent-type-imports": ["error", { prefer: "type-imports" }],
       "@typescript-eslint/no-unused-vars": [
         "error",
-        { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }
       ]
     }
   },
-  eslintConfigPrettier
-];
+  ...webNextConfigs,
+  prettier
+]);
