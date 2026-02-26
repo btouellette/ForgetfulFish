@@ -23,6 +23,7 @@
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
+    "@types/nodemailer": "^6.4.21",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3"
   }

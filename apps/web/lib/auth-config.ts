@@ -1,15 +1,4 @@
-import type { Provider } from "next-auth/providers";
-import Email from "next-auth/providers/email";
-import Google from "next-auth/providers/google";
-
 export const AUTH_VERIFY_PATH = "/auth/verify";
-
-type AuthProviderEnv = {
-  authEmailFrom: string;
-  authEmailServer: string;
-  googleClientId: string;
-  googleClientSecret: string;
-};
 
 type GoogleProviderEnv = {
   googleClientId: string;
@@ -32,29 +21,6 @@ export function getDefaultCallbackUrl({ googleCallback }: DefaultCallbackInput) 
   }
 
   return AUTH_VERIFY_PATH;
-}
-
-export function buildAuthProviders(env: AuthProviderEnv): Provider[] {
-  const providers: Provider[] = [
-    Email({
-      from: env.authEmailFrom,
-      server: env.authEmailServer,
-      async sendVerificationRequest({ identifier, url }) {
-        console.info(`Magic link requested for ${identifier}: ${url}`);
-      }
-    })
-  ];
-
-  if (isGoogleAuthEnabled(env)) {
-    providers.push(
-      Google({
-        clientId: env.googleClientId,
-        clientSecret: env.googleClientSecret
-      })
-    );
-  }
-
-  return providers;
 }
 
 export function isGoogleAuthEnabled({ googleClientId, googleClientSecret }: GoogleProviderEnv) {

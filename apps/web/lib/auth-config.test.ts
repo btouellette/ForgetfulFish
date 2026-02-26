@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   AUTH_VERIFY_PATH,
-  buildAuthProviders,
   getDefaultCallbackUrl,
   isGoogleAuthEnabled,
   resolveAuthRedirect
@@ -20,39 +19,6 @@ describe("auth config", () => {
         googleCallback: "https://www.forgetfulfish.com/auth/google/callback"
       })
     ).toBe("https://www.forgetfulfish.com/auth/google/callback");
-  });
-
-  it("always enables email provider", () => {
-    const providers = buildAuthProviders({
-      authEmailFrom: "noreply@example.com",
-      authEmailServer: "smtp://localhost:2525",
-      googleClientId: "",
-      googleClientSecret: ""
-    });
-
-    expect(providers).toContainEqual(expect.objectContaining({ id: "email", name: "Email" }));
-  });
-
-  it("enables google provider only when google credentials are set", () => {
-    const withoutGoogle = buildAuthProviders({
-      authEmailFrom: "noreply@example.com",
-      authEmailServer: "smtp://localhost:2525",
-      googleClientId: "",
-      googleClientSecret: ""
-    });
-
-    expect(withoutGoogle).not.toContainEqual(
-      expect.objectContaining({ id: "google", name: "Google" })
-    );
-
-    const withGoogle = buildAuthProviders({
-      authEmailFrom: "noreply@example.com",
-      authEmailServer: "smtp://localhost:2525",
-      googleClientId: "client-id",
-      googleClientSecret: "client-secret"
-    });
-
-    expect(withGoogle).toContainEqual(expect.objectContaining({ id: "google", name: "Google" }));
   });
 
   it("treats blank google credentials as disabled", () => {
