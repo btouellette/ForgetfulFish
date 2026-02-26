@@ -17,6 +17,13 @@
 - Frontend stack baseline moved to Next.js 16 (`apps/web`) with flat ESLint config.
 - Repo runtime baseline set to Node `22.13.0` via `.nvmrc` and `package.json` engines.
 
+## 2026-02-26 Production Auth Deployment Decisions
+
+- Canonical production host is apex `forgetfulfish.com`; `www` redirects to apex in app proxy.
+- Production runtime is Docker on the existing external `nginx-proxy` network.
+- Production database runs as a dedicated Postgres 16 container for ForgetfulFish.
+- Prisma production schema changes are applied via migration deploy (`prisma migrate deploy`).
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.

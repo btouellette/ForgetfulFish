@@ -1,0 +1,46 @@
+services:
+  forgetful-fish-postgres:
+    image: postgres:16-alpine
+    container_name: forgetful-fish-postgres
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: forgetful_fish
+      POSTGRES_USER: forgetful_fish
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - forgetful-fish-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forgetful_fish -d forgetful_fish"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nginx-proxy
+
+  forgetful-fish-web:
+    image: forgetful-fish-web:latest
+    container_name: forgetful-fish-web
+    restart: always
+    depends_on:
+      forgetful-fish-postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      AUTH_URL: https://forgetfulfish.com
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      VIRTUAL_HOST: forgetfulfish.com,www.forgetfulfish.com
+      LETSENCRYPT_HOST: forgetfulfish.com,www.forgetfulfish.com
+      VIRTUAL_PORT: "3000"
+    networks:
+      - nginx-proxy
+
+volumes:
+  forgetful-fish-postgres-data:
+
+networks:
+  nginx-proxy:
+    external: true

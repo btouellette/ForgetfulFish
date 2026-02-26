@@ -1,0 +1,7 @@
+node_modules
+**/node_modules
+.git
+.turbo
+apps/web/.next
+apps/server/dist
+coverage

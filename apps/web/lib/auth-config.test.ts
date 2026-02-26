@@ -4,6 +4,7 @@ import {
   AUTH_VERIFY_PATH,
   buildAuthProviders,
   getDefaultCallbackUrl,
+  isGoogleAuthEnabled,
   resolveAuthRedirect
 } from "./auth-config";
 
@@ -52,6 +53,21 @@ describe("auth config", () => {
     });
 
     expect(withGoogle).toContainEqual(expect.objectContaining({ id: "google", name: "Google" }));
+  });
+
+  it("treats blank google credentials as disabled", () => {
+    expect(
+      isGoogleAuthEnabled({
+        googleClientId: "   ",
+        googleClientSecret: "client-secret"
+      })
+    ).toBe(false);
+    expect(
+      isGoogleAuthEnabled({
+        googleClientId: "client-id",
+        googleClientSecret: "   "
+      })
+    ).toBe(false);
   });
 
   it("keeps same-origin redirects and blocks unknown external ones", () => {

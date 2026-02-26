@@ -11,6 +11,11 @@ type AuthProviderEnv = {
   googleClientSecret: string;
 };
 
+type GoogleProviderEnv = {
+  googleClientId: string;
+  googleClientSecret: string;
+};
+
 type RedirectInput = {
   url: string;
   baseUrl: string;
@@ -40,7 +45,7 @@ export function buildAuthProviders(env: AuthProviderEnv): Provider[] {
     })
   ];
 
-  if (env.googleClientId && env.googleClientSecret) {
+  if (isGoogleAuthEnabled(env)) {
     providers.push(
       Google({
         clientId: env.googleClientId,
@@ -50,6 +55,10 @@ export function buildAuthProviders(env: AuthProviderEnv): Provider[] {
   }
 
   return providers;
+}
+
+export function isGoogleAuthEnabled({ googleClientId, googleClientSecret }: GoogleProviderEnv) {
+  return googleClientId.trim().length > 0 && googleClientSecret.trim().length > 0;
 }
 
 export function resolveAuthRedirect({ url, baseUrl, allowedExternalCallbackUrl }: RedirectInput) {

@@ -10,3 +10,5 @@
 - `docs/NEXTJS_RULES.md`: Next.js boundary rules.
 - `docs/AI_TOOLING_RULES.md`: AI workflow and quality rules.
 - `docs/PROJECT_INIT_AND_TOOLING.md`: current tooling baseline.
+- `docs/DEPLOYMENT_RUNBOOK.md`: production deploy, validation, and rollback checklist.
+- `docs/CUTOVER_CHECKLIST.md`: minimal command-first deploy and verification checklist.

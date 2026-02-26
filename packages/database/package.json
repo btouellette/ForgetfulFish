@@ -12,15 +12,19 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --passWithNoTests",
     "db:generate": "cross-env PRISMA_HIDE_UPDATE_MESSAGE=true prisma generate --no-hints",
+    "db:migrate:deploy": "cross-env PRISMA_HIDE_UPDATE_MESSAGE=true prisma migrate deploy",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.4.1",
     "@prisma/client": "^7.4.1"
   },
   "devDependencies": {
+    "@types/pg": "^8.15.6",
     "cross-env": "^10.1.0",
     "dotenv": "^17.2.3",
+    "pg": "^8.16.3",
     "prisma": "^7.4.1"
   }
 }

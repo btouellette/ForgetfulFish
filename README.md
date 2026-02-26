@@ -2,6 +2,8 @@
 
 Online implementation of the two-player shared-deck Magic variant Forgetful Fish.
 
+Production URL: `https://forgetfulfish.com`.
+
 ## Workspace
 
 - `apps/web`: Next.js frontend.
@@ -26,7 +28,14 @@ Online implementation of the two-player shared-deck Magic variant Forgetful Fish
 - Lint: `pnpm lint`
 - Typecheck: `pnpm typecheck`
 - Tests: `pnpm test`
+- Auth smoke check: `pnpm smoke:auth`
 - Format check: `pnpm format:check`
+
+## Production
+
+- Build image: `docker build -f Dockerfile.web -t forgetful-fish-web:latest .`
+- Runtime stack: `docker compose -f docker-compose.production.yml up -d`
+- Runbook: `docs/DEPLOYMENT_RUNBOOK.md`
 
 ## AI Agent Rules
 
