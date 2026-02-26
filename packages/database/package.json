@@ -8,7 +8,7 @@
   "scripts": {
     "build": "cross-env PRISMA_HIDE_UPDATE_MESSAGE=true prisma generate --no-hints",
     "lint": "eslint .",
-    "typecheck": "cross-env DATABASE_URL=postgresql://postgres:postgres@localhost:5432/forgetful_fish PRISMA_HIDE_UPDATE_MESSAGE=true prisma validate",
+    "typecheck": "cross-env DATABASE_URL=postgresql://postgres:postgres@localhost:5432/forgetful_fish PRISMA_HIDE_UPDATE_MESSAGE=true prisma generate --no-hints && cross-env DATABASE_URL=postgresql://postgres:postgres@localhost:5432/forgetful_fish PRISMA_HIDE_UPDATE_MESSAGE=true prisma validate",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --passWithNoTests",
     "db:generate": "cross-env PRISMA_HIDE_UPDATE_MESSAGE=true prisma generate --no-hints",
@@ -16,10 +16,11 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.2"
+    "@prisma/client": "^7.4.1"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
-    "prisma": "^6.19.2"
+    "dotenv": "^17.2.3",
+    "prisma": "^7.4.1"
   }
 }
