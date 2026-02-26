@@ -36,6 +36,8 @@ This runbook covers Forgetful Fish production deploy on the existing `nginx-prox
 
 - Run smoke test:
   - `./scripts/auth-smoke.sh https://forgetfulfish.com`
+- Email magic-link abuse guard:
+  - Requests are limited to 5 per 10 minutes per IP+email tuple.
 - Manual OAuth check:
   - Visit `https://www.forgetfulfish.com/` and verify redirect to apex.
   - Sign in with Google and confirm redirect back to `/auth/verify`.

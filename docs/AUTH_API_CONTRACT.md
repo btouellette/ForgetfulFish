@@ -41,7 +41,8 @@ Auth routes are owned by Auth.js.
 ## Security Rules
 
 - Keep Auth.js CSRF protections enabled.
-- Rate limit magic-link requests by IP + email tuple.
+- Rate limit magic-link requests by IP + normalized email tuple.
+  - Policy: fixed window, 5 requests per 10 minutes per tuple.
 - Do not leak account existence in email signin responses.
 - Do not log raw tokens, OAuth codes, or full magic links.
 

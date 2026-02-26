@@ -3,14 +3,25 @@ import NextAuth from "next-auth";
 import Nodemailer from "next-auth/providers/nodemailer";
 import Google from "next-auth/providers/google";
 
+import { getAuthEnvironment } from "./lib/auth-env";
 import { isGoogleAuthEnabled, resolveAuthRedirect } from "./lib/auth-config";
 import { sendMagicLinkEmail } from "./lib/magic-link-email";
 
-const authEmailFrom = process.env.AUTH_EMAIL_FROM ?? "Forgetful Fish <noreply@forgetfulfish.com>";
-const authEmailServer = process.env.AUTH_EMAIL_SERVER ?? "smtp://localhost:1025";
-const googleClientId = process.env.GOOGLE_CLIENT_ID ?? "";
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET ?? "";
-const googleCallback = process.env.GOOGLE_CALLBACK ?? "";
+const authEnv = getAuthEnvironment();
+
+function sanitizeError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message
+    };
+  }
+
+  return {
+    name: "UnknownError",
+    message: "unknown error"
+  };
+}
 
 let handlersPromise: Promise<ReturnType<typeof NextAuth>["handlers"]> | undefined;
 
@@ -24,31 +35,35 @@ export function getAuthHandlers() {
         providers: [
           Nodemailer({
             id: "email",
-            from: authEmailFrom,
-            server: authEmailServer,
+            from: authEnv.authEmailFrom,
+            server: authEnv.authEmailServer,
             async sendVerificationRequest({ identifier, url }) {
               await sendMagicLinkEmail({
-                authEmailFrom,
-                authEmailServer,
+                authEmailFrom: authEnv.authEmailFrom,
+                authEmailServer: authEnv.authEmailServer,
                 identifier,
                 url
               });
             }
           }),
-          ...(isGoogleAuthEnabled({ googleClientId, googleClientSecret })
+          ...(isGoogleAuthEnabled({
+            googleClientId: authEnv.googleClientId,
+            googleClientSecret: authEnv.googleClientSecret
+          })
             ? [
                 Google({
-                  clientId: googleClientId,
-                  clientSecret: googleClientSecret
+                  clientId: authEnv.googleClientId,
+                  clientSecret: authEnv.googleClientSecret
                 })
               ]
             : [])
         ],
         trustHost: true,
+        secret: authEnv.authSecret,
         debug: process.env.NODE_ENV !== "production",
         logger: {
           error(error) {
-            console.error("Auth.js error", { error });
+            console.error("Auth.js error", sanitizeError(error));
           },
           warn(message) {
             console.warn("Auth.js warning", { message });
@@ -65,7 +80,7 @@ export function getAuthHandlers() {
             return resolveAuthRedirect({
               url,
               baseUrl,
-              allowedExternalCallbackUrl: googleCallback
+              allowedExternalCallbackUrl: authEnv.googleCallback
             });
           }
         }

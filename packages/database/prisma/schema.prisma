@@ -65,3 +65,14 @@ model VerificationToken {
   @@unique([identifier, token])
   @@map("auth_magic_links")
 }
+
+model AuthRateLimit {
+  key         String
+  windowStart DateTime @map("window_start")
+  count       Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@id([key, windowStart])
+  @@map("auth_rate_limits")
+}
