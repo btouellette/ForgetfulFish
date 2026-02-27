@@ -12,6 +12,8 @@ This runbook covers Forgetful Fish production deploy on the existing `nginx-prox
   - `GOOGLE_CLIENT_ID`
   - `GOOGLE_CLIENT_SECRET`
   - `GOOGLE_CALLBACK=https://forgetfulfish.com/auth/verify`
+  - `SERVER_API_BASE_URL` (optional; web rewrite target for non-auth `/api/*` requests)
+  - `NEXT_PUBLIC_SERVER_BASE_URL` (optional; browser direct server base URL when not using rewrite)
   - `POSTGRES_PASSWORD`
   - `AUTH_EMAIL_FROM`
   - `AUTH_EMAIL_SERVER`
@@ -26,7 +28,8 @@ This runbook covers Forgetful Fish production deploy on the existing `nginx-prox
 ## Deploy
 
 1. Build image:
-   - `docker build -f Dockerfile.web -t forgetful-fish-web:latest .`
+   - `docker build --build-arg SERVER_API_BASE_URL=http://forgetful-fish-server:4000 -f Dockerfile.web -t forgetful-fish-web:latest .`
+   - `docker build -f Dockerfile.server -t forgetful-fish-server:latest .`
 2. Start/update services:
    - `docker compose -f docker-compose.production.yml up -d`
 3. Apply schema migrations:
@@ -45,9 +48,11 @@ This runbook covers Forgetful Fish production deploy on the existing `nginx-prox
 ## Operations
 
 - Container status:
-  - `docker ps --filter name=forgetful-fish-web --filter name=forgetful-fish-postgres`
+  - `docker ps --filter name=forgetful-fish-web --filter name=forgetful-fish-server --filter name=forgetful-fish-postgres`
 - Web logs:
   - `docker logs -f forgetful-fish-web`
+- Server logs:
+  - `docker logs -f forgetful-fish-server`
 - DB logs:
   - `docker logs -f forgetful-fish-postgres`
 

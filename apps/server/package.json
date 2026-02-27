@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch --watch-path=src --watch-preserve-output --import tsx src/index.ts",
+    "start": "node --import tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -12,6 +13,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@forgetful-fish/database": "workspace:*",
     "fastify": "^5.7.4",
     "zod": "^4.3.6"
   },

@@ -8,7 +8,7 @@ export default function AuthVerifyPage() {
   return (
     <main className="home">
       <h1>Auth Verification</h1>
-      <p>This page stays static and verifies your current auth session in the browser.</p>
+      <p>This page verifies your auth session and exercises protected server endpoints.</p>
       <AuthVerificationState />
       <p>
         <Link href="/">Back to sign-in</Link>

@@ -44,6 +44,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@forgetful-fish/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       fastify:
         specifier: ^5.7.4
         version: 5.7.4

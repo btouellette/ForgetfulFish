@@ -21,7 +21,8 @@ pnpm deploy:prod
 Manual equivalent:
 
 ```bash
-docker build -f Dockerfile.web -t forgetful-fish-web:latest .
+docker build --build-arg SERVER_API_BASE_URL=http://forgetful-fish-server:4000 -f Dockerfile.web -t forgetful-fish-web:latest .
+docker build -f Dockerfile.server -t forgetful-fish-server:latest .
 docker compose -f docker-compose.production.yml up -d
 ```
 
@@ -35,7 +36,9 @@ docker exec forgetful-fish-web sh -lc 'cd /app && pnpm --filter @forgetful-fish/
 
 ```bash
 docker ps --filter name=forgetful-fish-web --filter name=forgetful-fish-postgres
+docker ps --filter name=forgetful-fish-server
 docker logs --tail 100 forgetful-fish-web
+docker logs --tail 100 forgetful-fish-server
 docker logs --tail 100 forgetful-fish-postgres
 ```
 

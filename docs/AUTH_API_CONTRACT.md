@@ -50,3 +50,10 @@ Auth routes are owned by Auth.js.
 
 - Session user id is canonical actor id.
 - Room/game endpoints reject unauthenticated requests with `401`.
+
+## Authoritative Server Endpoints (v1 scaffold)
+
+- `GET /api/me`: authenticated actor identity; returns `{ userId, email }`.
+- `POST /api/rooms`: requires auth; returns `201` with `{ roomId, ownerUserId }`.
+- `POST /api/rooms/:id/join`: requires auth; returns `200` with `{ roomId, userId }`.
+- Unauthorized response is uniform: `401` with `{ error: "unauthorized" }`.

@@ -32,9 +32,32 @@ services:
       NODE_ENV: production
       AUTH_URL: https://forgetfulfish.com
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      SERVER_API_BASE_URL: http://forgetful-fish-server:4000
       VIRTUAL_HOST: forgetfulfish.com,www.forgetfulfish.com
       LETSENCRYPT_HOST: forgetfulfish.com,www.forgetfulfish.com
       VIRTUAL_PORT: "3000"
+    networks:
+      - nginx-proxy
+
+  forgetful-fish-server:
+    image: forgetful-fish-server:latest
+    container_name: forgetful-fish-server
+    restart: always
+    depends_on:
+      forgetful-fish-postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      HOST: 0.0.0.0
+      PORT: "4000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - nginx-proxy
 

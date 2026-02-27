@@ -4,23 +4,21 @@ RUN corepack enable
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/web/package.json apps/web/package.json
+COPY apps/server/package.json apps/server/package.json
 COPY packages/database/package.json packages/database/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
-ARG SERVER_API_BASE_URL
-ENV SERVER_API_BASE_URL=${SERVER_API_BASE_URL}
 ENV PRISMA_CLIENT_ENGINE_TYPE=binary
 COPY . .
-RUN pnpm --filter @forgetful-fish/database build && pnpm --filter @forgetful-fish/web build
+RUN pnpm --filter @forgetful-fish/database build && pnpm --filter @forgetful-fish/server build
 
 FROM base AS runtime
 ENV NODE_ENV=production
 ENV PRISMA_CLIENT_ENGINE_TYPE=binary
-ENV HOSTNAME=0.0.0.0
-ENV PORT=3000
+ENV HOST=0.0.0.0
+ENV PORT=4000
 COPY --from=build --chown=node:node /app /app
 USER node
-EXPOSE 3000
-CMD ["pnpm", "--filter", "@forgetful-fish/web", "start"]
+EXPOSE 4000
+CMD ["pnpm", "--filter", "@forgetful-fish/server", "start"]

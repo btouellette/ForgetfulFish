@@ -24,6 +24,11 @@
 - Production database runs as a dedicated Postgres 16 container for ForgetfulFish.
 - Prisma production schema changes are applied via migration deploy (`prisma migrate deploy`).
 
+## 2026-02-27 Server AuthZ Baseline
+
+- `apps/server` validates Auth.js session cookies against `auth_sessions` (+ linked `users`) as the source of truth for protected API access.
+- Protected server routes return uniform unauthorized responses: `401` with `{ error: "unauthorized" }`.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.

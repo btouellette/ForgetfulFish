@@ -2,14 +2,24 @@
 
 import { useEffect, useState } from "react";
 
+import { createRoom, getActor, joinRoom } from "../../../lib/server-api";
+
 type SessionState =
   | { status: "loading" }
   | { status: "authenticated"; payload: unknown }
   | { status: "unauthenticated" }
   | { status: "error"; message: string };
 
+type ServerState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ready"; actor: { userId: string; email: string } }
+  | { status: "error"; message: string };
+
 export function AuthVerificationState() {
   const [sessionState, setSessionState] = useState<SessionState>({ status: "loading" });
+  const [serverState, setServerState] = useState<ServerState>({ status: "idle" });
+  const [roomStatus, setRoomStatus] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +47,22 @@ export function AuthVerificationState() {
         }
 
         setSessionState({ status: "authenticated", payload });
+        setServerState({ status: "loading" });
+
+        try {
+          const actor = await getActor();
+
+          if (!cancelled) {
+            setServerState({ status: "ready", actor });
+          }
+        } catch (error) {
+          if (cancelled) {
+            return;
+          }
+
+          const message = error instanceof Error ? error.message : "unknown error";
+          setServerState({ status: "error", message });
+        }
       } catch (error) {
         if (cancelled) {
           return;
@@ -66,5 +92,54 @@ export function AuthVerificationState() {
     return <p>Session check failed: {sessionState.message}</p>;
   }
 
-  return <pre>{JSON.stringify(sessionState.payload, null, 2)}</pre>;
+  async function handleCreateRoom() {
+    setRoomStatus("Creating room...");
+
+    try {
+      const room = await createRoom();
+      setRoomStatus(`Room created: ${room.roomId} (owner ${room.ownerUserId})`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error";
+      setRoomStatus(`Create room failed: ${message}`);
+    }
+  }
+
+  async function handleJoinSmokeRoom() {
+    setRoomStatus("Joining room smoke-room...");
+
+    try {
+      const joined = await joinRoom("smoke-room");
+      setRoomStatus(`Joined ${joined.roomId} as ${joined.userId}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "unknown error";
+      setRoomStatus(`Join room failed: ${message}`);
+    }
+  }
+
+  return (
+    <>
+      <h2>Auth session payload</h2>
+      <pre>{JSON.stringify(sessionState.payload, null, 2)}</pre>
+
+      <h2>Server actor check</h2>
+      {serverState.status === "idle" || serverState.status === "loading" ? (
+        <p>Checking `/api/me`...</p>
+      ) : null}
+      {serverState.status === "error" ? (
+        <p>Server auth check failed: {serverState.message}</p>
+      ) : null}
+      {serverState.status === "ready" ? (
+        <pre>{JSON.stringify(serverState.actor, null, 2)}</pre>
+      ) : null}
+
+      <h2>Room endpoint smoke actions</h2>
+      <button type="button" onClick={handleCreateRoom}>
+        Create room
+      </button>
+      <button type="button" onClick={handleJoinSmokeRoom}>
+        Join smoke room
+      </button>
+      {roomStatus ? <p>{roomStatus}</p> : null}
+    </>
+  );
 }
