@@ -29,6 +29,13 @@
 - `apps/server` validates Auth.js session cookies against `auth_sessions` (+ linked `users`) as the source of truth for protected API access.
 - Protected server routes return uniform unauthorized responses: `401` with `{ error: "unauthorized" }`.
 
+## 2026-02-27 Room URL and Join Contract
+
+- v1 room IDs stay UUID-based with private invite links routed as `/play/:roomId`.
+- v1 has no public room discovery; link possession plus authentication gates joining.
+- Room join is idempotent for existing participants and enforces a two-seat maximum.
+- Seat labels are explicit and deterministic: creator is `P1`, second participant is `P2`.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.

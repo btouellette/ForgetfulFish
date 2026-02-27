@@ -54,6 +54,14 @@ Auth routes are owned by Auth.js.
 ## Authoritative Server Endpoints (v1 scaffold)
 
 - `GET /api/me`: authenticated actor identity; returns `{ userId, email }`.
-- `POST /api/rooms`: requires auth; returns `201` with `{ roomId, ownerUserId }`.
-- `POST /api/rooms/:id/join`: requires auth; returns `200` with `{ roomId, userId }`.
+- `POST /api/rooms`: requires auth; returns `201` with `{ roomId, ownerUserId, seat }`.
+- `POST /api/rooms/:id/join`: requires auth; returns `200` with `{ roomId, userId, seat }`.
 - Unauthorized response is uniform: `401` with `{ error: "unauthorized" }`.
+
+## Room Semantics (v1)
+
+- Room IDs are UUIDs and are shared via invite URLs in the form `/play/:roomId`.
+- Seats are explicit and deterministic: `P1` for creator, `P2` for second participant.
+- Join is idempotent for existing participants: same authenticated user gets `200` with existing seat.
+- Join returns `404` with `{ error: "room_not_found" }` when room does not exist.
+- Join returns `409` with `{ error: "room_full" }` when both seats are occupied.

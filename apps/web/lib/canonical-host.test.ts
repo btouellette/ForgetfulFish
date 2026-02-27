@@ -32,11 +32,11 @@ describe("canonical host", () => {
 
   it("uses canonical origin from config when provided", () => {
     const redirectUrl = getCanonicalRedirectUrl({
-      url: new URL("http://www.forgetfulfish.com/play?room=abc"),
+      url: new URL("http://www.forgetfulfish.com/play/abc"),
       hostHeader: "www.forgetfulfish.com",
       canonicalOrigin: "https://play.forgetfulfish.com"
     });
 
-    expect(redirectUrl?.toString()).toBe("https://play.forgetfulfish.com/play?room=abc");
+    expect(redirectUrl?.toString()).toBe("https://play.forgetfulfish.com/play/abc");
   });
 });

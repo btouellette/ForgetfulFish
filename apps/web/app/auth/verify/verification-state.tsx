@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { createRoom, getActor, joinRoom } from "../../../lib/server-api";
 
@@ -17,9 +18,11 @@ type ServerState =
   | { status: "error"; message: string };
 
 export function AuthVerificationState() {
+  const router = useRouter();
   const [sessionState, setSessionState] = useState<SessionState>({ status: "loading" });
   const [serverState, setServerState] = useState<ServerState>({ status: "idle" });
   const [roomStatus, setRoomStatus] = useState<string>("");
+  const [roomIdInput, setRoomIdInput] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -97,19 +100,51 @@ export function AuthVerificationState() {
 
     try {
       const room = await createRoom();
-      setRoomStatus(`Room created: ${room.roomId} (owner ${room.ownerUserId})`);
+      const shareUrl = `${window.location.origin}/play/${room.roomId}`;
+      setRoomStatus(`Room created: ${shareUrl} (seat ${room.seat})`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";
       setRoomStatus(`Create room failed: ${message}`);
     }
   }
 
-  async function handleJoinSmokeRoom() {
-    setRoomStatus("Joining room smoke-room...");
+  function getRoomIdFromInput() {
+    const trimmed = roomIdInput.trim();
+
+    if (!trimmed) {
+      return "";
+    }
+
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      try {
+        const parsedUrl = new URL(trimmed);
+        const parts = parsedUrl.pathname.split("/").filter(Boolean);
+
+        if (parts.length >= 2 && parts[0] === "play") {
+          return parts[1] ?? "";
+        }
+      } catch {
+        return "";
+      }
+    }
+
+    return trimmed;
+  }
+
+  async function handleJoinRoom() {
+    const roomId = getRoomIdFromInput();
+
+    if (!roomId) {
+      setRoomStatus("Enter a room URL or room ID.");
+      return;
+    }
+
+    setRoomStatus(`Joining room ${roomId}...`);
 
     try {
-      const joined = await joinRoom("smoke-room");
-      setRoomStatus(`Joined ${joined.roomId} as ${joined.userId}`);
+      const joined = await joinRoom(roomId);
+      setRoomStatus(`Joined ${joined.roomId} as ${joined.userId} (seat ${joined.seat})`);
+      router.push(`/play/${joined.roomId}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "unknown error";
       setRoomStatus(`Join room failed: ${message}`);
@@ -136,8 +171,14 @@ export function AuthVerificationState() {
       <button type="button" onClick={handleCreateRoom}>
         Create room
       </button>
-      <button type="button" onClick={handleJoinSmokeRoom}>
-        Join smoke room
+      <input
+        type="text"
+        value={roomIdInput}
+        onChange={(event) => setRoomIdInput(event.target.value)}
+        placeholder="Paste /play/<roomId> URL or room ID"
+      />
+      <button type="button" onClick={handleJoinRoom}>
+        Join room
       </button>
       {roomStatus ? <p>{roomStatus}</p> : null}
     </>

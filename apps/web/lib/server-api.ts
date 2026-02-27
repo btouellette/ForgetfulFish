@@ -8,11 +8,13 @@ type Actor = {
 type RoomCreated = {
   roomId: string;
   ownerUserId: string;
+  seat: "P1" | "P2";
 };
 
 type RoomJoined = {
   roomId: string;
   userId: string;
+  seat: "P1" | "P2";
 };
 
 function normalizeBaseUrl(baseUrl: string) {

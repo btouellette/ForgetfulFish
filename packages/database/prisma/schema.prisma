@@ -18,8 +18,41 @@ model User {
 
   accounts Account[]
   sessions Session[]
+  roomParticipants RoomParticipant[]
 
   @@map("users")
+}
+
+enum RoomSeat {
+  P1
+  P2
+}
+
+model Room {
+  id           String            @id @db.Uuid
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  closedAt     DateTime?
+  participants RoomParticipant[]
+
+  @@map("rooms")
+}
+
+model RoomParticipant {
+  id        String   @id @default(cuid())
+  roomId    String   @db.Uuid
+  userId    String
+  seat      RoomSeat
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@unique([roomId, seat])
+  @@index([userId])
+  @@map("room_participants")
 }
 
 model Account {
