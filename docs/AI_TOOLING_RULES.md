@@ -57,3 +57,8 @@ These rules define how AI agents should operate in this repository.
 - Run the relevant test suite for affected areas before declaring done.
 - If tests cannot be run, explicitly state what was not run and why.
 - Include a brief note of what was changed, why, and how it was validated.
+
+## Pre-Commit Review Gate
+
+- Before creating any large commit, perform a final review of the full `git diff`.
+- If meaningful improvements are identified during that review, present them and ask the user to confirm whether to apply them before committing.
