@@ -88,6 +88,16 @@ function getSessionToken(cookieHeader: string | undefined) {
   return undefined;
 }
 
+function getLogPath(url: string) {
+  const queryStart = url.indexOf("?");
+
+  if (queryStart === -1) {
+    return url;
+  }
+
+  return url.slice(0, queryStart);
+}
+
 async function lookupSessionInDatabase(sessionToken: string): Promise<SessionLookupResult | null> {
   const session = await prisma.session.findUnique({
     where: {
@@ -119,7 +129,36 @@ async function lookupSessionInDatabase(sessionToken: string): Promise<SessionLoo
 
 export function buildServer({ sessionLookup = lookupSessionInDatabase }: BuildServerOptions = {}) {
   const app = Fastify({
-    logger: process.env.NODE_ENV !== "test"
+    logger: process.env.NODE_ENV !== "test",
+    disableRequestLogging: true
+  });
+
+  app.addHook("onRequest", async (request) => {
+    request.log.info(
+      {
+        reqId: request.id,
+        method: request.method,
+        path: getLogPath(request.url)
+      },
+      "incoming request"
+    );
+  });
+
+  app.addHook("onResponse", async (request, reply) => {
+    if (reply.statusCode === 404) {
+      return;
+    }
+
+    request.log.info(
+      {
+        reqId: request.id,
+        method: request.method,
+        path: getLogPath(request.url),
+        statusCode: reply.statusCode,
+        responseTime: reply.elapsedTime
+      },
+      "request completed"
+    );
   });
 
   async function authorizeRequest(request: FastifyRequest, reply: FastifyReply) {
@@ -198,6 +237,10 @@ export function buildServer({ sessionLookup = lookupSessionInDatabase }: BuildSe
       });
     }
   );
+
+  app.setNotFoundHandler(async (_request, reply) => {
+    return reply.code(404).send({ error: "not found" });
+  });
 
   return app;
 }

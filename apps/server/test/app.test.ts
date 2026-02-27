@@ -214,4 +214,20 @@ describe("server", () => {
       await app.close();
     }
   });
+
+  it("returns canonical 404 payload for unknown routes", async () => {
+    const app = buildServer();
+
+    try {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/.env"
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toEqual({ error: "not found" });
+    } finally {
+      await app.close();
+    }
+  });
 });
