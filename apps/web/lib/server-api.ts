@@ -17,6 +17,32 @@ type RoomJoined = {
   seat: "P1" | "P2";
 };
 
+type RoomLobbyParticipant = {
+  userId: string;
+  seat: "P1" | "P2";
+  ready: boolean;
+};
+
+type RoomLobby = {
+  roomId: string;
+  participants: RoomLobbyParticipant[];
+  gameId: string | null;
+  gameStatus: "not_started" | "started";
+};
+
+type RoomReadyState = {
+  roomId: string;
+  userId: string;
+  seat: "P1" | "P2";
+  ready: boolean;
+};
+
+type RoomStarted = {
+  roomId: string;
+  gameId: string;
+  gameStatus: "started";
+};
+
 function normalizeBaseUrl(baseUrl: string) {
   return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 }
@@ -57,6 +83,26 @@ export function createRoom() {
 
 export function joinRoom(roomId: string) {
   return requestJson<RoomJoined>(`/api/rooms/${encodeURIComponent(roomId)}/join`, {
+    method: "POST"
+  });
+}
+
+export function getRoomLobby(roomId: string) {
+  return requestJson<RoomLobby>(`/api/rooms/${encodeURIComponent(roomId)}`);
+}
+
+export function setRoomReady(roomId: string, ready: boolean) {
+  return requestJson<RoomReadyState>(`/api/rooms/${encodeURIComponent(roomId)}/ready`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ ready })
+  });
+}
+
+export function startRoomGame(roomId: string) {
+  return requestJson<RoomStarted>(`/api/rooms/${encodeURIComponent(roomId)}/start`, {
     method: "POST"
   });
 }

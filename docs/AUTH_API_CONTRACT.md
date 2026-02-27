@@ -56,6 +56,9 @@ Auth routes are owned by Auth.js.
 - `GET /api/me`: authenticated actor identity; returns `{ userId, email }`.
 - `POST /api/rooms`: requires auth; returns `201` with `{ roomId, ownerUserId, seat }`.
 - `POST /api/rooms/:id/join`: requires auth; returns `200` with `{ roomId, userId, seat }`.
+- `GET /api/rooms/:id`: requires auth; returns room lobby payload for room participants.
+- `POST /api/rooms/:id/ready`: requires auth; request `{ ready: boolean }`; updates caller readiness.
+- `POST /api/rooms/:id/start`: requires auth; starts game only when both players are ready.
 - Unauthorized response is uniform: `401` with `{ error: "unauthorized" }`.
 
 ## Room Semantics (v1)
@@ -65,3 +68,8 @@ Auth routes are owned by Auth.js.
 - Join is idempotent for existing participants: same authenticated user gets `200` with existing seat.
 - Join returns `404` with `{ error: "room_not_found" }` when room does not exist.
 - Join returns `409` with `{ error: "room_full" }` when both seats are occupied.
+- Lobby and readiness endpoints return `403` with `{ error: "forbidden" }` when caller is not a room participant.
+- Lobby response shape: `{ roomId, participants: [{ userId, seat, ready }], gameId, gameStatus }`.
+- Game start response shape: `{ roomId, gameId, gameStatus: "started" }`.
+- Start returns `409` with `{ error: "room_not_ready" }` until two participants are present and both marked ready.
+- Readiness updates after game start are treated as no-op and return current readiness state.

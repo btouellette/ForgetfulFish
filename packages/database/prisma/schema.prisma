@@ -19,6 +19,7 @@ model User {
   accounts Account[]
   sessions Session[]
   roomParticipants RoomParticipant[]
+  gamesStarted     Game[]
 
   @@map("users")
 }
@@ -34,8 +35,24 @@ model Room {
   updatedAt    DateTime          @updatedAt
   closedAt     DateTime?
   participants RoomParticipant[]
+  game         Game?
 
   @@map("rooms")
+}
+
+model Game {
+  id              String   @id @db.Uuid
+  roomId          String   @unique @db.Uuid
+  startedByUserId String
+  startedAt       DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  room          Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  startedByUser User @relation(fields: [startedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([startedByUserId])
+  @@map("games")
 }
 
 model RoomParticipant {
@@ -43,6 +60,7 @@ model RoomParticipant {
   roomId    String   @db.Uuid
   userId    String
   seat      RoomSeat
+  ready     Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -36,6 +36,12 @@
 - Room join is idempotent for existing participants and enforces a two-seat maximum.
 - Seat labels are explicit and deterministic: creator is `P1`, second participant is `P2`.
 
+## 2026-02-27 Game Start Flow Decision
+
+- Joining a room does not auto-start a game.
+- Game start requires explicit action with both players marked ready.
+- Room lifecycle hardening (expiry/cleanup tuning) is deferred until gameplay UI and active game flows are in regular use.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.

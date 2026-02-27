@@ -3,15 +3,24 @@ import { describe, expect, it } from "vitest";
 import { buildServer } from "../src/app";
 
 function createInMemoryRoomStore() {
-  const rooms = new Map<string, Map<"P1" | "P2", string>>();
+  type RoomState = {
+    participants: Map<"P1" | "P2", { userId: string; ready: boolean }>;
+    gameId: string | null;
+  };
+
+  const rooms = new Map<string, RoomState>();
   let nextRoomIndex = 1;
+  let nextGameIndex = 1;
 
   return {
     async createRoom(ownerUserId: string) {
       const roomId = `00000000-0000-4000-8000-${String(nextRoomIndex).padStart(12, "0")}`;
       nextRoomIndex += 1;
 
-      rooms.set(roomId, new Map([["P1", ownerUserId]]));
+      rooms.set(roomId, {
+        participants: new Map([["P1", { userId: ownerUserId, ready: false }]]),
+        gameId: null
+      });
 
       return {
         roomId,
@@ -20,16 +29,16 @@ function createInMemoryRoomStore() {
       };
     },
     async joinRoom(roomId: string, userId: string) {
-      const seats = rooms.get(roomId);
+      const room = rooms.get(roomId);
 
-      if (!seats) {
+      if (!room) {
         return {
           status: "not_found" as const
         };
       }
 
-      for (const [seat, occupant] of seats.entries()) {
-        if (occupant === userId) {
+      for (const [seat, participant] of room.participants.entries()) {
+        if (participant.userId === userId) {
           return {
             status: "joined" as const,
             roomId,
@@ -39,20 +48,141 @@ function createInMemoryRoomStore() {
         }
       }
 
-      if (seats.size >= 2) {
+      if (room.participants.size >= 2) {
         return {
           status: "full" as const
         };
       }
 
-      const seat: "P1" | "P2" = seats.has("P1") ? "P2" : "P1";
-      seats.set(seat, userId);
+      const seat: "P1" | "P2" = room.participants.has("P1") ? "P2" : "P1";
+      room.participants.set(seat, { userId, ready: false });
 
       return {
         status: "joined" as const,
         roomId,
         userId,
         seat
+      };
+    },
+    async getLobby(roomId: string) {
+      const room = rooms.get(roomId);
+
+      if (!room) {
+        return {
+          status: "not_found" as const
+        };
+      }
+
+      const participants = [...room.participants.entries()].map(([seat, participant]) => ({
+        seat,
+        userId: participant.userId,
+        ready: participant.ready
+      }));
+
+      return {
+        status: "ok" as const,
+        payload: {
+          roomId,
+          participants,
+          gameId: room.gameId,
+          gameStatus: room.gameId ? ("started" as const) : ("not_started" as const)
+        }
+      };
+    },
+    async setReady(roomId: string, userId: string, ready: boolean) {
+      const room = rooms.get(roomId);
+
+      if (!room) {
+        return {
+          status: "not_found" as const
+        };
+      }
+
+      if (room.gameId) {
+        for (const [seat, participant] of room.participants.entries()) {
+          if (participant.userId !== userId) {
+            continue;
+          }
+
+          return {
+            status: "ok" as const,
+            roomId,
+            userId,
+            seat,
+            ready: participant.ready
+          };
+        }
+
+        return {
+          status: "forbidden" as const
+        };
+      }
+
+      for (const [seat, participant] of room.participants.entries()) {
+        if (participant.userId !== userId) {
+          continue;
+        }
+
+        room.participants.set(seat, {
+          ...participant,
+          ready
+        });
+
+        return {
+          status: "ok" as const,
+          roomId,
+          userId,
+          seat,
+          ready
+        };
+      }
+
+      return {
+        status: "forbidden" as const
+      };
+    },
+    async startGame(roomId: string, userId: string) {
+      const room = rooms.get(roomId);
+
+      if (!room) {
+        return {
+          status: "not_found" as const
+        };
+      }
+
+      const participants = [...room.participants.values()];
+      const isParticipant = participants.some((participant) => participant.userId === userId);
+
+      if (!isParticipant) {
+        return {
+          status: "forbidden" as const
+        };
+      }
+
+      if (room.gameId) {
+        return {
+          status: "started" as const,
+          roomId,
+          gameId: room.gameId,
+          gameStatus: "started" as const
+        };
+      }
+
+      if (participants.length < 2 || participants.some((participant) => !participant.ready)) {
+        return {
+          status: "not_ready" as const
+        };
+      }
+
+      const gameId = `10000000-0000-4000-8000-${String(nextGameIndex).padStart(12, "0")}`;
+      nextGameIndex += 1;
+      room.gameId = gameId;
+
+      return {
+        status: "started" as const,
+        roomId,
+        gameId,
+        gameStatus: "started" as const
       };
     }
   };
@@ -66,6 +196,45 @@ function buildAuthedSessionLookup(userId: string) {
       email: `${userId}@example.com`
     }
   });
+}
+
+type InMemoryRoomStore = ReturnType<typeof createInMemoryRoomStore>;
+
+async function injectAs(
+  roomStore: InMemoryRoomStore,
+  userId: string,
+  request: {
+    method: "GET" | "POST";
+    url: string;
+    payload?: unknown;
+  }
+): Promise<any> {
+  const app = buildServer({
+    sessionLookup: buildAuthedSessionLookup(userId),
+    roomStore
+  });
+
+  try {
+    return await app.inject({
+      method: request.method,
+      url: request.url,
+      headers: {
+        cookie: "authjs.session-token=valid"
+      },
+      payload: request.payload as any
+    });
+  } finally {
+    await app.close();
+  }
+}
+
+async function createRoomAs(roomStore: InMemoryRoomStore, userId: string) {
+  const response = await injectAs(roomStore, userId, {
+    method: "POST",
+    url: "/api/rooms"
+  });
+
+  return response.json().roomId as string;
 }
 
 describe("server", () => {
@@ -441,6 +610,291 @@ describe("server", () => {
       });
     } finally {
       await app.close();
+    }
+  });
+
+  it("returns room lobby for participant", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await createRoomAs(roomStore, "owner-1");
+
+    const response = await injectAs(roomStore, "owner-1", {
+      method: "GET",
+      url: `/api/rooms/${roomId}`
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      roomId,
+      participants: [{ userId: "owner-1", seat: "P1", ready: false }],
+      gameId: null,
+      gameStatus: "not_started"
+    });
+  });
+
+  it("updates readiness for room participant", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await createRoomAs(roomStore, "owner-1");
+
+    const readyResponse = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      payload: {
+        ready: true
+      }
+    });
+
+    expect(readyResponse.statusCode).toBe(200);
+    expect(readyResponse.json()).toEqual({
+      roomId,
+      userId: "owner-1",
+      seat: "P1",
+      ready: true
+    });
+  });
+
+  it("returns 403 when non participant tries readiness update", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await createRoomAs(roomStore, "owner-1");
+
+    const response = await injectAs(roomStore, "user-9", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      payload: {
+        ready: true
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "forbidden" });
+  });
+
+  it("requires both players ready before explicit game start", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await createRoomAs(roomStore, "owner-1");
+
+    const response = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/start`
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({ error: "room_not_ready" });
+  });
+
+  it("starts game when both players are ready and is idempotent", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const ownerApp = buildServer({
+      sessionLookup: buildAuthedSessionLookup("owner-1"),
+      roomStore
+    });
+
+    let roomId = "";
+
+    try {
+      const createResponse = await ownerApp.inject({
+        method: "POST",
+        url: "/api/rooms",
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      roomId = createResponse.json().roomId;
+    } finally {
+      await ownerApp.close();
+    }
+
+    const playerTwoApp = buildServer({
+      sessionLookup: buildAuthedSessionLookup("user-2"),
+      roomStore
+    });
+
+    try {
+      await playerTwoApp.inject({
+        method: "POST",
+        url: `/api/rooms/${roomId}/join`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      await playerTwoApp.inject({
+        method: "POST",
+        url: `/api/rooms/${roomId}/ready`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        },
+        payload: {
+          ready: true
+        }
+      });
+    } finally {
+      await playerTwoApp.close();
+    }
+
+    const ownerReadyApp = buildServer({
+      sessionLookup: buildAuthedSessionLookup("owner-1"),
+      roomStore
+    });
+
+    try {
+      await ownerReadyApp.inject({
+        method: "POST",
+        url: `/api/rooms/${roomId}/ready`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        },
+        payload: {
+          ready: true
+        }
+      });
+
+      const firstStart = await ownerReadyApp.inject({
+        method: "POST",
+        url: `/api/rooms/${roomId}/start`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      const secondStart = await ownerReadyApp.inject({
+        method: "POST",
+        url: `/api/rooms/${roomId}/start`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      expect(firstStart.statusCode).toBe(200);
+      expect(firstStart.json()).toEqual({
+        roomId,
+        gameId: expect.stringMatching(/^10000000-0000-4000-8000-\d{12}$/),
+        gameStatus: "started"
+      });
+
+      expect(secondStart.statusCode).toBe(200);
+      expect(secondStart.json()).toEqual(firstStart.json());
+
+      const readyAfterStart = await ownerReadyApp.inject({
+        method: "POST",
+        url: `/api/rooms/${roomId}/ready`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        },
+        payload: {
+          ready: false
+        }
+      });
+
+      expect(readyAfterStart.statusCode).toBe(200);
+      expect(readyAfterStart.json()).toEqual({
+        roomId,
+        userId: "owner-1",
+        seat: "P1",
+        ready: true
+      });
+    } finally {
+      await ownerReadyApp.close();
+    }
+  });
+
+  it("completes end-to-end lobby flow through game start", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const ownerApp = buildServer({
+      sessionLookup: buildAuthedSessionLookup("owner-1"),
+      roomStore
+    });
+
+    let roomId = "";
+
+    try {
+      const createResponse = await ownerApp.inject({
+        method: "POST",
+        url: "/api/rooms",
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      roomId = createResponse.json().roomId;
+    } finally {
+      await ownerApp.close();
+    }
+
+    const playerTwoApp = buildServer({
+      sessionLookup: buildAuthedSessionLookup("user-2"),
+      roomStore
+    });
+
+    try {
+      await playerTwoApp.inject({
+        method: "POST",
+        url: `/api/rooms/${roomId}/join`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      await playerTwoApp.inject({
+        method: "POST",
+        url: `/api/rooms/${roomId}/ready`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        },
+        payload: {
+          ready: true
+        }
+      });
+    } finally {
+      await playerTwoApp.close();
+    }
+
+    const ownerReadyApp = buildServer({
+      sessionLookup: buildAuthedSessionLookup("owner-1"),
+      roomStore
+    });
+
+    try {
+      await ownerReadyApp.inject({
+        method: "POST",
+        url: `/api/rooms/${roomId}/ready`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        },
+        payload: {
+          ready: true
+        }
+      });
+
+      const startResponse = await ownerReadyApp.inject({
+        method: "POST",
+        url: `/api/rooms/${roomId}/start`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      const lobbyResponse = await ownerReadyApp.inject({
+        method: "GET",
+        url: `/api/rooms/${roomId}`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      expect(startResponse.statusCode).toBe(200);
+      expect(lobbyResponse.statusCode).toBe(200);
+      expect(lobbyResponse.json()).toEqual({
+        roomId,
+        participants: [
+          { userId: "owner-1", seat: "P1", ready: true },
+          { userId: "user-2", seat: "P2", ready: true }
+        ],
+        gameId: startResponse.json().gameId,
+        gameStatus: "started"
+      });
+    } finally {
+      await ownerReadyApp.close();
     }
   });
 
