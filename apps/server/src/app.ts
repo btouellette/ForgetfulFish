@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { prisma } from "@forgetful-fish/database";
+import { createInitialGameState } from "@forgetful-fish/game-engine";
 import Fastify from "fastify";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
@@ -379,6 +380,14 @@ function sortParticipantsBySeat(participants: RoomLobbyParticipant[]) {
   });
 }
 
+function compareSeats(left: RoomSeat, right: RoomSeat) {
+  if (left === right) {
+    return 0;
+  }
+
+  return left === "P1" ? -1 : 1;
+}
+
 async function getRoomLobbyInDatabase(roomId: string, userId: string): Promise<GetRoomLobbyResult> {
   const room = await prisma.room.findUnique({
     where: {
@@ -515,6 +524,7 @@ async function startGameInDatabase(roomId: string, userId: string): Promise<Star
       participants: {
         select: {
           userId: true,
+          seat: true,
           ready: true
         }
       },
@@ -549,24 +559,67 @@ async function startGameInDatabase(roomId: string, userId: string): Promise<Star
     };
   }
 
+  const participantsBySeat = [...room.participants]
+    .map((participant) => ({
+      userId: participant.userId,
+      seat: normalizeRoomSeat(participant.seat),
+      ready: participant.ready
+    }))
+    .sort((left, right) => compareSeats(left.seat, right.seat));
+
   if (
-    room.participants.length !== 2 ||
-    room.participants.some((participant) => !participant.ready)
+    participantsBySeat.length !== 2 ||
+    participantsBySeat.some((participant) => !participant.ready)
   ) {
     return {
       status: "not_ready"
     };
   }
 
+  const firstParticipant = participantsBySeat[0];
+  const secondParticipant = participantsBySeat[1];
+
+  if (!firstParticipant || !secondParticipant) {
+    return {
+      status: "not_ready"
+    };
+  }
+
+  const initialState = createInitialGameState(firstParticipant.userId, secondParticipant.userId);
+  const stateVersion = 1;
+
   const gameId = randomUUID();
 
   try {
-    await prisma.game.create({
-      data: {
-        id: gameId,
-        roomId,
-        startedByUserId: userId
-      }
+    await prisma.$transaction(async (tx) => {
+      await tx.game.create({
+        data: {
+          id: gameId,
+          roomId,
+          startedByUserId: userId,
+          state: initialState,
+          stateVersion,
+          lastAppliedEventSeq: 0
+        }
+      });
+
+      await tx.gameEvent.create({
+        data: {
+          gameId,
+          seq: 0,
+          eventType: "game_initialized",
+          schemaVersion: stateVersion,
+          causedByUserId: userId,
+          payload: {
+            stateVersion,
+            state: initialState,
+            playersBySeat: participantsBySeat.map((participant) => ({
+              seat: participant.seat,
+              userId: participant.userId
+            }))
+          }
+        }
+      });
     });
   } catch (error) {
     if (!isUniqueConstraintError(error)) {

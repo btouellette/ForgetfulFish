@@ -13,7 +13,7 @@
 - [x] Build room lobby UI on `/play/:roomId` (participants + seat + status).
 - [x] Add explicit ready state per player in room lobby.
 - [x] Add explicit game start action (requires both players ready).
-- [ ] Create initial game state only after explicit start (not on join).
+- [x] Create initial game state only after explicit start (not on join).
 - [x] Persist room/game linkage for started games.
 - [x] Add tests for ready/unready/start authorization and edge cases.
 

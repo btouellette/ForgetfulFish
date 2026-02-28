@@ -47,6 +47,9 @@ importers:
       '@forgetful-fish/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@forgetful-fish/game-engine':
+        specifier: workspace:*
+        version: link:../../packages/game-engine
       fastify:
         specifier: ^5.7.4
         version: 5.7.4

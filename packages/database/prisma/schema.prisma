@@ -20,6 +20,7 @@ model User {
   sessions Session[]
   roomParticipants RoomParticipant[]
   gamesStarted     Game[]
+  causedGameEvents GameEvent[] @relation("GameEventCausedByUser")
 
   @@map("users")
 }
@@ -44,15 +45,38 @@ model Game {
   id              String   @id @db.Uuid
   roomId          String   @unique @db.Uuid
   startedByUserId String
+  state           Json
+  stateVersion    Int      @default(1)
+  lastAppliedEventSeq Int  @default(0) @map("last_applied_event_seq")
   startedAt       DateTime @default(now())
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  room          Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  startedByUser User @relation(fields: [startedByUserId], references: [id], onDelete: Restrict)
+  room          Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  startedByUser User       @relation(fields: [startedByUserId], references: [id], onDelete: Restrict)
+  events        GameEvent[]
 
   @@index([startedByUserId])
   @@map("games")
+}
+
+model GameEvent {
+  id            String   @id @default(cuid())
+  gameId        String   @db.Uuid
+  seq           Int
+  eventType     String
+  payload       Json
+  schemaVersion Int      @default(1)
+  causedByUserId String? @map("caused_by_user_id")
+  createdAt     DateTime @default(now())
+
+  game         Game  @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  causedByUser User? @relation("GameEventCausedByUser", fields: [causedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([gameId, seq])
+  @@index([gameId, createdAt])
+  @@index([causedByUserId])
+  @@map("game_events")
 }
 
 model RoomParticipant {

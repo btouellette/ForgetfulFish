@@ -42,6 +42,12 @@
 - Game start requires explicit action with both players marked ready.
 - Room lifecycle hardening (expiry/cleanup tuning) is deferred until gameplay UI and active game flows are in regular use.
 
+## 2026-02-28 Hybrid Game State Persistence
+
+- Game creation persists a versioned full snapshot (`games.state`, `games.stateVersion`) only after explicit start succeeds.
+- Gameplay persistence model is hybrid: current snapshot on `games` plus append-only `game_events` for replay/audit.
+- Initial start writes one `game_initialized` event at `seq=0` and aligns `games.lastAppliedEventSeq=0`.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.

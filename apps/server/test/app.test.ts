@@ -1,11 +1,23 @@
 import { describe, expect, it } from "vitest";
 
+import { createInitialGameState } from "@forgetful-fish/game-engine";
+
 import { buildServer } from "../src/app";
 
 function createInMemoryRoomStore() {
   type RoomState = {
     participants: Map<"P1" | "P2", { userId: string; ready: boolean }>;
     gameId: string | null;
+    gameState: unknown | null;
+    stateVersion: number | null;
+    lastAppliedEventSeq: number | null;
+    gameEvents: Array<{
+      seq: number;
+      eventType: string;
+      schemaVersion: number;
+      causedByUserId: string;
+      payload: unknown;
+    }>;
   };
 
   const rooms = new Map<string, RoomState>();
@@ -19,7 +31,11 @@ function createInMemoryRoomStore() {
 
       rooms.set(roomId, {
         participants: new Map([["P1", { userId: ownerUserId, ready: false }]]),
-        gameId: null
+        gameId: null,
+        gameState: null,
+        stateVersion: null,
+        lastAppliedEventSeq: null,
+        gameEvents: []
       });
 
       return {
@@ -177,6 +193,46 @@ function createInMemoryRoomStore() {
       const gameId = `10000000-0000-4000-8000-${String(nextGameIndex).padStart(12, "0")}`;
       nextGameIndex += 1;
       room.gameId = gameId;
+      const participantEntries = [...room.participants.entries()].sort(([left], [right]) => {
+        if (left === right) {
+          return 0;
+        }
+
+        return left === "P1" ? -1 : 1;
+      });
+      const firstParticipant = participantEntries[0];
+      const secondParticipant = participantEntries[1];
+
+      if (!firstParticipant || !secondParticipant) {
+        return {
+          status: "not_ready" as const
+        };
+      }
+
+      const stateVersion = 1;
+      const gameState = createInitialGameState(
+        firstParticipant[1].userId,
+        secondParticipant[1].userId
+      );
+      room.gameState = gameState;
+      room.stateVersion = stateVersion;
+      room.lastAppliedEventSeq = 0;
+      room.gameEvents = [
+        {
+          seq: 0,
+          eventType: "game_initialized",
+          schemaVersion: stateVersion,
+          causedByUserId: userId,
+          payload: {
+            stateVersion,
+            state: gameState,
+            playersBySeat: participantEntries.map(([seat, participant]) => ({
+              seat,
+              userId: participant.userId
+            }))
+          }
+        }
+      ];
 
       return {
         status: "started" as const,
@@ -184,6 +240,9 @@ function createInMemoryRoomStore() {
         gameId,
         gameStatus: "started" as const
       };
+    },
+    inspectRoom(roomId: string) {
+      return rooms.get(roomId);
     }
   };
 }
@@ -796,6 +855,73 @@ describe("server", () => {
     } finally {
       await ownerReadyApp.close();
     }
+  });
+
+  it("persists versioned initial snapshot and exactly one init event on start", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await createRoomAs(roomStore, "owner-1");
+
+    await injectAs(roomStore, "user-2", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/join`
+    });
+
+    await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      payload: {
+        ready: true
+      }
+    });
+
+    await injectAs(roomStore, "user-2", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      payload: {
+        ready: true
+      }
+    });
+
+    const startResponse = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/start`
+    });
+
+    const retryStartResponse = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/start`
+    });
+
+    expect(startResponse.statusCode).toBe(200);
+    expect(retryStartResponse.statusCode).toBe(200);
+    expect(retryStartResponse.json()).toEqual(startResponse.json());
+
+    const room = roomStore.inspectRoom(roomId);
+    expect(room).toBeDefined();
+    expect(room?.stateVersion).toBe(1);
+    expect(room?.lastAppliedEventSeq).toBe(0);
+    expect(room?.gameState).toEqual(createInitialGameState("owner-1", "user-2"));
+    expect(room?.gameEvents).toHaveLength(1);
+    expect(room?.gameEvents[0]).toEqual({
+      seq: 0,
+      eventType: "game_initialized",
+      schemaVersion: 1,
+      causedByUserId: "owner-1",
+      payload: {
+        stateVersion: 1,
+        state: createInitialGameState("owner-1", "user-2"),
+        playersBySeat: [
+          {
+            seat: "P1",
+            userId: "owner-1"
+          },
+          {
+            seat: "P2",
+            userId: "user-2"
+          }
+        ]
+      }
+    });
   });
 
   it("completes end-to-end lobby flow through game start", async () => {
