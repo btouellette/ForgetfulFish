@@ -17,8 +17,11 @@ This runbook covers Forgetful Fish production deploy on the existing `nginx-prox
   - `POSTGRES_PASSWORD`
   - `AUTH_EMAIL_FROM`
   - `AUTH_EMAIL_SERVER`
-- Do not set global `VIRTUAL_HOST`, `LETSENCRYPT_HOST`, or `VIRTUAL_PORT` in `.env`.
-  - Keep those values scoped to `forgetful-fish-web` service `environment` only.
+- Do not set global `VIRTUAL_HOST`, `LETSENCRYPT_HOST`, `VIRTUAL_PORT`, or `VIRTUAL_PATH` in `.env`.
+  - Keep nginx routing values scoped to service `environment` blocks in `docker-compose.production.yml`.
+  - Current production routing split:
+    - `forgetful-fish-web`: `VIRTUAL_PATH=/`
+    - `forgetful-fish-server`: `VIRTUAL_PATH=/ws/`
 
 ## OAuth Configuration (Google)
 
@@ -81,26 +84,8 @@ This runbook covers Forgetful Fish production deploy on the existing `nginx-prox
 
 ## Reverse Proxy Hardening
 
-- Add per-domain WebSocket routing and hardening rules in `nginx-proxy` at `/etc/nginx/vhost.d/<domain>`.
-
-### Required WebSocket Route
-
-- Create/extend `/etc/nginx/vhost.d/forgetfulfish.com` with:
-
-```nginx
-location /ws/ {
-  proxy_pass http://forgetful-fish-server:4000;
-  proxy_http_version 1.1;
-  proxy_set_header Upgrade $http_upgrade;
-  proxy_set_header Connection "upgrade";
-  proxy_set_header Host $host;
-  proxy_read_timeout 600s;
-  proxy_send_timeout 600s;
-  proxy_buffering off;
-}
-```
-
-- Keep `/api/auth/*` handled by `forgetful-fish-web` (do not path-proxy those routes to `forgetful-fish-server`).
+- WebSocket `/ws/*` routing is handled by container env (`VIRTUAL_PATH=/ws/` on `forgetful-fish-server`) rather than custom vhost location files.
+- Keep `/api/auth/*` handled by `forgetful-fish-web`; do not add proxy overrides that bypass NextAuth routes.
 
 - Current production policy blocks common scanner paths:
   - `/.env*`

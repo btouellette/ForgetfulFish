@@ -9,7 +9,9 @@ Use this checklist for repeatable production deploys on the existing Docker + `n
 - Google OAuth client uses apex only:
   - Origin: `https://forgetfulfish.com`
   - Redirect URI: `https://forgetfulfish.com/api/auth/callback/google`
-- `nginx-proxy` domain vhost has `/ws/*` route to `forgetful-fish-server:4000` with WebSocket upgrade headers.
+- `docker-compose.production.yml` includes path-based routing env:
+  - `forgetful-fish-web` with `VIRTUAL_PATH=/`
+  - `forgetful-fish-server` with `VIRTUAL_PATH=/ws/`
 
 ## 1) Build and Deploy
 
