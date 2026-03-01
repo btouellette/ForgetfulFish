@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import {
+  disconnectedLobbyPollIntervalMs,
+  getReadyUpdateStatusMessage,
+  getRealtimeGuardrailMessage,
+  shouldPollLobbyWhileDisconnected
+} from "../../../lib/room-guardrails";
 import { createRoomRealtimeClient, type RoomRealtimeStatus } from "../../../lib/room-realtime";
 import { getRoomLobby, joinRoom, setRoomReady, startRoomGame } from "../../../lib/server-api";
 
@@ -121,6 +127,34 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
     };
   }, [params]);
 
+  useEffect(() => {
+    if (!roomId || !shouldPollLobbyWhileDisconnected(connectionStatus)) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const pollLobby = async () => {
+      try {
+        await refreshLobby(roomId);
+      } catch {
+        if (cancelled || !isMountedRef.current) {
+          return;
+        }
+      }
+    };
+
+    void pollLobby();
+    const pollTimer = setInterval(() => {
+      void pollLobby();
+    }, disconnectedLobbyPollIntervalMs);
+
+    return () => {
+      cancelled = true;
+      clearInterval(pollTimer);
+    };
+  }, [connectionStatus, roomId]);
+
   async function handleReadyToggle() {
     if (!roomId || !viewerId) {
       return;
@@ -141,8 +175,15 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
         return;
       }
 
-      setStatus(`You are now ${updated.ready ? "ready" : "not ready"}.`);
-      await refreshLobby(roomId);
+      setStatus(getReadyUpdateStatusMessage(updated.ready, connectionStatus));
+
+      try {
+        await refreshLobby(roomId);
+      } catch {
+        if (!isMountedRef.current) {
+          return;
+        }
+      }
     } catch (error) {
       if (!isMountedRef.current) {
         return;
@@ -182,6 +223,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
   }
 
   const viewer = participants.find((participant) => participant.userId === viewerId);
+  const realtimeGuardrailMessage = getRealtimeGuardrailMessage(connectionStatus);
   const canStart =
     gameStatus === "not_started" &&
     participants.length === 2 &&
@@ -193,6 +235,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
       <p>{roomId ? `Room: ${roomId}` : "Resolving room..."}</p>
       <p>Game: {gameStatus === "started" ? `started (${gameId})` : "not started"}</p>
       <p>Live connection: {connectionStatus}</p>
+      {realtimeGuardrailMessage ? <p>{realtimeGuardrailMessage}</p> : null}
       <h2>Lobby</h2>
       {participants.length === 0 ? <p>No participants loaded.</p> : null}
       {participants.map((participant) => (
