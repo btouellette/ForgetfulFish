@@ -669,11 +669,19 @@ export function buildServer({
     logger: process.env.NODE_ENV !== "test",
     disableRequestLogging: true
   });
+  const logHealthChecks = process.env.LOG_HEALTHCHECKS === "true";
+
+  function shouldLogRequest(url: string) {
+    return logHealthChecks || getLogPath(url) !== "/health";
+  }
 
   app.addHook("onRequest", async (request) => {
+    if (!shouldLogRequest(request.url)) {
+      return;
+    }
+
     request.log.info(
       {
-        reqId: request.id,
         method: request.method,
         path: getLogPath(request.url)
       },
@@ -682,13 +690,12 @@ export function buildServer({
   });
 
   app.addHook("onResponse", async (request, reply) => {
-    if (reply.statusCode === 404) {
+    if (reply.statusCode === 404 || !shouldLogRequest(request.url)) {
       return;
     }
 
     request.log.info(
       {
-        reqId: request.id,
         method: request.method,
         path: getLogPath(request.url),
         statusCode: reply.statusCode,

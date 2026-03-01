@@ -17,6 +17,8 @@ This runbook covers Forgetful Fish production deploy on the existing `nginx-prox
   - `POSTGRES_PASSWORD`
   - `AUTH_EMAIL_FROM`
   - `AUTH_EMAIL_SERVER`
+- Do not set global `VIRTUAL_HOST`, `LETSENCRYPT_HOST`, or `VIRTUAL_PORT` in `.env`.
+  - Keep those values scoped to `forgetful-fish-web` service `environment` only.
 
 ## OAuth Configuration (Google)
 
@@ -55,6 +57,19 @@ This runbook covers Forgetful Fish production deploy on the existing `nginx-prox
   - `docker logs -f forgetful-fish-server`
 - DB logs:
   - `docker logs -f forgetful-fish-postgres`
+
+## Reverse Proxy Hardening
+
+- Add per-domain hardening rules in `nginx-proxy` at `/etc/nginx/vhost.d/<domain>`.
+- Current production policy blocks common scanner paths:
+  - `/.env*`
+  - `/.git*`
+  - `/xmlrpc.php`
+  - `/wp-admin/*`, `/wp-content/*`, `/wp-includes/*`
+  - `/wp-login.php`, `/wp-config.php`, `/wp-cron.php`, `/wp-trackback.php`
+- Validate and apply:
+  - `docker exec nginx-proxy nginx -t`
+  - `docker exec nginx-proxy nginx -s reload`
 
 ## Rollback
 
