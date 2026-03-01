@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { createRoomRealtimeClient, type RoomRealtimeStatus } from "../../../lib/room-realtime";
 import { getRoomLobby, joinRoom, setRoomReady, startRoomGame } from "../../../lib/server-api";
 
 type PlayRoomPageProps = {
@@ -21,6 +22,8 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
   const [viewerId, setViewerId] = useState("");
   const [gameStatus, setGameStatus] = useState<"not_started" | "started">("not_started");
   const [gameId, setGameId] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<RoomRealtimeStatus>("offline");
+  const realtimeClientRef = useRef<ReturnType<typeof createRoomRealtimeClient> | null>(null);
 
   async function refreshLobby(nextRoomId: string) {
     const lobby = await getRoomLobby(nextRoomId);
@@ -57,6 +60,47 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
         setViewerId(joined.userId);
         setStatus(`Joined room ${joined.roomId} as seat ${joined.seat}.`);
         await refreshLobby(joined.roomId);
+
+        const realtimeClient = createRoomRealtimeClient({
+          roomId: joined.roomId,
+          onStatusChange: (nextStatus) => {
+            if (!isMountedRef.current) {
+              return;
+            }
+
+            setConnectionStatus(nextStatus);
+          },
+          onLobbySnapshot: (snapshot) => {
+            if (!isMountedRef.current) {
+              return;
+            }
+
+            setParticipants(snapshot.participants);
+            setGameStatus(snapshot.gameStatus);
+            setGameId(snapshot.gameId);
+          },
+          onLobbyUpdated: (snapshot) => {
+            if (!isMountedRef.current) {
+              return;
+            }
+
+            setParticipants(snapshot.participants);
+            setGameStatus(snapshot.gameStatus);
+            setGameId(snapshot.gameId);
+          },
+          onGameStarted: (started) => {
+            if (!isMountedRef.current) {
+              return;
+            }
+
+            setGameStatus(started.gameStatus);
+            setGameId(started.gameId);
+            setStatus(`Game started: ${started.gameId}`);
+          }
+        });
+
+        realtimeClientRef.current = realtimeClient;
+        realtimeClient.connect();
       } catch (error) {
         if (cancelled) {
           return;
@@ -72,6 +116,8 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
     return () => {
       cancelled = true;
       isMountedRef.current = false;
+      realtimeClientRef.current?.disconnect();
+      realtimeClientRef.current = null;
     };
   }, [params]);
 
@@ -146,6 +192,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
       <h1>Play Room</h1>
       <p>{roomId ? `Room: ${roomId}` : "Resolving room..."}</p>
       <p>Game: {gameStatus === "started" ? `started (${gameId})` : "not started"}</p>
+      <p>Live connection: {connectionStatus}</p>
       <h2>Lobby</h2>
       {participants.length === 0 ? <p>No participants loaded.</p> : null}
       {participants.map((participant) => (

@@ -19,11 +19,67 @@
 
 ## Milestone 2 - Realtime Gameplay Skeleton
 
-- [ ] Add WebSocket room/game channel and connection lifecycle.
-- [ ] Define command/event protocol for sync + mutations.
-- [ ] Broadcast authoritative state updates to both players.
-- [ ] Implement reconnect + state resync baseline.
+- [ ] Add room-scoped WebSocket endpoint: `GET /ws/rooms/:roomId`.
+- [ ] Enforce auth/session and participant-only subscription at handshake.
+- [ ] Define versioned WS envelopes (`type`, `schemaVersion`, `data`) and Zod-validated payloads.
+- [ ] Broadcast authoritative room updates (`room_lobby_updated`, `game_started`) to both players.
+- [ ] Implement reconnect + resync baseline (client backoff + server snapshot on reconnect).
 - [ ] Add integration tests for two-player sync correctness.
+
+### Milestone 2 Implementation Plan (Tracked Unit)
+
+#### Phase A - Transport and Handshake
+
+- [ ] Add Fastify WebSocket support in `apps/server`.
+- [ ] Implement `GET /ws/rooms/:roomId` upgrade route.
+- [ ] Reuse existing session cookie parsing + session lookup for WS auth.
+- [ ] Reject unauthorized sockets and non-participant room access.
+- [ ] Return initial room snapshot immediately after successful connect.
+
+#### Phase B - Protocol and Broadcasts
+
+- [ ] Add shared WS contract schemas for server events:
+  - [ ] `subscribed` (initial room snapshot)
+  - [ ] `room_lobby_updated` (participants/ready/game status)
+  - [ ] `game_started` (room + game identifiers)
+  - [ ] `error` (recoverable protocol or authorization errors)
+  - [ ] `pong` (heartbeat response)
+- [ ] Validate all outbound/inbound WS payloads at boundary.
+- [ ] Maintain in-memory room connection registry (`roomId -> sockets`).
+- [ ] Publish room updates after successful HTTP mutations:
+  - [ ] `POST /api/rooms/:id/join`
+  - [ ] `POST /api/rooms/:id/ready`
+  - [ ] `POST /api/rooms/:id/start`
+- [ ] Ensure HTTP responses are not blocked by slow/disconnected clients.
+
+#### Phase C - Client Integration (`/play/:roomId`)
+
+- [ ] Add room WS client helper in `apps/web/lib` with `ws`/`wss` URL derivation from `NEXT_PUBLIC_SERVER_BASE_URL`.
+- [ ] Connect on room page load and hydrate UI from `subscribed` snapshot.
+- [ ] Apply incoming `room_lobby_updated` and `game_started` events to local state.
+- [ ] Keep existing HTTP calls for `join`, `ready`, and `start` as the mutation path.
+- [ ] Add connection-status UI (`connected`, `reconnecting`, `offline`).
+- [ ] Reconnect with bounded backoff and automatic room resubscription.
+
+#### Phase D - Validation and Hardening
+
+- [ ] Add server integration tests for:
+  - [ ] unauthorized WS rejection
+  - [ ] non-participant room rejection
+  - [ ] successful subscription snapshot
+  - [ ] two-client room update fanout on ready/start
+  - [ ] reconnect returning current canonical snapshot
+- [ ] Add web tests for WS message handling and reconnect behavior.
+- [ ] Add structured connection lifecycle logs (connect, auth fail, disconnect, broadcast failure).
+- [ ] Update architecture/contract docs with WS endpoint and event schemas.
+
+#### Milestone 2 Exit Criteria
+
+- [ ] Two authenticated clients in one room see ready-state changes live without refresh.
+- [ ] On game start, both clients reflect identical `gameId` and `gameStatus=started` in under ~1s.
+- [ ] Reconnecting client automatically restores current room/game state.
+- [ ] Unauthorized and non-participant clients cannot receive room events.
+- [ ] WS payload contracts are schema-validated and covered by tests.
 
 ## Milestone 3 - Core Rules Loop
 

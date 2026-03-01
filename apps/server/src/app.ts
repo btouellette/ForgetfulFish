@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 
+import fastifyWebsocket from "@fastify/websocket";
 import { prisma } from "@forgetful-fish/database";
 import { createInitialGameState } from "@forgetful-fish/game-engine";
 import Fastify from "fastify";
 import type { FastifyReply, FastifyRequest } from "fastify";
+import type WebSocket from "ws";
 import { z } from "zod";
 
 type Actor = {
@@ -147,6 +149,52 @@ const gameStartedResponseSchema = z.object({
   roomId: z.string().uuid(),
   gameId: z.string().uuid(),
   gameStatus: z.literal("started")
+});
+
+const roomWsMessageSchemaVersion = 1;
+
+const wsSubscribedMessageSchema = z.object({
+  type: z.literal("subscribed"),
+  schemaVersion: z.literal(roomWsMessageSchemaVersion),
+  data: roomLobbyResponseSchema
+});
+
+const wsRoomLobbyUpdatedMessageSchema = z.object({
+  type: z.literal("room_lobby_updated"),
+  schemaVersion: z.literal(roomWsMessageSchemaVersion),
+  data: roomLobbyResponseSchema
+});
+
+const wsGameStartedMessageSchema = z.object({
+  type: z.literal("game_started"),
+  schemaVersion: z.literal(roomWsMessageSchemaVersion),
+  data: gameStartedResponseSchema
+});
+
+const wsErrorMessageSchema = z.object({
+  type: z.literal("error"),
+  schemaVersion: z.literal(roomWsMessageSchemaVersion),
+  data: z.object({
+    code: z.string().min(1),
+    message: z.string().min(1)
+  })
+});
+
+const wsPongMessageSchema = z.object({
+  type: z.literal("pong"),
+  schemaVersion: z.literal(roomWsMessageSchemaVersion),
+  data: z.object({
+    nonce: z.string().min(1).optional()
+  })
+});
+
+const wsInboundPingMessageSchema = z.object({
+  type: z.literal("ping"),
+  data: z
+    .object({
+      nonce: z.string().min(1).optional()
+    })
+    .optional()
 });
 
 function isSessionCookieKey(name: string) {
@@ -670,6 +718,103 @@ export function buildServer({
     disableRequestLogging: true
   });
   const logHealthChecks = process.env.LOG_HEALTHCHECKS === "true";
+  const roomSockets = new Map<string, Set<WebSocket>>();
+
+  function removeRoomSocket(roomId: string, socket: WebSocket) {
+    const sockets = roomSockets.get(roomId);
+
+    if (!sockets) {
+      return;
+    }
+
+    sockets.delete(socket);
+
+    if (sockets.size === 0) {
+      roomSockets.delete(roomId);
+    }
+  }
+
+  function addRoomSocket(roomId: string, socket: WebSocket) {
+    const sockets = roomSockets.get(roomId);
+
+    if (sockets) {
+      sockets.add(socket);
+      return;
+    }
+
+    roomSockets.set(roomId, new Set([socket]));
+  }
+
+  function sendRoomMessage(socket: WebSocket, payload: unknown) {
+    if (socket.readyState !== 1) {
+      return;
+    }
+
+    socket.send(JSON.stringify(payload));
+  }
+
+  async function loadRoomLobbyForUser(roomId: string, userId: string) {
+    const lobbyResult = await roomStore.getLobby(roomId, userId);
+
+    if (lobbyResult.status !== "ok") {
+      return lobbyResult;
+    }
+
+    return {
+      status: "ok" as const,
+      payload: roomLobbyResponseSchema.parse(lobbyResult.payload)
+    };
+  }
+
+  async function broadcastRoomLobbyUpdate(roomId: string, actorUserId: string) {
+    const sockets = roomSockets.get(roomId);
+
+    if (!sockets || sockets.size === 0) {
+      return;
+    }
+
+    const lobbyResult = await loadRoomLobbyForUser(roomId, actorUserId);
+
+    if (lobbyResult.status !== "ok") {
+      return;
+    }
+
+    const message = wsRoomLobbyUpdatedMessageSchema.parse({
+      type: "room_lobby_updated",
+      schemaVersion: roomWsMessageSchemaVersion,
+      data: lobbyResult.payload
+    });
+
+    for (const socket of sockets) {
+      try {
+        sendRoomMessage(socket, message);
+      } catch {
+        removeRoomSocket(roomId, socket);
+      }
+    }
+  }
+
+  function broadcastGameStarted(payload: z.infer<typeof gameStartedResponseSchema>) {
+    const sockets = roomSockets.get(payload.roomId);
+
+    if (!sockets || sockets.size === 0) {
+      return;
+    }
+
+    const message = wsGameStartedMessageSchema.parse({
+      type: "game_started",
+      schemaVersion: roomWsMessageSchemaVersion,
+      data: payload
+    });
+
+    for (const socket of sockets) {
+      try {
+        sendRoomMessage(socket, message);
+      } catch {
+        removeRoomSocket(payload.roomId, socket);
+      }
+    }
+  }
 
   function shouldLogRequest(url: string) {
     return logHealthChecks || getLogPath(url) !== "/health";
@@ -766,6 +911,127 @@ export function buildServer({
     return { status: "ok" };
   });
 
+  void app.register(async (wsApp) => {
+    await wsApp.register(fastifyWebsocket);
+
+    wsApp.get(
+      "/ws/rooms/:id",
+      {
+        websocket: true
+      },
+      (rawSocket: unknown, request) => {
+        const socket =
+          typeof rawSocket === "object" && rawSocket !== null && "socket" in rawSocket
+            ? (rawSocket.socket as WebSocket)
+            : (rawSocket as WebSocket);
+
+        void (async () => {
+          const params = joinRoomParamsSchema.safeParse(request.params);
+
+          if (!params.success) {
+            socket.close(1008, "invalid_room_id");
+            return;
+          }
+
+          const sessionToken = getSessionToken(request.headers.cookie);
+
+          if (!sessionToken) {
+            socket.close(1008, "unauthorized");
+            return;
+          }
+
+          const session = await sessionLookup(sessionToken);
+
+          if (!session || session.expires.getTime() <= Date.now()) {
+            socket.close(1008, "unauthorized");
+            return;
+          }
+
+          const roomId = params.data.id;
+          const lobbyResult = await loadRoomLobbyForUser(roomId, session.user.id);
+
+          if (lobbyResult.status === "not_found") {
+            socket.close(1008, "room_not_found");
+            return;
+          }
+
+          if (lobbyResult.status === "forbidden") {
+            socket.close(1008, "forbidden");
+            return;
+          }
+
+          addRoomSocket(roomId, socket);
+
+          const subscribedMessage = wsSubscribedMessageSchema.parse({
+            type: "subscribed",
+            schemaVersion: roomWsMessageSchemaVersion,
+            data: lobbyResult.payload
+          });
+          sendRoomMessage(socket, subscribedMessage);
+
+          socket.on("message", (rawMessage: Buffer | string) => {
+            const payload = (() => {
+              try {
+                return JSON.parse(rawMessage.toString()) as unknown;
+              } catch {
+                return null;
+              }
+            })();
+
+            if (!payload) {
+              const errorMessage = wsErrorMessageSchema.parse({
+                type: "error",
+                schemaVersion: roomWsMessageSchemaVersion,
+                data: {
+                  code: "invalid_json",
+                  message: "invalid JSON payload"
+                }
+              });
+              sendRoomMessage(socket, errorMessage);
+              return;
+            }
+
+            const pingMessage = wsInboundPingMessageSchema.safeParse(payload);
+
+            if (!pingMessage.success) {
+              const errorMessage = wsErrorMessageSchema.parse({
+                type: "error",
+                schemaVersion: roomWsMessageSchemaVersion,
+                data: {
+                  code: "unsupported_message",
+                  message: "unsupported message type"
+                }
+              });
+              sendRoomMessage(socket, errorMessage);
+              return;
+            }
+
+            const pongMessage = wsPongMessageSchema.parse({
+              type: "pong",
+              schemaVersion: roomWsMessageSchemaVersion,
+              data: {
+                nonce: pingMessage.data.data?.nonce
+              }
+            });
+            sendRoomMessage(socket, pongMessage);
+          });
+
+          socket.on("close", () => {
+            removeRoomSocket(roomId, socket);
+          });
+
+          socket.on("error", () => {
+            removeRoomSocket(roomId, socket);
+          });
+        })().catch(() => {
+          if (socket.readyState === 0 || socket.readyState === 1) {
+            socket.close(1011, "internal_error");
+          }
+        });
+      }
+    );
+  });
+
   app.get(
     "/api/me",
     {
@@ -820,7 +1086,9 @@ export function buildServer({
         return reply.code(409).send({ error: "room_full" });
       }
 
-      return roomJoinedResponseSchema.parse(joinResult);
+      const payload = roomJoinedResponseSchema.parse(joinResult);
+      await broadcastRoomLobbyUpdate(params.id, request.actor.userId);
+      return payload;
     }
   );
 
@@ -871,7 +1139,9 @@ export function buildServer({
         return reply.code(403).send({ error: "forbidden" });
       }
 
-      return roomReadyResponseSchema.parse(readyResult);
+      const payload = roomReadyResponseSchema.parse(readyResult);
+      await broadcastRoomLobbyUpdate(params.id, request.actor.userId);
+      return payload;
     }
   );
 
@@ -900,7 +1170,10 @@ export function buildServer({
         return reply.code(409).send({ error: "room_not_ready" });
       }
 
-      return gameStartedResponseSchema.parse(startedResult);
+      const payload = gameStartedResponseSchema.parse(startedResult);
+      broadcastGameStarted(payload);
+      await broadcastRoomLobbyUpdate(params.id, request.actor.userId);
+      return payload;
     }
   );
 
