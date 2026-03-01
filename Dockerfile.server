@@ -6,6 +6,7 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/server/package.json apps/server/package.json
 COPY packages/database/package.json packages/database/package.json
+COPY packages/realtime-contract/package.json packages/realtime-contract/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build

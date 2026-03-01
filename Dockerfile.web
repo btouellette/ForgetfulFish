@@ -6,18 +6,21 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/package.json
 COPY packages/database/package.json packages/database/package.json
+COPY packages/realtime-contract/package.json packages/realtime-contract/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 ARG SERVER_API_BASE_URL
 ENV SERVER_API_BASE_URL=${SERVER_API_BASE_URL}
 ENV PRISMA_CLIENT_ENGINE_TYPE=binary
+ENV NEXT_TELEMETRY_DISABLED=1
 COPY . .
 RUN pnpm --filter @forgetful-fish/database build && pnpm --filter @forgetful-fish/web build
 
 FROM base AS runtime
 ENV NODE_ENV=production
 ENV PRISMA_CLIENT_ENGINE_TYPE=binary
+ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 COPY --from=build --chown=node:node /app /app

@@ -2,7 +2,7 @@
   "name": "forgetful-fish",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.4.0",
+  "packageManager": "pnpm@10.30.3",
   "engines": {
     "node": ">=22.13.0"
   },
@@ -17,7 +17,7 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "simple-git-hooks"
+    "prepare": "[ -d .git ] && command -v git >/dev/null 2>&1 && simple-git-hooks || true"
   },
   "simple-git-hooks": {
     "pre-push": "pnpm lint && pnpm typecheck"
