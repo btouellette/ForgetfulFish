@@ -20,19 +20,30 @@ export function AuthEntry({ callbackUrl, googleEnabled }: AuthEntryProps) {
     setStatus("sending");
     setErrorMessage("");
 
-    const result = await signIn("email", {
-      email,
-      callbackUrl,
-      redirect: false
-    });
+    try {
+      const result = await signIn("email", {
+        email,
+        callbackUrl,
+        redirect: false
+      });
 
-    if (result?.error) {
+      if (result?.error) {
+        setStatus("error");
+        setErrorMessage(result.error);
+        return;
+      }
+
+      if (!result || result.ok !== true) {
+        throw new Error("Unable to complete magic link request.");
+      }
+
+      setStatus("sent");
+    } catch (error) {
       setStatus("error");
-      setErrorMessage(result.error);
-      return;
+      setErrorMessage(
+        error instanceof Error ? error.message : "Unable to complete magic link request."
+      );
     }
-
-    setStatus("sent");
   }
 
   return (

@@ -67,10 +67,12 @@ export async function consumeMagicLinkRateLimit(
   const resetAt = new Date(windowStart.getTime() + windowMs);
 
   const rows = await store.$queryRaw`
-    INSERT INTO auth_rate_limits (key, window_start, count)
-    VALUES (${key}, ${windowStart}, 1)
+    INSERT INTO auth_rate_limits (key, window_start, count, updated_at)
+    VALUES (${key}, ${windowStart}, 1, ${now})
     ON CONFLICT (key, window_start)
-    DO UPDATE SET count = auth_rate_limits.count + 1
+    DO UPDATE SET
+      count = auth_rate_limits.count + 1,
+      updated_at = ${now}
     RETURNING count
   `;
 

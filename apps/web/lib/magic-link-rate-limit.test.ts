@@ -61,6 +61,42 @@ function createInMemoryStore() {
 }
 
 describe("magic-link rate limit", () => {
+  it("persists updated_at timestamp on insert and update", async () => {
+    const capturedCalls: Array<Array<string | Date | number>> = [];
+    const store = {
+      async $queryRaw(
+        _query: TemplateStringsArray,
+        ...values: Array<string | Date | number>
+      ): Promise<Array<{ count: number }>> {
+        capturedCalls.push(values);
+        return [{ count: capturedCalls.length }];
+      },
+      async $executeRaw(): Promise<number> {
+        return 0;
+      }
+    };
+
+    const now = new Date("2026-02-26T20:00:00.000Z");
+    await consumeMagicLinkRateLimit(store, {
+      email: "player@example.com",
+      ipAddress: "203.0.113.10",
+      now
+    });
+    await consumeMagicLinkRateLimit(store, {
+      email: "player@example.com",
+      ipAddress: "203.0.113.10",
+      now
+    });
+
+    expect(capturedCalls).toHaveLength(2);
+    expect(capturedCalls[0]).toHaveLength(4);
+    expect(capturedCalls[1]).toHaveLength(4);
+    const firstCall = capturedCalls[0];
+    expect(firstCall).toBeDefined();
+    expect(firstCall?.[2]).toBe(now);
+    expect(firstCall?.[3]).toBe(now);
+  });
+
   it("normalizes emails to lower case + trimmed", () => {
     expect(normalizeEmail("  Player@Example.com ")).toBe("player@example.com");
   });
