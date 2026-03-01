@@ -11,6 +11,7 @@
     "deploy:prod": "./scripts/deploy-prod.sh",
     "build": "turbo run build",
     "test": "turbo run test",
+    "test:e2e": "playwright test",
     "test:watch": "turbo run test:watch --parallel",
     "smoke:auth": "./scripts/auth-smoke.sh",
     "lint": "turbo run lint",
@@ -23,6 +24,7 @@
     "pre-push": "pnpm lint && pnpm typecheck"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "^25.3.1",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.56.1",
