@@ -54,6 +54,12 @@
 - The updater authenticates with Gandi using PAT Bearer auth and runs via systemd timer every 5 minutes.
 - Managed records are `A` for `@`, `staging`, and `www` with target TTL `300`.
 
+## 2026-03-01 Realtime WebSocket Edge Routing
+
+- Keep browser realtime endpoint on apex host path: `wss://forgetfulfish.com/ws/rooms/:roomId`.
+- Route `/ws/*` at `nginx-proxy` to `forgetful-fish-server:4000` with WebSocket upgrade headers.
+- Do not proxy `/api/auth/*` to server; Auth.js routes remain on `forgetful-fish-web`.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.

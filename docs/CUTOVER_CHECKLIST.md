@@ -9,6 +9,7 @@ Use this checklist for repeatable production deploys on the existing Docker + `n
 - Google OAuth client uses apex only:
   - Origin: `https://forgetfulfish.com`
   - Redirect URI: `https://forgetfulfish.com/api/auth/callback/google`
+- `nginx-proxy` domain vhost has `/ws/*` route to `forgetful-fish-server:4000` with WebSocket upgrade headers.
 
 ## 1) Build and Deploy
 
@@ -60,6 +61,7 @@ Expected:
 - Open `https://www.forgetfulfish.com/` and confirm redirect to apex.
 - Start Google sign-in and complete login.
 - Confirm post-login landing and authenticated session on `/auth/verify`.
+- Open a room at `/play/<roomId>` and confirm `Live connection: connected`.
 
 ## 6) Rollback (if needed)
 

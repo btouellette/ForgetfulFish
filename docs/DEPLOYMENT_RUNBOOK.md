@@ -81,7 +81,27 @@ This runbook covers Forgetful Fish production deploy on the existing `nginx-prox
 
 ## Reverse Proxy Hardening
 
-- Add per-domain hardening rules in `nginx-proxy` at `/etc/nginx/vhost.d/<domain>`.
+- Add per-domain WebSocket routing and hardening rules in `nginx-proxy` at `/etc/nginx/vhost.d/<domain>`.
+
+### Required WebSocket Route
+
+- Create/extend `/etc/nginx/vhost.d/forgetfulfish.com` with:
+
+```nginx
+location /ws/ {
+  proxy_pass http://forgetful-fish-server:4000;
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+  proxy_set_header Host $host;
+  proxy_read_timeout 600s;
+  proxy_send_timeout 600s;
+  proxy_buffering off;
+}
+```
+
+- Keep `/api/auth/*` handled by `forgetful-fish-web` (do not path-proxy those routes to `forgetful-fish-server`).
+
 - Current production policy blocks common scanner paths:
   - `/.env*`
   - `/.git*`
