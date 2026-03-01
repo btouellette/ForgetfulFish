@@ -48,6 +48,12 @@
 - Gameplay persistence model is hybrid: current snapshot on `games` plus append-only `game_events` for replay/audit.
 - Initial start writes one `game_initialized` event at `seq=0` and aligns `games.lastAppliedEventSeq=0`.
 
+## 2026-03-01 Dynamic DNS Automation
+
+- Dynamic DNS for `forgetfulfish.com` uses a custom Python updater (`scripts/gandi-ddns-update.py`) instead of `gandi-live-dns` snap.
+- The updater authenticates with Gandi using PAT Bearer auth and runs via systemd timer every 5 minutes.
+- Managed records are `A` for `@`, `staging`, and `www` with target TTL `300`.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.

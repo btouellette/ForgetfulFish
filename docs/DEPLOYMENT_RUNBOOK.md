@@ -58,6 +58,27 @@ This runbook covers Forgetful Fish production deploy on the existing `nginx-prox
 - DB logs:
   - `docker logs -f forgetful-fish-postgres`
 
+## Dynamic DNS (Gandi)
+
+- Purpose:
+  - Keep `A` records for `@`, `staging`, and `www` aligned with current WAN IPv4 on dynamic-IP hosts.
+- Updater script:
+  - `scripts/gandi-ddns-update.py` (installed on host as `/usr/local/bin/gandi-ddns-update`).
+  - Uses Gandi PAT Bearer auth and updates records via LiveDNS API.
+- Host config file (`root:root`, `0600`):
+  - `/etc/gandi-ddns.env`
+  - Required keys: `GANDI_PAT`, `GANDI_DOMAIN`, `GANDI_RECORDS`, `GANDI_TTL`, `IPV4_PROVIDER`.
+- Systemd units on host:
+  - Service: `/etc/systemd/system/gandi-ddns.service`
+  - Timer: `/etc/systemd/system/gandi-ddns.timer`
+  - Cadence: `OnUnitActiveSec=5min` with `Persistent=true`.
+- Verify:
+  - `sudo systemctl status gandi-ddns.timer --no-pager`
+  - `sudo journalctl -u gandi-ddns.service -n 100 --no-pager`
+  - `dig @ns-115-a.gandi.net +noall +answer forgetfulfish.com A`
+  - `dig @ns-115-a.gandi.net +noall +answer staging.forgetfulfish.com A`
+  - `dig @ns-115-a.gandi.net +noall +answer www.forgetfulfish.com A`
+
 ## Reverse Proxy Hardening
 
 - Add per-domain hardening rules in `nginx-proxy` at `/etc/nginx/vhost.d/<domain>`.
