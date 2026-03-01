@@ -726,6 +726,42 @@ export function buildServer({
     return;
   }
 
+  function routeIncludesAuthorizeRequest(preHandler: unknown) {
+    if (!preHandler) {
+      return false;
+    }
+
+    if (Array.isArray(preHandler)) {
+      return preHandler.some((handler) => handler === authorizeRequest);
+    }
+
+    if (typeof preHandler !== "function") {
+      return false;
+    }
+
+    return preHandler === authorizeRequest;
+  }
+
+  app.addHook("onRoute", (routeOptions) => {
+    const mutatingMethods = ["POST", "PUT", "PATCH", "DELETE"];
+    const methods = Array.isArray(routeOptions.method)
+      ? routeOptions.method
+      : [routeOptions.method];
+    const matchedMutatingMethod = methods.find((method) => mutatingMethods.includes(method));
+
+    if (!matchedMutatingMethod) {
+      return;
+    }
+
+    if (routeIncludesAuthorizeRequest(routeOptions.preHandler)) {
+      return;
+    }
+
+    throw new Error(
+      `${matchedMutatingMethod} route "${routeOptions.url}" must use authorizeRequest preHandler`
+    );
+  });
+
   app.get("/health", async () => {
     return { status: "ok" };
   });

@@ -313,6 +313,38 @@ describe("server", () => {
     }
   });
 
+  it("rejects POST routes without authorizeRequest preHandler", async () => {
+    const app = buildServer();
+
+    try {
+      expect(() => {
+        app.post("/api/public", async () => ({ ok: true }));
+      }).toThrow('POST route "/api/public" must use authorizeRequest preHandler');
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("rejects other mutating routes without authorizeRequest preHandler", async () => {
+    const app = buildServer();
+
+    try {
+      expect(() => {
+        app.put("/api/public-put", async () => ({ ok: true }));
+      }).toThrow('PUT route "/api/public-put" must use authorizeRequest preHandler');
+
+      expect(() => {
+        app.patch("/api/public-patch", async () => ({ ok: true }));
+      }).toThrow('PATCH route "/api/public-patch" must use authorizeRequest preHandler');
+
+      expect(() => {
+        app.delete("/api/public-delete", async () => ({ ok: true }));
+      }).toThrow('DELETE route "/api/public-delete" must use authorizeRequest preHandler');
+    } finally {
+      await app.close();
+    }
+  });
+
   it("returns 401 for /api/me without session cookie", async () => {
     const app = buildServer({
       sessionLookup: async () => null
