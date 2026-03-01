@@ -68,16 +68,17 @@
   - [x] non-participant room rejection
   - [x] successful subscription snapshot
   - [x] two-client room update fanout on ready/start
-  - [ ] reconnect returning current canonical snapshot
+  - [x] reconnect returning current canonical snapshot
 - [x] Add web tests for WS message handling and reconnect behavior.
-- [ ] Add structured connection lifecycle logs (connect, auth fail, disconnect, broadcast failure).
-- [ ] Update architecture/contract docs with WS endpoint and event schemas.
+- [ ] Add browser E2E coverage for two-client room realtime sync and reconnect UX.
+- [x] Add structured connection lifecycle logs (connect, auth fail, disconnect, broadcast failure).
+- [x] Update architecture/contract docs with WS endpoint and event schemas.
 
 #### Milestone 2 Exit Criteria
 
 - [x] Two authenticated clients in one room see ready-state changes live without refresh.
 - [x] On game start, both clients reflect identical `gameId` and `gameStatus=started` in under ~1s.
-- [ ] Reconnecting client automatically restores current room/game state.
+- [x] Reconnecting client automatically restores current room/game state.
 - [x] Unauthorized and non-participant clients cannot receive room events.
 - [x] WS payload contracts are schema-validated and covered by tests.
 

@@ -3,6 +3,16 @@ import { randomUUID } from "node:crypto";
 import fastifyWebsocket from "@fastify/websocket";
 import { prisma } from "@forgetful-fish/database";
 import { createInitialGameState } from "@forgetful-fish/game-engine";
+import {
+  roomLobbySnapshotSchema,
+  roomWsMessageSchemaVersion,
+  wsErrorMessageSchema,
+  wsGameStartedMessageSchema,
+  wsInboundPingMessageSchema,
+  wsPongMessageSchema,
+  wsRoomLobbyUpdatedMessageSchema,
+  wsSubscribedMessageSchema
+} from "@forgetful-fish/realtime-contract";
 import Fastify from "fastify";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type WebSocket from "ws";
@@ -149,52 +159,6 @@ const gameStartedResponseSchema = z.object({
   roomId: z.string().uuid(),
   gameId: z.string().uuid(),
   gameStatus: z.literal("started")
-});
-
-const roomWsMessageSchemaVersion = 1;
-
-const wsSubscribedMessageSchema = z.object({
-  type: z.literal("subscribed"),
-  schemaVersion: z.literal(roomWsMessageSchemaVersion),
-  data: roomLobbyResponseSchema
-});
-
-const wsRoomLobbyUpdatedMessageSchema = z.object({
-  type: z.literal("room_lobby_updated"),
-  schemaVersion: z.literal(roomWsMessageSchemaVersion),
-  data: roomLobbyResponseSchema
-});
-
-const wsGameStartedMessageSchema = z.object({
-  type: z.literal("game_started"),
-  schemaVersion: z.literal(roomWsMessageSchemaVersion),
-  data: gameStartedResponseSchema
-});
-
-const wsErrorMessageSchema = z.object({
-  type: z.literal("error"),
-  schemaVersion: z.literal(roomWsMessageSchemaVersion),
-  data: z.object({
-    code: z.string().min(1),
-    message: z.string().min(1)
-  })
-});
-
-const wsPongMessageSchema = z.object({
-  type: z.literal("pong"),
-  schemaVersion: z.literal(roomWsMessageSchemaVersion),
-  data: z.object({
-    nonce: z.string().min(1).optional()
-  })
-});
-
-const wsInboundPingMessageSchema = z.object({
-  type: z.literal("ping"),
-  data: z
-    .object({
-      nonce: z.string().min(1).optional()
-    })
-    .optional()
 });
 
 function isSessionCookieKey(name: string) {
@@ -762,7 +726,7 @@ export function buildServer({
 
     return {
       status: "ok" as const,
-      payload: roomLobbyResponseSchema.parse(lobbyResult.payload)
+      payload: roomLobbySnapshotSchema.parse(lobbyResult.payload)
     };
   }
 
@@ -788,7 +752,11 @@ export function buildServer({
     for (const socket of sockets) {
       try {
         sendRoomMessage(socket, message);
-      } catch {
+      } catch (error) {
+        app.log.warn(
+          { event: "ws_room_broadcast_failed", roomId, error },
+          "ws room broadcast failed"
+        );
         removeRoomSocket(roomId, socket);
       }
     }
@@ -810,7 +778,11 @@ export function buildServer({
     for (const socket of sockets) {
       try {
         sendRoomMessage(socket, message);
-      } catch {
+      } catch (error) {
+        app.log.warn(
+          { event: "ws_game_started_broadcast_failed", roomId: payload.roomId, error },
+          "ws game_started broadcast failed"
+        );
         removeRoomSocket(payload.roomId, socket);
       }
     }
@@ -936,6 +908,10 @@ export function buildServer({
           const sessionToken = getSessionToken(request.headers.cookie);
 
           if (!sessionToken) {
+            app.log.warn(
+              { event: "ws_auth_failed", reason: "missing_session_token", roomId: params.data.id },
+              "ws unauthorized: missing session token"
+            );
             socket.close(1008, "unauthorized");
             return;
           }
@@ -943,6 +919,14 @@ export function buildServer({
           const session = await sessionLookup(sessionToken);
 
           if (!session || session.expires.getTime() <= Date.now()) {
+            app.log.warn(
+              {
+                event: "ws_auth_failed",
+                reason: "invalid_or_expired_session",
+                roomId: params.data.id
+              },
+              "ws unauthorized: invalid or expired session"
+            );
             socket.close(1008, "unauthorized");
             return;
           }
@@ -951,16 +935,38 @@ export function buildServer({
           const lobbyResult = await loadRoomLobbyForUser(roomId, session.user.id);
 
           if (lobbyResult.status === "not_found") {
+            app.log.warn(
+              {
+                event: "ws_subscribe_failed",
+                reason: "room_not_found",
+                roomId,
+                userId: session.user.id
+              },
+              "ws room not found"
+            );
             socket.close(1008, "room_not_found");
             return;
           }
 
           if (lobbyResult.status === "forbidden") {
+            app.log.warn(
+              {
+                event: "ws_subscribe_failed",
+                reason: "forbidden",
+                roomId,
+                userId: session.user.id
+              },
+              "ws forbidden for non-participant"
+            );
             socket.close(1008, "forbidden");
             return;
           }
 
           addRoomSocket(roomId, socket);
+          app.log.info(
+            { event: "ws_subscribed", roomId, userId: session.user.id },
+            "ws room subscribed"
+          );
 
           const subscribedMessage = wsSubscribedMessageSchema.parse({
             type: "subscribed",
@@ -1017,10 +1023,18 @@ export function buildServer({
           });
 
           socket.on("close", () => {
+            app.log.info(
+              { event: "ws_disconnected", roomId, userId: session.user.id },
+              "ws room disconnected"
+            );
             removeRoomSocket(roomId, socket);
           });
 
-          socket.on("error", () => {
+          socket.on("error", (error) => {
+            app.log.warn(
+              { event: "ws_socket_error", roomId, userId: session.user.id, error },
+              "ws room socket error"
+            );
             removeRoomSocket(roomId, socket);
           });
         })().catch(() => {

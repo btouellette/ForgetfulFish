@@ -422,6 +422,43 @@ describe("room websocket", () => {
     await app.close();
   });
 
+  it("returns protocol error message for invalid websocket payload", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await bootstrapRoom(roomStore);
+    const app = buildServer({
+      sessionLookup: createSessionLookup({ owner: "owner-1", second: "player-2" }),
+      roomStore
+    });
+
+    await app.listen({ port: 0, host: "127.0.0.1" });
+    const address = app.server.address();
+
+    if (!address || typeof address === "string") {
+      throw new Error("server did not expose an address");
+    }
+
+    const ownerSocket = await connectSocket(
+      `ws://127.0.0.1:${address.port}/ws/rooms/${roomId}`,
+      "owner"
+    );
+
+    await waitForMessageType(ownerSocket, "subscribed");
+    ownerSocket.send("{");
+
+    const errorMessage = await waitForMessageType(ownerSocket, "error");
+    expect(errorMessage).toMatchObject({
+      type: "error",
+      schemaVersion: 1,
+      data: {
+        code: "invalid_json",
+        message: "invalid JSON payload"
+      }
+    });
+
+    await closeSocket(ownerSocket);
+    await app.close();
+  });
+
   it("broadcasts room updates and game started events to subscribed clients", async () => {
     const roomStore = createInMemoryRoomStore();
     const roomId = await bootstrapRoom(roomStore);
@@ -515,6 +552,151 @@ describe("room websocket", () => {
 
     await closeSocket(ownerSocket);
     await closeSocket(secondSocket);
+    await app.close();
+  });
+
+  it("resyncs canonical snapshot after reconnect when updates were missed", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await bootstrapRoom(roomStore);
+    const app = buildServer({
+      sessionLookup: createSessionLookup({ owner: "owner-1", second: "player-2" }),
+      roomStore
+    });
+
+    await app.listen({ port: 0, host: "127.0.0.1" });
+    const address = app.server.address();
+
+    if (!address || typeof address === "string") {
+      throw new Error("server did not expose an address");
+    }
+
+    const ownerSocket = await connectSocket(
+      `ws://127.0.0.1:${address.port}/ws/rooms/${roomId}`,
+      "owner"
+    );
+
+    await waitForMessage(ownerSocket);
+    await closeSocket(ownerSocket);
+
+    await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      headers: { cookie: "authjs.session-token=owner" },
+      payload: { ready: true }
+    });
+
+    await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      headers: { cookie: "authjs.session-token=second" },
+      payload: { ready: true }
+    });
+
+    const startResponse = await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/start`,
+      headers: { cookie: "authjs.session-token=owner" }
+    });
+
+    expect(startResponse.statusCode).toBe(200);
+    const started = startResponse.json();
+
+    const reconnectSocket = await connectSocket(
+      `ws://127.0.0.1:${address.port}/ws/rooms/${roomId}`,
+      "owner"
+    );
+    const subscribed = await waitForMessageType(reconnectSocket, "subscribed");
+
+    expect(subscribed).toMatchObject({
+      type: "subscribed",
+      data: {
+        roomId,
+        gameId: started.gameId,
+        gameStatus: "started"
+      }
+    });
+
+    await closeSocket(reconnectSocket);
+    await app.close();
+  });
+
+  it("emits multiple lobby updates for rapid ready toggles and idempotent start", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await bootstrapRoom(roomStore);
+    const app = buildServer({
+      sessionLookup: createSessionLookup({ owner: "owner-1", second: "player-2" }),
+      roomStore
+    });
+
+    await app.listen({ port: 0, host: "127.0.0.1" });
+    const address = app.server.address();
+
+    if (!address || typeof address === "string") {
+      throw new Error("server did not expose an address");
+    }
+
+    const ownerSocket = await connectSocket(
+      `ws://127.0.0.1:${address.port}/ws/rooms/${roomId}`,
+      "owner"
+    );
+    await waitForMessage(ownerSocket);
+
+    await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      headers: { cookie: "authjs.session-token=owner" },
+      payload: { ready: true }
+    });
+    await waitForMessageType(ownerSocket, "room_lobby_updated");
+
+    await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      headers: { cookie: "authjs.session-token=owner" },
+      payload: { ready: false }
+    });
+    const secondToggleMessage = await waitForMessageType(ownerSocket, "room_lobby_updated");
+    expect(
+      secondToggleMessage.data.participants.find((p: { userId: string }) => p.userId === "owner-1")
+        ?.ready
+    ).toBe(false);
+
+    await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      headers: { cookie: "authjs.session-token=owner" },
+      payload: { ready: true }
+    });
+    await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      headers: { cookie: "authjs.session-token=second" },
+      payload: { ready: true }
+    });
+
+    const startResponse = await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/start`,
+      headers: { cookie: "authjs.session-token=owner" }
+    });
+    const started = startResponse.json();
+
+    const firstStartedMessage = await waitForMessageType(ownerSocket, "game_started");
+    expect(firstStartedMessage.data.gameId).toBe(started.gameId);
+
+    const idempotentStartResponse = await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/start`,
+      headers: { cookie: "authjs.session-token=owner" }
+    });
+
+    expect(idempotentStartResponse.statusCode).toBe(200);
+    expect(idempotentStartResponse.json().gameId).toBe(started.gameId);
+
+    const idempotentStartMessage = await waitForMessageType(ownerSocket, "game_started");
+    expect(idempotentStartMessage.data.gameId).toBe(started.gameId);
+
+    await closeSocket(ownerSocket);
     await app.close();
   });
 });

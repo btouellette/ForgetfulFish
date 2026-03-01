@@ -16,6 +16,7 @@
     "@fastify/websocket": "^11.2.0",
     "@forgetful-fish/database": "workspace:*",
     "@forgetful-fish/game-engine": "workspace:*",
+    "@forgetful-fish/realtime-contract": "workspace:*",
     "fastify": "^5.7.4",
     "ws": "^8.19.0",
     "zod": "^4.3.6"

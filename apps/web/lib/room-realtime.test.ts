@@ -95,6 +95,7 @@ describe("createRoomRealtimeClient", () => {
     socket.emitOpen();
     socket.emitMessage({
       type: "subscribed",
+      schemaVersion: 1,
       data: {
         roomId: "00000000-0000-4000-8000-000000000001",
         participants: [],
@@ -104,6 +105,7 @@ describe("createRoomRealtimeClient", () => {
     });
     socket.emitMessage({
       type: "game_started",
+      schemaVersion: 1,
       data: {
         roomId: "00000000-0000-4000-8000-000000000001",
         gameId: "10000000-0000-4000-8000-000000000001",

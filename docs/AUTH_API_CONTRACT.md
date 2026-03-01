@@ -61,6 +61,22 @@ Auth routes are owned by Auth.js.
 - `POST /api/rooms/:id/start`: requires auth; starts game only when both players are ready.
 - Unauthorized response is uniform: `401` with `{ error: "unauthorized" }`.
 
+## Realtime WebSocket Contract (Milestone 2)
+
+- Endpoint: `GET /ws/rooms/:roomId`.
+- Source of truth for WS message schema/types: `packages/realtime-contract/src/index.ts`.
+- Auth: requires valid Auth.js session cookie on handshake.
+- Authorization: caller must be a room participant; non-participants are rejected.
+- Server message envelope is versioned and schema-validated:
+  - shape: `{ type, schemaVersion, data }`
+  - current `schemaVersion`: `1`
+- Server event types:
+  - `subscribed`: initial canonical room snapshot on connect/reconnect.
+  - `room_lobby_updated`: authoritative lobby update after join/ready/start mutations.
+  - `game_started`: explicit game start payload (`roomId`, `gameId`, `gameStatus`).
+  - `error`: protocol-level recoverable error (`code`, `message`).
+  - `pong`: heartbeat response to client `ping`.
+
 ## Room Semantics (v1)
 
 - Room IDs are UUIDs and are shared via invite URLs in the form `/play/:roomId`.

@@ -53,6 +53,9 @@ importers:
       '@forgetful-fish/game-engine':
         specifier: workspace:*
         version: link:../../packages/game-engine
+      '@forgetful-fish/realtime-contract':
+        specifier: workspace:*
+        version: link:../../packages/realtime-contract
       fastify:
         specifier: ^5.7.4
         version: 5.7.4
@@ -78,6 +81,9 @@ importers:
       '@forgetful-fish/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@forgetful-fish/realtime-contract':
+        specifier: workspace:*
+        version: link:../../packages/realtime-contract
       '@prisma/client':
         specifier: ^7.4.1
         version: 7.4.1(prisma@7.4.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3))(typescript@5.9.3)
@@ -133,6 +139,12 @@ importers:
         version: 7.4.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
 
   packages/game-engine: {}
+
+  packages/realtime-contract:
+    dependencies:
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
 
 packages:
 

@@ -28,6 +28,17 @@ See `docs/NEXTJS_RULES.md` for strict web/server boundary rules.
 - scale: add Redis for multi-instance coordination.
 - transport: WebSocket for gameplay, HTTP for auth/metadata/health.
 
+## Realtime Room Channel (Milestone 2)
+
+- Endpoint: `GET /ws/rooms/:roomId`.
+- Handshake auth: same Auth.js session cookie lookup as protected HTTP routes.
+- Authorization: only room participants may subscribe.
+- On successful connect, server sends canonical `subscribed` snapshot.
+- Server broadcasts authoritative events to room subscribers after room mutations:
+  - `room_lobby_updated`
+  - `game_started`
+- Web client reconnects with bounded backoff and treats `subscribed` as resync source of truth.
+
 ## Security and Testing
 
 - Strict command validation + server-authoritative enforcement.

@@ -1,23 +1,7 @@
+import { wsServerMessageSchema } from "@forgetful-fish/realtime-contract";
+
 import { buildServerApiUrl } from "./server-api";
-
-type RoomLobbyParticipant = {
-  userId: string;
-  seat: "P1" | "P2";
-  ready: boolean;
-};
-
-export type RoomLobbySnapshot = {
-  roomId: string;
-  participants: RoomLobbyParticipant[];
-  gameId: string | null;
-  gameStatus: "not_started" | "started";
-};
-
-export type RoomGameStarted = {
-  roomId: string;
-  gameId: string;
-  gameStatus: "started";
-};
+import type { RoomGameStarted, RoomLobbySnapshot } from "@forgetful-fish/realtime-contract";
 
 export type RoomRealtimeStatus = "connecting" | "connected" | "reconnecting" | "offline";
 
@@ -29,11 +13,6 @@ type RoomRealtimeOptions = {
   onLobbySnapshot: (snapshot: RoomLobbySnapshot) => void;
   onLobbyUpdated: (snapshot: RoomLobbySnapshot) => void;
   onGameStarted: (payload: RoomGameStarted) => void;
-};
-
-type RoomServerMessage = {
-  type: string;
-  data?: unknown;
 };
 
 const reconnectBackoffMs = [500, 1000, 2000, 5000];
@@ -57,7 +36,7 @@ export function buildRoomWebSocketUrl(roomId: string, serverBaseUrl = "") {
   return `${pageProtocol}//${window.location.host}${httpUrl}`;
 }
 
-function parseRoomMessage(rawData: string): RoomServerMessage | null {
+function parseRoomMessage(rawData: string) {
   let payload: unknown;
 
   try {
@@ -66,35 +45,13 @@ function parseRoomMessage(rawData: string): RoomServerMessage | null {
     return null;
   }
 
-  if (typeof payload !== "object" || payload === null || !("type" in payload)) {
+  const parsed = wsServerMessageSchema.safeParse(payload);
+
+  if (!parsed.success) {
     return null;
   }
 
-  return payload as RoomServerMessage;
-}
-
-function isRoomLobbySnapshot(value: unknown): value is RoomLobbySnapshot {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  if (!("roomId" in value) || !("participants" in value) || !("gameStatus" in value)) {
-    return false;
-  }
-
-  return true;
-}
-
-function isRoomGameStarted(value: unknown): value is RoomGameStarted {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  if (!("roomId" in value) || !("gameId" in value) || !("gameStatus" in value)) {
-    return false;
-  }
-
-  return true;
+  return parsed.data;
 }
 
 export function createRoomRealtimeClient({
@@ -140,17 +97,17 @@ export function createRoomRealtimeClient({
         return;
       }
 
-      if (message.type === "subscribed" && isRoomLobbySnapshot(message.data)) {
+      if (message.type === "subscribed") {
         onLobbySnapshot(message.data);
         return;
       }
 
-      if (message.type === "room_lobby_updated" && isRoomLobbySnapshot(message.data)) {
+      if (message.type === "room_lobby_updated") {
         onLobbyUpdated(message.data);
         return;
       }
 
-      if (message.type === "game_started" && isRoomGameStarted(message.data)) {
+      if (message.type === "game_started") {
         onGameStarted(message.data);
       }
     };
