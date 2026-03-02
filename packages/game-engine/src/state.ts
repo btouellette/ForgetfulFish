@@ -8,10 +8,7 @@ export type GameState = {
   activePlayerId: string;
 };
 
-export function createInitialGameState(
-  playerOneId: string,
-  playerTwoId: string
-): GameState {
+export function createInitialGameState(playerOneId: string, playerTwoId: string): GameState {
   return {
     players: [
       { playerId: playerOneId, life: 20 },
