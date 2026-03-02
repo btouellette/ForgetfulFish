@@ -287,9 +287,11 @@ type PendingChoice = {
   forPlayer: PlayerId
   prompt: string
   constraints: ChoiceConstraints
-  continuation: ContinuationToken  // opaque reference to resume resolution
 }
 ```
+
+`PendingChoice` contains only plain serializable data — no callbacks or function references. It is
+safe to persist in `GameState` and round-trip through Postgres.
 
 When `processCommand` encounters a choice point, it returns:
 
@@ -297,17 +299,20 @@ When `processCommand` encounters a choice point, it returns:
 { nextState: stateWithPendingChoice, newEvents: [], pendingChoice }
 ```
 
-`pendingChoice` is stored in both `GameState.pendingChoice` (durable, survives reconnects) and
-the `CommandResult` envelope (convenience for the server to react immediately without unpacking
-state). The two must always agree; the engine is responsible for keeping them in sync.
+`pendingChoice` is stored in both `GameState.pendingChoice` (durable — survives reconnects and
+server restarts because `GameState` is persisted as a Postgres snapshot) and the `CommandResult`
+envelope (convenience for the server to react immediately without unpacking state). The two must
+always agree; the engine is responsible for keeping them in sync.
 
 The server broadcasts `pendingChoice` to the relevant player's client. The client submits a
-`MAKE_CHOICE` command. The engine resumes from the `continuation` token.
+`MAKE_CHOICE` command.
 
-**ContinuationToken design**: each spell's `onResolve` is a pure function that takes
-`(ctx, state, choices | null)` and returns an `EffectContext`. When choices are needed, it returns
-an `EffectContext` with `requiredChoice` set. The next call passes the fulfilled choice. This is a
-lightweight resumable computation without coroutines.
+**Re-entry model**: no opaque continuation token is needed. The re-entry point is always implicit:
+when a `MAKE_CHOICE` command arrives and `GameState.pendingChoice` is set, the engine re-calls
+the `onResolve` handler of the top-of-stack item — passing the fulfilled `ChoicePayload` as the
+`choices` argument. Because `onResolve` is a pure function keyed by card definition (looked up
+from the Card Registry by the resolving stack item), the engine can reconstruct the full call
+from serializable state alone. No closures or coroutines are required.
 
 ---
 
