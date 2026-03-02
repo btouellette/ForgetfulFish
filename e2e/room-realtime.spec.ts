@@ -3,17 +3,73 @@ import {
   test,
   type APIRequestContext,
   type BrowserContext,
+  type Locator,
   type Page
 } from "@playwright/test";
 
 const serverBaseUrl = "http://127.0.0.1:4100";
 const ownerToken = "owner-token";
 const secondToken = "second-token";
+const DEBUG_BUFFER_LIMIT = 30;
+const DIAGNOSTIC_READ_TIMEOUT_MS = 250;
 
 type RealtimeControl = {
   blockConnections: boolean;
   trackedSockets: WebSocket[];
 };
+
+type PageDebugBuffers = {
+  consoleEvents: string[];
+  pageErrors: string[];
+  requestFailures: string[];
+};
+
+function pushDebugLine(lines: string[], nextLine: string) {
+  lines.push(nextLine);
+
+  if (lines.length > DEBUG_BUFFER_LIMIT) {
+    lines.shift();
+  }
+}
+
+async function readTextOrNull(locator: Locator) {
+  return locator.textContent({
+    timeout: DIAGNOSTIC_READ_TIMEOUT_MS
+  });
+}
+
+function attachPageDebugBuffers(page: Page, label: string): PageDebugBuffers {
+  const buffers: PageDebugBuffers = {
+    consoleEvents: [],
+    pageErrors: [],
+    requestFailures: []
+  };
+
+  page.on("console", (message) => {
+    const messageType = message.type();
+
+    if (messageType !== "error" && messageType !== "warning") {
+      return;
+    }
+
+    pushDebugLine(buffers.consoleEvents, `[${label}] console.${messageType}: ${message.text()}`);
+  });
+
+  page.on("pageerror", (error) => {
+    pushDebugLine(buffers.pageErrors, `[${label}] pageerror: ${error.message}`);
+  });
+
+  page.on("requestfailed", (request) => {
+    const failure = request.failure();
+    const failureText = failure?.errorText ?? "unknown";
+    pushDebugLine(
+      buffers.requestFailures,
+      `[${label}] requestfailed ${request.method()} ${request.url()} -> ${failureText}`
+    );
+  });
+
+  return buffers;
+}
 
 async function installRealtimeControl(context: BrowserContext) {
   await context.addInitScript(() => {
@@ -93,10 +149,42 @@ function extractGameId(gameText: string | null) {
   return matched[1];
 }
 
-async function expectRoomLoaded(page: Page, seat: "P1" | "P2") {
-  await expect(page.getByText(`Joined room`, { exact: false })).toBeVisible();
-  await expect(page.getByText(`as seat ${seat}.`)).toBeVisible();
-  await expect(page.getByText("Live connection: connected")).toBeVisible();
+async function expectRoomLoaded(page: Page, seat: "P1" | "P2", debugBuffers?: PageDebugBuffers) {
+  try {
+    await expect(page.getByText("Joined room", { exact: false })).toBeVisible();
+    await expect(page.getByText(`as seat ${seat}.`)).toBeVisible();
+    await expect(page.getByText("Live connection: connected")).toBeVisible();
+  } catch (error) {
+    const [heading, roomLine, gameLine, connectionLine, paragraphs] = await Promise.all([
+      readTextOrNull(page.locator("h1").first()).catch(() => null),
+      readTextOrNull(page.getByText(/Room:/).first()).catch(() => null),
+      readTextOrNull(page.getByText(/Game:/).first()).catch(() => null),
+      readTextOrNull(page.getByText(/Live connection:/).first()).catch(() => null),
+      page
+        .locator("p")
+        .allTextContents()
+        .catch(() => [])
+    ]);
+
+    const diagnostics = {
+      url: page.url(),
+      heading,
+      roomLine,
+      gameLine,
+      connectionLine,
+      paragraphs,
+      consoleEvents: debugBuffers?.consoleEvents ?? [],
+      pageErrors: debugBuffers?.pageErrors ?? [],
+      requestFailures: debugBuffers?.requestFailures ?? [],
+      originalError: error instanceof Error ? error.message : String(error)
+    };
+
+    const diagnosticError = new Error(
+      `room did not reach joined state for seat ${seat}\n${JSON.stringify(diagnostics, null, 2)}`
+    ) as Error & { cause?: unknown };
+    diagnosticError.cause = error;
+    throw diagnosticError;
+  }
 }
 
 test("syncs ready updates and game start across two browser clients", async ({
@@ -115,11 +203,16 @@ test("syncs ready updates and game start across two browser clients", async ({
 
   const ownerPage = await ownerContext.newPage();
   const secondPage = await secondContext.newPage();
+  const ownerDebugBuffers = attachPageDebugBuffers(ownerPage, "owner");
+  const secondDebugBuffers = attachPageDebugBuffers(secondPage, "second");
 
   try {
     await Promise.all([ownerPage.goto(`/play/${roomId}`), secondPage.goto(`/play/${roomId}`)]);
 
-    await Promise.all([expectRoomLoaded(ownerPage, "P1"), expectRoomLoaded(secondPage, "P2")]);
+    await Promise.all([
+      expectRoomLoaded(ownerPage, "P1", ownerDebugBuffers),
+      expectRoomLoaded(secondPage, "P2", secondDebugBuffers)
+    ]);
 
     await ownerPage.getByRole("button", { name: "Mark ready" }).click();
     await expect(ownerPage.getByText("P1: owner-1 (ready)")).toBeVisible();
@@ -162,6 +255,8 @@ test("resyncs canonical lobby state after reconnect", async ({ browser, request 
 
   const ownerPage = await ownerContext.newPage();
   const secondPage = await secondContext.newPage();
+  const ownerDebugBuffers = attachPageDebugBuffers(ownerPage, "owner");
+  const secondDebugBuffers = attachPageDebugBuffers(secondPage, "second");
   let blockLobbyPollRequests = false;
 
   try {
@@ -175,7 +270,10 @@ test("resyncs canonical lobby state after reconnect", async ({ browser, request 
     });
 
     await Promise.all([ownerPage.goto(`/play/${roomId}`), secondPage.goto(`/play/${roomId}`)]);
-    await Promise.all([expectRoomLoaded(ownerPage, "P1"), expectRoomLoaded(secondPage, "P2")]);
+    await Promise.all([
+      expectRoomLoaded(ownerPage, "P1", ownerDebugBuffers),
+      expectRoomLoaded(secondPage, "P2", secondDebugBuffers)
+    ]);
 
     blockLobbyPollRequests = true;
 
