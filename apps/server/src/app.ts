@@ -170,8 +170,8 @@ type CachedSessionLookupResult = {
   cachedAt: number;
 };
 
-function isCachedSessionExpired(cached: CachedSessionLookupResult, now: number) {
-  return now - cached.cachedAt >= SESSION_CACHE_TTL_MS || cached.result.expires.getTime() <= now;
+function isCachedSessionTtlExpired(cached: CachedSessionLookupResult, now: number) {
+  return now - cached.cachedAt >= SESSION_CACHE_TTL_MS;
 }
 
 function isSessionCookieKey(name: string) {
@@ -702,10 +702,20 @@ export function buildServer({
   const sessionCache = new Map<string, CachedSessionLookupResult>();
 
   function pruneSessionCache(now: number) {
-    for (const [sessionToken, cached] of sessionCache) {
-      if (isCachedSessionExpired(cached, now)) {
-        sessionCache.delete(sessionToken);
+    while (true) {
+      const oldestEntry = sessionCache.entries().next();
+
+      if (oldestEntry.done) {
+        return;
       }
+
+      const [sessionToken, cached] = oldestEntry.value;
+
+      if (!isCachedSessionTtlExpired(cached, now)) {
+        return;
+      }
+
+      sessionCache.delete(sessionToken);
     }
   }
 
@@ -728,16 +738,19 @@ export function buildServer({
     const cached = sessionCache.get(sessionToken);
 
     if (cached) {
-      return cached.result;
+      if (cached.result.expires.getTime() > now) {
+        return cached.result;
+      }
+
+      sessionCache.delete(sessionToken);
     }
 
     const result = await sessionLookup(sessionToken);
 
-    if (result && result.expires.getTime() > Date.now()) {
-      const cachedAt = Date.now();
+    if (result && result.expires.getTime() > now) {
       sessionCache.set(sessionToken, {
         result,
-        cachedAt
+        cachedAt: now
       });
       trimSessionCacheToMaxSize();
     }

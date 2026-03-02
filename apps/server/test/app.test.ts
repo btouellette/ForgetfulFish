@@ -542,6 +542,60 @@ describe("server", () => {
     }
   });
 
+  it("does not reuse cached sessions after backing session expiry", async () => {
+    let now = 1_000_000;
+    const dateNowSpy = vi.spyOn(Date, "now").mockImplementation(() => now);
+    let sessionLookupCalls = 0;
+    const app = buildServer({
+      sessionLookup: async (token) => {
+        sessionLookupCalls += 1;
+
+        if (token !== "valid") {
+          return null;
+        }
+
+        if (sessionLookupCalls === 1) {
+          return {
+            expires: new Date(now + 500),
+            user: {
+              id: "user-1",
+              email: "user@example.com"
+            }
+          };
+        }
+
+        return null;
+      }
+    });
+
+    try {
+      const firstResponse = await app.inject({
+        method: "GET",
+        url: "/api/me",
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      now += 600;
+
+      const secondResponse = await app.inject({
+        method: "GET",
+        url: "/api/me",
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      expect(firstResponse.statusCode).toBe(200);
+      expect(secondResponse.statusCode).toBe(401);
+      expect(sessionLookupCalls).toBe(2);
+    } finally {
+      dateNowSpy.mockRestore();
+      await app.close();
+    }
+  });
+
   it("evicts oldest cached sessions when cache reaches max size", async () => {
     const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(1_000_000);
     let sessionLookupCalls = 0;
