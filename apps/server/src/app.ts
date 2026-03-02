@@ -162,7 +162,17 @@ const gameStartedResponseSchema = z.object({
 });
 
 const MAX_SESSION_COOKIE_LENGTH = 4096;
-const SESSION_CACHE_TTL_MS = 60_000;
+const SESSION_CACHE_TTL_MS = 1_000;
+const SESSION_CACHE_MAX_SIZE = 1_000;
+
+type CachedSessionLookupResult = {
+  result: SessionLookupResult;
+  cachedAt: number;
+};
+
+function isCachedSessionExpired(cached: CachedSessionLookupResult, now: number) {
+  return now - cached.cachedAt >= SESSION_CACHE_TTL_MS || cached.result.expires.getTime() <= now;
+}
 
 function isSessionCookieKey(name: string) {
   return (
@@ -689,26 +699,47 @@ export function buildServer({
   // Multi-instance fanout requires an external pub/sub layer (for example Redis).
   const roomSockets = new Map<string, Set<WebSocket>>();
   // In-process cache; single-instance only.
-  const sessionCache = new Map<string, { result: SessionLookupResult; cachedAt: number }>();
+  const sessionCache = new Map<string, CachedSessionLookupResult>();
+
+  function pruneSessionCache(now: number) {
+    for (const [sessionToken, cached] of sessionCache) {
+      if (isCachedSessionExpired(cached, now)) {
+        sessionCache.delete(sessionToken);
+      }
+    }
+  }
+
+  function trimSessionCacheToMaxSize() {
+    while (sessionCache.size > SESSION_CACHE_MAX_SIZE) {
+      const oldestSessionToken = sessionCache.keys().next().value;
+
+      if (oldestSessionToken === undefined) {
+        return;
+      }
+
+      sessionCache.delete(oldestSessionToken);
+    }
+  }
 
   async function lookupSessionWithCache(sessionToken: string) {
+    const now = Date.now();
+    pruneSessionCache(now);
+
     const cached = sessionCache.get(sessionToken);
 
     if (cached) {
-      if (Date.now() - cached.cachedAt < SESSION_CACHE_TTL_MS) {
-        return cached.result;
-      }
-
-      sessionCache.delete(sessionToken);
+      return cached.result;
     }
 
     const result = await sessionLookup(sessionToken);
 
     if (result && result.expires.getTime() > Date.now()) {
+      const cachedAt = Date.now();
       sessionCache.set(sessionToken, {
         result,
-        cachedAt: Date.now()
+        cachedAt
       });
+      trimSessionCacheToMaxSize();
     }
 
     return result;
