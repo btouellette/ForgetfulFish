@@ -18,10 +18,12 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "format:changed": "./scripts/format-changed.sh write",
+    "format:check:changed": "./scripts/format-changed.sh check",
     "prepare": "[ -d .git ] && command -v git >/dev/null 2>&1 && simple-git-hooks || true"
   },
   "simple-git-hooks": {
-    "pre-push": "pnpm lint && pnpm typecheck"
+    "pre-push": "pnpm format:check:changed && pnpm lint && pnpm typecheck"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
