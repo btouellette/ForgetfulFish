@@ -18,6 +18,12 @@ These rules define how AI agents should operate in this repository.
 - Implement the smallest code change needed to make tests pass.
 - Refactor only after tests pass, and keep behavior unchanged.
 
+## GitHub Workflow
+
+- Use a pull-request workflow for all GitHub work; do not land direct commits to `main`.
+- Check the current git branch before starting work and again before finishing work.
+- After submitting a PR, check out the local `main` branch.
+
 ## Testing Standards
 
 - Prefer unit tests for rules/engine logic and integration tests for API/realtime flows.
