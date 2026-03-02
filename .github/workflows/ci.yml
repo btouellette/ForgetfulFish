@@ -5,9 +5,70 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  NODE_VERSION: 22.13.0
+  PNPM_VERSION: 10.30.3
+  PREPARED_WORKSPACE_ARTIFACT: workspace-with-deps
+
 jobs:
-  checks:
+  install:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Pack workspace with dependencies
+        run: tar --exclude=.git --exclude=.turbo --exclude=test-results -czf /tmp/workspace-with-deps.tgz .
+
+      - name: Upload prepared workspace
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PREPARED_WORKSPACE_ARTIFACT }}
+          path: /tmp/workspace-with-deps.tgz
+
+  build:
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download prepared workspace
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.PREPARED_WORKSPACE_ARTIFACT }}
+          path: /tmp/workspace
+
+      - name: Restore prepared workspace
+        run: tar -xzf /tmp/workspace/workspace-with-deps.tgz
+
+      - name: Build
+        run: pnpm build
+
+  format:
+    runs-on: ubuntu-latest
+    needs: install
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -17,16 +78,21 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.30.3
+          version: ${{ env.PNPM_VERSION }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: pnpm
+          node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Download prepared workspace
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.PREPARED_WORKSPACE_ARTIFACT }}
+          path: /tmp/workspace
+
+      - name: Restore prepared workspace
+        run: tar -xzf /tmp/workspace/workspace-with-deps.tgz
 
       - name: Format (changed files)
         env:
@@ -36,14 +102,68 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
         run: pnpm format:check:changed
 
-      - name: Lint
-        run: pnpm lint
+  checks:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    needs: install
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: lint
+            command: lint
+          - name: typecheck
+            command: typecheck
+          - name: test
+            command: test
+    steps:
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
 
-      - name: Typecheck
-        run: pnpm typecheck
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
 
-      - name: Test
-        run: pnpm test
+      - name: Download prepared workspace
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.PREPARED_WORKSPACE_ARTIFACT }}
+          path: /tmp/workspace
+
+      - name: Restore prepared workspace
+        run: tar -xzf /tmp/workspace/workspace-with-deps.tgz
+
+      - name: Run ${{ matrix.name }}
+        run: pnpm ${{ matrix.command }}
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: install
+    steps:
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Download prepared workspace
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.PREPARED_WORKSPACE_ARTIFACT }}
+          path: /tmp/workspace
+
+      - name: Restore prepared workspace
+        run: tar -xzf /tmp/workspace/workspace-with-deps.tgz
+
+      - name: Generate Prisma client
+        run: pnpm --filter @forgetful-fish/database db:generate
 
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
