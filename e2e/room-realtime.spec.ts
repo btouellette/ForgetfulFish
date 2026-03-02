@@ -3,12 +3,15 @@ import {
   test,
   type APIRequestContext,
   type BrowserContext,
+  type Locator,
   type Page
 } from "@playwright/test";
 
 const serverBaseUrl = "http://127.0.0.1:4100";
 const ownerToken = "owner-token";
 const secondToken = "second-token";
+const DEBUG_BUFFER_LIMIT = 30;
+const DIAGNOSTIC_READ_TIMEOUT_MS = 250;
 
 type RealtimeControl = {
   blockConnections: boolean;
@@ -24,9 +27,15 @@ type PageDebugBuffers = {
 function pushDebugLine(lines: string[], nextLine: string) {
   lines.push(nextLine);
 
-  if (lines.length > 30) {
+  if (lines.length > DEBUG_BUFFER_LIMIT) {
     lines.shift();
   }
+}
+
+async function readTextOrNull(locator: Locator) {
+  return locator.textContent({
+    timeout: DIAGNOSTIC_READ_TIMEOUT_MS
+  });
 }
 
 function attachPageDebugBuffers(page: Page, label: string): PageDebugBuffers {
@@ -146,41 +155,35 @@ async function expectRoomLoaded(page: Page, seat: "P1" | "P2", debugBuffers?: Pa
     await expect(page.getByText(`as seat ${seat}.`)).toBeVisible();
     await expect(page.getByText("Live connection: connected")).toBeVisible();
   } catch (error) {
-    const diagnostics = {
-      url: page.url(),
-      heading: await page
-        .locator("h1")
-        .first()
-        .textContent()
-        .catch(() => null),
-      roomLine: await page
-        .getByText(/Room:/)
-        .first()
-        .textContent()
-        .catch(() => null),
-      gameLine: await page
-        .getByText(/Game:/)
-        .first()
-        .textContent()
-        .catch(() => null),
-      connectionLine: await page
-        .getByText(/Live connection:/)
-        .first()
-        .textContent()
-        .catch(() => null),
-      paragraphs: await page
+    const [heading, roomLine, gameLine, connectionLine, paragraphs] = await Promise.all([
+      readTextOrNull(page.locator("h1").first()).catch(() => null),
+      readTextOrNull(page.getByText(/Room:/).first()).catch(() => null),
+      readTextOrNull(page.getByText(/Game:/).first()).catch(() => null),
+      readTextOrNull(page.getByText(/Live connection:/).first()).catch(() => null),
+      page
         .locator("p")
         .allTextContents()
-        .catch(() => []),
+        .catch(() => [])
+    ]);
+
+    const diagnostics = {
+      url: page.url(),
+      heading,
+      roomLine,
+      gameLine,
+      connectionLine,
+      paragraphs,
       consoleEvents: debugBuffers?.consoleEvents ?? [],
       pageErrors: debugBuffers?.pageErrors ?? [],
       requestFailures: debugBuffers?.requestFailures ?? [],
       originalError: error instanceof Error ? error.message : String(error)
     };
 
-    throw new Error(
+    const diagnosticError = new Error(
       `room did not reach joined state for seat ${seat}\n${JSON.stringify(diagnostics, null, 2)}`
-    );
+    ) as Error & { cause?: unknown };
+    diagnosticError.cause = error;
+    throw diagnosticError;
   }
 }
 
