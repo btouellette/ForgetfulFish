@@ -2,6 +2,7 @@
 
 import { mkdir, writeFile, access, readFile, unlink } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const SCRYFALL_API_BASE = "https://api.scryfall.com";
 const OUTPUT_ROOT = path.resolve(process.cwd(), "assets/card-images/library");
@@ -56,8 +57,11 @@ const fileExists = async (filePath) => {
   }
 };
 
-const safeCollectorNumber = (collectorNumber) =>
-  collectorNumber.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+export const safeCollectorNumber = (collectorNumber) =>
+  collectorNumber
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "unknown";
 
 const compareValues = (a, b) => {
   if (a < b) {
@@ -418,7 +422,12 @@ const run = async () => {
   console.log(`Index: ${INDEX_PATH}`);
 };
 
-run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+const isDirectExecution =
+  process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (isDirectExecution) {
+  run().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

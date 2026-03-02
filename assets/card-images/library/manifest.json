@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-02T08:28:35.618Z",
+  "generatedAt": "2026-03-02T16:39:12.984Z",
   "source": "scryfall",
   "imageSize": "large",
   "selection": {
@@ -7,12 +7,7 @@
     "inclusionPolicy": "include prints that are black-border or full-art/borderless; exclude white/gold/silver unless full-art/borderless",
     "dedupePolicy": "dedupe by illustration plus visual treatment; prefer non-promo/non-security-stamp prints when duplicates exist"
   },
-  "filters": [
-    "lang:en",
-    "game:paper",
-    "include:extras",
-    "unique:prints"
-  ],
+  "filters": ["lang:en", "game:paper", "include:extras", "unique:prints"],
   "seedCards": [
     "Dandan",
     "Memory Lapse",
@@ -382,7 +377,7 @@
       "scryfallId": "8c2437b9-22ed-4835-9ac4-e9625bf8464a",
       "scryfallUri": "https://scryfall.com/card/7ed/88%E2%98%85/memory-lapse?utm_source=api",
       "faceName": null,
-      "path": "memory-lapse/2001-04-11_7ed_88-_8c2437b9-22ed-4835-9ac4-e9625bf8464a.jpg",
+      "path": "memory-lapse/2001-04-11_7ed_88_8c2437b9-22ed-4835-9ac4-e9625bf8464a.jpg",
       "imageUrl": "https://cards.scryfall.io/large/front/8/c/8c2437b9-22ed-4835-9ac4-e9625bf8464a.jpg?1675830212",
       "preview": false
     },
@@ -1085,7 +1080,7 @@
       "scryfallId": "1d55cdde-5e6b-4cec-9862-84aa39c04082",
       "scryfallUri": "https://scryfall.com/card/8ed/92%E2%98%85/mind-bend?utm_source=api",
       "faceName": null,
-      "path": "mind-bend/2003-07-28_8ed_92-_1d55cdde-5e6b-4cec-9862-84aa39c04082.jpg",
+      "path": "mind-bend/2003-07-28_8ed_92_1d55cdde-5e6b-4cec-9862-84aa39c04082.jpg",
       "imageUrl": "https://cards.scryfall.io/large/front/1/d/1d55cdde-5e6b-4cec-9862-84aa39c04082.jpg?1675829679",
       "preview": false
     },
@@ -2776,7 +2771,7 @@
       "scryfallId": "51487402-2a52-4117-ba88-327e863e5f56",
       "scryfallUri": "https://scryfall.com/card/7ed/332%E2%98%85/island?utm_source=api",
       "faceName": null,
-      "path": "island/2001-04-11_7ed_332-_51487402-2a52-4117-ba88-327e863e5f56.jpg",
+      "path": "island/2001-04-11_7ed_332_51487402-2a52-4117-ba88-327e863e5f56.jpg",
       "imageUrl": "https://cards.scryfall.io/large/front/5/1/51487402-2a52-4117-ba88-327e863e5f56.jpg?1675830547",
       "preview": false
     },
@@ -2795,7 +2790,7 @@
       "scryfallId": "26b02969-1959-4422-8e10-63ffb23192a2",
       "scryfallUri": "https://scryfall.com/card/7ed/333%E2%98%85/island?utm_source=api",
       "faceName": null,
-      "path": "island/2001-04-11_7ed_333-_26b02969-1959-4422-8e10-63ffb23192a2.jpg",
+      "path": "island/2001-04-11_7ed_333_26b02969-1959-4422-8e10-63ffb23192a2.jpg",
       "imageUrl": "https://cards.scryfall.io/large/front/2/6/26b02969-1959-4422-8e10-63ffb23192a2.jpg?1675830547",
       "preview": false
     },
@@ -2814,7 +2809,7 @@
       "scryfallId": "fea43ef7-99c5-40b6-9a59-9661b3b710cf",
       "scryfallUri": "https://scryfall.com/card/7ed/334%E2%98%85/island?utm_source=api",
       "faceName": null,
-      "path": "island/2001-04-11_7ed_334-_fea43ef7-99c5-40b6-9a59-9661b3b710cf.jpg",
+      "path": "island/2001-04-11_7ed_334_fea43ef7-99c5-40b6-9a59-9661b3b710cf.jpg",
       "imageUrl": "https://cards.scryfall.io/large/front/f/e/fea43ef7-99c5-40b6-9a59-9661b3b710cf.jpg?1675830550",
       "preview": false
     },
@@ -2833,7 +2828,7 @@
       "scryfallId": "f23b716f-51b2-402a-9a69-de190d3f6411",
       "scryfallUri": "https://scryfall.com/card/7ed/335%E2%98%85/island?utm_source=api",
       "faceName": null,
-      "path": "island/2001-04-11_7ed_335-_f23b716f-51b2-402a-9a69-de190d3f6411.jpg",
+      "path": "island/2001-04-11_7ed_335_f23b716f-51b2-402a-9a69-de190d3f6411.jpg",
       "imageUrl": "https://cards.scryfall.io/large/front/f/2/f23b716f-51b2-402a-9a69-de190d3f6411.jpg?1675830552",
       "preview": false
     },
@@ -3004,7 +2999,7 @@
       "scryfallId": "5d01acc2-bafa-47c9-92ff-b737f1f31f16",
       "scryfallUri": "https://scryfall.com/card/8ed/335%E2%98%85/island?utm_source=api",
       "faceName": null,
-      "path": "island/2003-07-28_8ed_335-_5d01acc2-bafa-47c9-92ff-b737f1f31f16.jpg",
+      "path": "island/2003-07-28_8ed_335_5d01acc2-bafa-47c9-92ff-b737f1f31f16.jpg",
       "imageUrl": "https://cards.scryfall.io/large/front/5/d/5d01acc2-bafa-47c9-92ff-b737f1f31f16.jpg?1675830061",
       "preview": false
     },
@@ -3023,7 +3018,7 @@
       "scryfallId": "b0b4e347-90ad-43c7-a236-3ee4d887f069",
       "scryfallUri": "https://scryfall.com/card/8ed/336%E2%98%85/island?utm_source=api",
       "faceName": null,
-      "path": "island/2003-07-28_8ed_336-_b0b4e347-90ad-43c7-a236-3ee4d887f069.jpg",
+      "path": "island/2003-07-28_8ed_336_b0b4e347-90ad-43c7-a236-3ee4d887f069.jpg",
       "imageUrl": "https://cards.scryfall.io/large/front/b/0/b0b4e347-90ad-43c7-a236-3ee4d887f069.jpg?1675830062",
       "preview": false
     },
@@ -3042,7 +3037,7 @@
       "scryfallId": "ed74e8a1-5636-4d96-aff4-4674494c5e00",
       "scryfallUri": "https://scryfall.com/card/8ed/337%E2%98%85/island?utm_source=api",
       "faceName": null,
-      "path": "island/2003-07-28_8ed_337-_ed74e8a1-5636-4d96-aff4-4674494c5e00.jpg",
+      "path": "island/2003-07-28_8ed_337_ed74e8a1-5636-4d96-aff4-4674494c5e00.jpg",
       "imageUrl": "https://cards.scryfall.io/large/front/e/d/ed74e8a1-5636-4d96-aff4-4674494c5e00.jpg?1675830065",
       "preview": false
     },
@@ -3061,7 +3056,7 @@
       "scryfallId": "5e185e19-0692-4f09-bb99-1b864bfbb479",
       "scryfallUri": "https://scryfall.com/card/8ed/338%E2%98%85/island?utm_source=api",
       "faceName": null,
-      "path": "island/2003-07-28_8ed_338-_5e185e19-0692-4f09-bb99-1b864bfbb479.jpg",
+      "path": "island/2003-07-28_8ed_338_5e185e19-0692-4f09-bb99-1b864bfbb479.jpg",
       "imageUrl": "https://cards.scryfall.io/large/front/5/e/5e185e19-0692-4f09-bb99-1b864bfbb479.jpg?1675830066",
       "preview": false
     },
@@ -10281,7 +10276,7 @@
       "scryfallId": "644791df-ac34-45c7-90c1-0ebd9e519840",
       "scryfallUri": "https://scryfall.com/card/j14/2%E2%98%85/island?utm_source=api",
       "faceName": null,
-      "path": "island/2014-01-01_j14_2-_644791df-ac34-45c7-90c1-0ebd9e519840.jpg",
+      "path": "island/2014-01-01_j14_2_644791df-ac34-45c7-90c1-0ebd9e519840.jpg",
       "imageUrl": "https://cards.scryfall.io/large/front/6/4/644791df-ac34-45c7-90c1-0ebd9e519840.jpg?1562258456",
       "preview": false
     },

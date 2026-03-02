@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-02T08:28:35.618Z",
+  "generatedAt": "2026-03-02T16:39:12.984Z",
   "sourceManifest": "manifest.json",
   "totalImages": 535,
   "cards": [
@@ -22,7 +22,7 @@
         "memory-lapse/1995-10-01_hml_32a_3d2cc591-3a81-468a-91a4-3c3aac83a21a.jpg",
         "memory-lapse/1995-10-01_hml_32b_6c8b5df3-6153-470e-be9c-f38d3cf66081.jpg",
         "memory-lapse/1996-10-08_mir_74_63453ed9-5cf1-4cad-b173-a067f22a4405.jpg",
-        "memory-lapse/2001-04-11_7ed_88-_8c2437b9-22ed-4835-9ac4-e9625bf8464a.jpg",
+        "memory-lapse/2001-04-11_7ed_88_8c2437b9-22ed-4835-9ac4-e9625bf8464a.jpg",
         "memory-lapse/2014-03-14_ddm_24_8e3697f5-e264-415f-83bc-e72432857111.jpg",
         "memory-lapse/2016-06-10_ema_60_30202613-d05f-4f47-af97-d0b75ccac293.jpg",
         "memory-lapse/2025-12-01_sld_2142_fc2215c0-2d08-42ab-be24-3f03bfdd9cdb.jpg",
@@ -73,17 +73,13 @@
       "cardName": "Crystal Spray",
       "slug": "crystal-spray",
       "count": 1,
-      "images": [
-        "crystal-spray/2000-10-02_inv_50_8798a4f1-34bb-449d-a8cc-faf8bda8e0ab.jpg"
-      ]
+      "images": ["crystal-spray/2000-10-02_inv_50_8798a4f1-34bb-449d-a8cc-faf8bda8e0ab.jpg"]
     },
     {
       "cardName": "Dance of the Skywise",
       "slug": "dance-of-the-skywise",
       "count": 1,
-      "images": [
-        "dance-of-the-skywise/2015-03-27_dtk_50_c548d140-3d81-4b33-9985-87703d316a83.jpg"
-      ]
+      "images": ["dance-of-the-skywise/2015-03-27_dtk_50_c548d140-3d81-4b33-9985-87703d316a83.jpg"]
     },
     {
       "cardName": "Diminishing Returns",
@@ -98,9 +94,7 @@
       "cardName": "Metamorphose",
       "slug": "metamorphose",
       "count": 1,
-      "images": [
-        "metamorphose/2003-05-26_scg_40_a0f0c20c-184e-4d27-ae8b-933abb6fee0c.jpg"
-      ]
+      "images": ["metamorphose/2003-05-26_scg_40_a0f0c20c-184e-4d27-ae8b-933abb6fee0c.jpg"]
     },
     {
       "cardName": "Mind Bend",
@@ -108,7 +102,7 @@
       "count": 3,
       "images": [
         "mind-bend/1996-10-08_mir_77_952eb6ae-a530-4f4f-92f0-a6602beaa7b2.jpg",
-        "mind-bend/2003-07-28_8ed_92-_1d55cdde-5e6b-4cec-9862-84aa39c04082.jpg",
+        "mind-bend/2003-07-28_8ed_92_1d55cdde-5e6b-4cec-9862-84aa39c04082.jpg",
         "mind-bend/2007-07-13_10e_93_692a5bfa-9a50-4610-acd7-19fc0a53f798.jpg"
       ]
     },
@@ -302,10 +296,10 @@
         "island/2000-10-02_inv_336_2fc04e1e-6a14-41cc-9fff-6dcd92cc6a3b.jpg",
         "island/2000-10-02_inv_337_f849f726-c6a2-400d-9b90-fe050f8ef5eb.jpg",
         "island/2000-10-02_inv_338_d07d1982-56ff-47ef-87aa-62978f1fcf30.jpg",
-        "island/2001-04-11_7ed_332-_51487402-2a52-4117-ba88-327e863e5f56.jpg",
-        "island/2001-04-11_7ed_333-_26b02969-1959-4422-8e10-63ffb23192a2.jpg",
-        "island/2001-04-11_7ed_334-_fea43ef7-99c5-40b6-9a59-9661b3b710cf.jpg",
-        "island/2001-04-11_7ed_335-_f23b716f-51b2-402a-9a69-de190d3f6411.jpg",
+        "island/2001-04-11_7ed_332_51487402-2a52-4117-ba88-327e863e5f56.jpg",
+        "island/2001-04-11_7ed_333_26b02969-1959-4422-8e10-63ffb23192a2.jpg",
+        "island/2001-04-11_7ed_334_fea43ef7-99c5-40b6-9a59-9661b3b710cf.jpg",
+        "island/2001-04-11_7ed_335_f23b716f-51b2-402a-9a69-de190d3f6411.jpg",
         "island/2001-10-01_ody_335_527f36a0-80b8-4492-b1c3-20a34953ceb7.jpg",
         "island/2001-10-01_ody_336_ef57bbe1-8507-4284-8d08-6b10b7894f96.jpg",
         "island/2001-10-01_ody_337_ba30bfc3-5aec-480d-a80a-fe71b098b14b.jpg",
@@ -314,10 +308,10 @@
         "island/2002-10-07_ons_336_6e8c0e52-8482-4c33-bc5d-26eaad922e72.jpg",
         "island/2002-10-07_ons_337_1dac3bfe-884b-4875-bc7d-df564eb014cd.jpg",
         "island/2002-10-07_ons_338_189a09b8-46d2-4ef6-b7cc-9e510d1ea0b8.jpg",
-        "island/2003-07-28_8ed_335-_5d01acc2-bafa-47c9-92ff-b737f1f31f16.jpg",
-        "island/2003-07-28_8ed_336-_b0b4e347-90ad-43c7-a236-3ee4d887f069.jpg",
-        "island/2003-07-28_8ed_337-_ed74e8a1-5636-4d96-aff4-4674494c5e00.jpg",
-        "island/2003-07-28_8ed_338-_5e185e19-0692-4f09-bb99-1b864bfbb479.jpg",
+        "island/2003-07-28_8ed_335_5d01acc2-bafa-47c9-92ff-b737f1f31f16.jpg",
+        "island/2003-07-28_8ed_336_b0b4e347-90ad-43c7-a236-3ee4d887f069.jpg",
+        "island/2003-07-28_8ed_337_ed74e8a1-5636-4d96-aff4-4674494c5e00.jpg",
+        "island/2003-07-28_8ed_338_5e185e19-0692-4f09-bb99-1b864bfbb479.jpg",
         "island/2003-10-02_mrd_291_9a5235cd-5d25-498d-8e36-7a7c0791f212.jpg",
         "island/2003-10-02_mrd_292_12dd90bb-b5d1-47a3-b566-3407db04dd55.jpg",
         "island/2003-10-02_mrd_293_9db3309e-2893-4a39-876f-fd68ea057e22.jpg",
@@ -697,7 +691,7 @@
         "island/2004-01-01_pal04_2_dd43b070-6a10-44b9-8501-0c2c8ef1f135.jpg",
         "island/2005-01-01_pal05_2_9d8cc4a9-ca3f-4151-80af-a430b835c52c.jpg",
         "island/2006-01-01_pal06_2_cfe3a9db-7e66-4848-a4f6-15cff197ecc7.jpg",
-        "island/2014-01-01_j14_2-_644791df-ac34-45c7-90c1-0ebd9e519840.jpg",
+        "island/2014-01-01_j14_2_644791df-ac34-45c7-90c1-0ebd9e519840.jpg",
         "island/2018-06-14_pgpx_2018b_95f698a0-8cfb-4a3b-8558-8a49763fd5c8.jpg",
         "island/2019-01-01_pf19_3_87f59c8b-6637-44a2-851e-0618c17d285f.jpg",
         "island/2020-01-01_pf20_3_2b72bbd7-0b80-4e12-86d5-494d91319ec4.jpg",
