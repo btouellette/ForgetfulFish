@@ -39,6 +39,19 @@ export default defineConfig([
       ]
     }
   },
+  {
+    files: ["apps/server/src/**/*.ts"],
+    rules: {
+      "max-lines": [
+        "error",
+        {
+          max: 650,
+          skipBlankLines: true,
+          skipComments: true
+        }
+      ]
+    }
+  },
   ...webNextConfigs,
   prettier
 ]);
