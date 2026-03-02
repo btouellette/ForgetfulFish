@@ -31,6 +31,7 @@ Production URL: `https://forgetfulfish.com`.
 - Browser E2E: `pnpm test:e2e`
 - Auth smoke check: `pnpm smoke:auth`
 - Format check: `pnpm format:check`
+- Format check (changed files): `pnpm format:check:changed`
 
 ## Production
 
