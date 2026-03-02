@@ -43,6 +43,16 @@ type RoomStarted = {
   gameStatus: "started";
 };
 
+export class ServerApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ServerApiError";
+    this.status = status;
+  }
+}
+
 function normalizeBaseUrl(baseUrl: string) {
   return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 }
@@ -65,7 +75,7 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`server request failed (${response.status})`);
+    throw new ServerApiError(response.status, `server request failed (${response.status})`);
   }
 
   return (await response.json()) as T;

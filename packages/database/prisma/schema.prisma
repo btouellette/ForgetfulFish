@@ -34,7 +34,6 @@ model Room {
   id           String            @id @db.Uuid
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
-  closedAt     DateTime?
   participants RoomParticipant[]
   game         Game?
 

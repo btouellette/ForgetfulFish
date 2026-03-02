@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { createRoom, getActor, joinRoom } from "../../../lib/server-api";
+import { parseRoomIdInput } from "../../../lib/room-id";
+import { ServerApiError, createRoom, getActor, joinRoom } from "../../../lib/server-api";
 
 type SessionState =
   | { status: "loading" }
@@ -108,34 +109,13 @@ export function AuthVerificationState() {
     }
   }
 
-  function getRoomIdFromInput() {
-    const trimmed = roomIdInput.trim();
-
-    if (!trimmed) {
-      return "";
-    }
-
-    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-      try {
-        const parsedUrl = new URL(trimmed);
-        const parts = parsedUrl.pathname.split("/").filter(Boolean);
-
-        if (parts.length >= 2 && parts[0] === "play") {
-          return parts[1] ?? "";
-        }
-      } catch {
-        return "";
-      }
-    }
-
-    return trimmed;
-  }
-
   async function handleJoinRoom() {
-    const roomId = getRoomIdFromInput();
+    const roomId = parseRoomIdInput(roomIdInput);
 
     if (!roomId) {
-      setRoomStatus("Enter a room URL or room ID.");
+      setRoomStatus(
+        roomIdInput.trim() ? "Invalid room link format." : "Enter a room URL or room ID."
+      );
       return;
     }
 
@@ -146,6 +126,18 @@ export function AuthVerificationState() {
       setRoomStatus(`Joined ${joined.roomId} as ${joined.userId} (seat ${joined.seat})`);
       router.push(`/play/${joined.roomId}`);
     } catch (error) {
+      if (error instanceof ServerApiError) {
+        if (error.status === 404) {
+          setRoomStatus("Join room failed: Room not found.");
+          return;
+        }
+
+        if (error.status === 409) {
+          setRoomStatus("Join room failed: Room is full.");
+          return;
+        }
+      }
+
       const message = error instanceof Error ? error.message : "unknown error";
       setRoomStatus(`Join room failed: ${message}`);
     }

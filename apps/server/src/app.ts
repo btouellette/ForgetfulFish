@@ -161,6 +161,19 @@ const gameStartedResponseSchema = z.object({
   gameStatus: z.literal("started")
 });
 
+const MAX_SESSION_COOKIE_LENGTH = 4096;
+const SESSION_CACHE_TTL_MS = 1_000;
+const SESSION_CACHE_MAX_SIZE = 1_000;
+
+type CachedSessionLookupResult = {
+  result: SessionLookupResult;
+  cachedAt: number;
+};
+
+function isCachedSessionTtlExpired(cached: CachedSessionLookupResult, now: number) {
+  return now - cached.cachedAt >= SESSION_CACHE_TTL_MS;
+}
+
 function isSessionCookieKey(name: string) {
   return (
     name === "__Secure-authjs.session-token" ||
@@ -192,7 +205,7 @@ function getSessionToken(cookieHeader: string | undefined) {
 
     const rawValue = rawValueParts.join("=").trim();
 
-    if (!rawValue) {
+    if (!rawValue || rawValue.length > MAX_SESSION_COOKIE_LENGTH) {
       continue;
     }
 
@@ -682,7 +695,68 @@ export function buildServer({
     disableRequestLogging: true
   });
   const logHealthChecks = process.env.LOG_HEALTHCHECKS === "true";
+  // In-process socket registry. Single-instance only.
+  // Multi-instance fanout requires an external pub/sub layer (for example Redis).
   const roomSockets = new Map<string, Set<WebSocket>>();
+  // In-process cache; single-instance only.
+  const sessionCache = new Map<string, CachedSessionLookupResult>();
+
+  function pruneSessionCache(now: number) {
+    while (true) {
+      const oldestEntry = sessionCache.entries().next();
+
+      if (oldestEntry.done) {
+        return;
+      }
+
+      const [sessionToken, cached] = oldestEntry.value;
+
+      if (!isCachedSessionTtlExpired(cached, now)) {
+        return;
+      }
+
+      sessionCache.delete(sessionToken);
+    }
+  }
+
+  function trimSessionCacheToMaxSize() {
+    while (sessionCache.size > SESSION_CACHE_MAX_SIZE) {
+      const oldestSessionToken = sessionCache.keys().next().value;
+
+      if (oldestSessionToken === undefined) {
+        return;
+      }
+
+      sessionCache.delete(oldestSessionToken);
+    }
+  }
+
+  async function lookupSessionWithCache(sessionToken: string) {
+    const now = Date.now();
+    pruneSessionCache(now);
+
+    const cached = sessionCache.get(sessionToken);
+
+    if (cached) {
+      if (cached.result.expires.getTime() > now) {
+        return cached.result;
+      }
+
+      sessionCache.delete(sessionToken);
+    }
+
+    const result = await sessionLookup(sessionToken);
+
+    if (result && result.expires.getTime() > now) {
+      sessionCache.set(sessionToken, {
+        result,
+        cachedAt: now
+      });
+      trimSessionCacheToMaxSize();
+    }
+
+    return result;
+  }
 
   function removeRoomSocket(roomId: string, socket: WebSocket) {
     const sockets = roomSockets.get(roomId);
@@ -754,7 +828,7 @@ export function buildServer({
         sendRoomMessage(socket, message);
       } catch (error) {
         app.log.warn(
-          { event: "ws_room_broadcast_failed", roomId, error },
+          { event: "ws_room_broadcast_failed", roomId, err: error },
           "ws room broadcast failed"
         );
         removeRoomSocket(roomId, socket);
@@ -780,7 +854,7 @@ export function buildServer({
         sendRoomMessage(socket, message);
       } catch (error) {
         app.log.warn(
-          { event: "ws_game_started_broadcast_failed", roomId: payload.roomId, error },
+          { event: "ws_game_started_broadcast_failed", roomId: payload.roomId, err: error },
           "ws game_started broadcast failed"
         );
         removeRoomSocket(payload.roomId, socket);
@@ -829,7 +903,7 @@ export function buildServer({
       return reply.code(401).send({ error: "unauthorized" });
     }
 
-    const session = await sessionLookup(sessionToken);
+    const session = await lookupSessionWithCache(sessionToken);
 
     if (!session || session.expires.getTime() <= Date.now()) {
       return reply.code(401).send({ error: "unauthorized" });
@@ -916,7 +990,7 @@ export function buildServer({
             return;
           }
 
-          const session = await sessionLookup(sessionToken);
+          const session = await lookupSessionWithCache(sessionToken);
 
           if (!session || session.expires.getTime() <= Date.now()) {
             app.log.warn(
@@ -1037,8 +1111,10 @@ export function buildServer({
             );
             removeRoomSocket(roomId, socket);
           });
-        })().catch(() => {
-          if (socket.readyState === 0 || socket.readyState === 1) {
+        })().catch((error: unknown) => {
+          app.log.error({ event: "ws_handler_error", err: error }, "ws async handler failed");
+
+          if (socket.readyState !== 3) {
             socket.close(1011, "internal_error");
           }
         });

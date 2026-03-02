@@ -10,7 +10,13 @@ import {
   shouldPollLobbyWhileDisconnected
 } from "../../../lib/room-guardrails";
 import { createRoomRealtimeClient, type RoomRealtimeStatus } from "../../../lib/room-realtime";
-import { getRoomLobby, joinRoom, setRoomReady, startRoomGame } from "../../../lib/server-api";
+import {
+  ServerApiError,
+  getRoomLobby,
+  joinRoom,
+  setRoomReady,
+  startRoomGame
+} from "../../../lib/server-api";
 
 type PlayRoomPageProps = {
   params: Promise<{
@@ -28,6 +34,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
   const [viewerId, setViewerId] = useState("");
   const [gameStatus, setGameStatus] = useState<"not_started" | "started">("not_started");
   const [gameId, setGameId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<RoomRealtimeStatus>("offline");
   const realtimeClientRef = useRef<ReturnType<typeof createRoomRealtimeClient> | null>(null);
 
@@ -65,7 +72,6 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
 
         setViewerId(joined.userId);
         setStatus(`Joined room ${joined.roomId} as seat ${joined.seat}.`);
-        await refreshLobby(joined.roomId);
 
         const realtimeClient = createRoomRealtimeClient({
           roomId: joined.roomId,
@@ -112,6 +118,18 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
           return;
         }
 
+        if (error instanceof ServerApiError) {
+          if (error.status === 404) {
+            setStatus("Join failed: Room not found.");
+            return;
+          }
+
+          if (error.status === 409) {
+            setStatus("Join failed: Room is full.");
+            return;
+          }
+        }
+
         const message = error instanceof Error ? error.message : "unknown error";
         setStatus(`Join failed: ${message}`);
       }
@@ -156,7 +174,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
   }, [connectionStatus, roomId]);
 
   async function handleReadyToggle() {
-    if (!roomId || !viewerId) {
+    if (!roomId || !viewerId || isSubmitting) {
       return;
     }
 
@@ -167,6 +185,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
     }
 
     setStatus(current.ready ? "Marking not ready..." : "Marking ready...");
+    setIsSubmitting(true);
 
     try {
       const updated = await setRoomReady(roomId, !current.ready);
@@ -191,15 +210,20 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
 
       const message = error instanceof Error ? error.message : "unknown error";
       setStatus(`Ready update failed: ${message}`);
+    } finally {
+      if (isMountedRef.current) {
+        setIsSubmitting(false);
+      }
     }
   }
 
   async function handleStartGame() {
-    if (!roomId) {
+    if (!roomId || isSubmitting) {
       return;
     }
 
     setStatus("Starting game...");
+    setIsSubmitting(true);
 
     try {
       const started = await startRoomGame(roomId);
@@ -219,6 +243,10 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
 
       const message = error instanceof Error ? error.message : "unknown error";
       setStatus(`Start failed: ${message}`);
+    } finally {
+      if (isMountedRef.current) {
+        setIsSubmitting(false);
+      }
     }
   }
 
@@ -246,11 +274,11 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
       <button
         type="button"
         onClick={handleReadyToggle}
-        disabled={!viewer || gameStatus === "started"}
+        disabled={!viewer || gameStatus === "started" || isSubmitting}
       >
         {viewer?.ready ? "Mark not ready" : "Mark ready"}
       </button>
-      <button type="button" onClick={handleStartGame} disabled={!canStart}>
+      <button type="button" onClick={handleStartGame} disabled={!canStart || isSubmitting}>
         Start game
       </button>
       <p>{status}</p>
