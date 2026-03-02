@@ -25,7 +25,8 @@ These rules define how AI agents should operate in this repository.
 - Create a new branch from updated `main` for that request unless the user explicitly asks to continue the same branch/PR.
 - Do not reuse a branch that already has an open or merged PR for unrelated follow-up work.
 - Before pushing, confirm `git log origin/main..HEAD` contains only commits for the current request.
-- After submitting a PR, check out local `main` and pull latest remote changes.
+- After any PR creation or branch push, immediately return to local `main` and fast-forward from `origin/main` unless the user explicitly asks to stay on the feature branch.
+- Before final handoff on PR/push tasks, verify the working branch is `main` and report if it is not.
 
 ## Testing Standards
 
