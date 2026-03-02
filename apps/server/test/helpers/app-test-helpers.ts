@@ -321,3 +321,12 @@ export async function createRoomAs(roomStore: InMemoryRoomStore, userId: string)
 
   return response.json().roomId as string;
 }
+
+export async function bootstrapRoom(roomStore: InMemoryRoomStore) {
+  const roomId = await createRoomAs(roomStore, "owner-1");
+  await injectAs(roomStore, "player-2", {
+    method: "POST",
+    url: `/api/rooms/${roomId}/join`
+  });
+  return roomId;
+}
