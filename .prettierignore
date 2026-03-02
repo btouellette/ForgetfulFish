@@ -1,0 +1,11 @@
+.turbo
+.next
+dist
+coverage
+playwright-report
+test-results
+node_modules
+pnpm-lock.yaml
+AGENTS.md
+docs/**
+.claude/**
