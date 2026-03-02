@@ -66,6 +66,18 @@
 - Room join input parsing accepts UUID room IDs only (raw ID or `/play/:roomId` URL) and maps common join statuses to clearer UI messages.
 - Removed unused `rooms.closedAt` from Prisma schema and migrations.
 
+## 2026-03-02 Rules Engine Architecture
+
+- Rules engine design is documented in `docs/RULES_ENGINE_ARCHITECTURE.md`.
+- Engine entry point is a single pure function `processCommand(state, command, rng): CommandResult` with no I/O.
+- `GameState` uses a flat `objectPool` (ECS-style) with zone arrays holding IDs only; shared library and graveyard are in `zones`, ownership tracked on `GameObject`.
+- Card definitions are plain data objects (`CardDefinition`) in one file per card under `packages/game-engine/src/cards/`; no class inheritance.
+- Effect resolution follows the whiteboard/naps model: kernel writes `pendingActions`, card handlers modify them, replacement effects intercept, kernel executes.
+- Continuous effects are computed via `computeGameObject` applying the 7-layer MTG layer system in order; `objectPool` holds base state, derived view is never mutated.
+- Player input mid-resolution is handled by a `PendingChoice` returned from `processCommand`; resumption uses a phase-enum continuation (no coroutines).
+- RNG is seeded and deterministic (Fisher-Yates); seed is stored in `GameState.rngSeed` and advanced on each use, enabling full replay.
+- Implementation follows a five-phase order: core turn loop → spells/targeting → combat → complex effects (choices/layers) → full deck completion.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.

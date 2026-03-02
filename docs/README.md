@@ -3,6 +3,7 @@
 - `docs/DECISIONS_LOG.md` (source of truth): approved product/tech decisions.
 - `docs/PROJECT_OVERVIEW.md`: product scope, variant rules, canonical decklist.
 - `docs/ARCHITECTURE_PLAN.md`: system boundaries and runtime model.
+- `docs/RULES_ENGINE_ARCHITECTURE.md`: full rules engine design (GameState, Command, Event, Kernel, Layers, Triggers, Choices).
 - `docs/TECH_DECISIONS_DRAFT.md`: current stack and key rationale.
 - `docs/AUTH_API_CONTRACT.md`: auth strategy, route contract, and security controls.
 - `docs/ROADMAP_DRAFT.md`: phased delivery plan.
