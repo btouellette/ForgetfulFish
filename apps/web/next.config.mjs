@@ -32,6 +32,10 @@ const nextConfig = {
         {
           source: "/api/:path((?!auth(?:/|$)).*)",
           destination: `${baseUrl}/api/:path`
+        },
+        {
+          source: "/ws/:path*",
+          destination: `${baseUrl}/ws/:path*`
         }
       ],
       fallback: []

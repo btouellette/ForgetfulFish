@@ -70,7 +70,7 @@
   - [x] two-client room update fanout on ready/start
   - [x] reconnect returning current canonical snapshot
 - [x] Add web tests for WS message handling and reconnect behavior.
-- [ ] Add browser E2E coverage for two-client room realtime sync and reconnect UX.
+- [x] Add browser E2E coverage for two-client room realtime sync and reconnect UX.
 - [x] Add structured connection lifecycle logs (connect, auth fail, disconnect, broadcast failure).
 - [x] Update architecture/contract docs with WS endpoint and event schemas.
 

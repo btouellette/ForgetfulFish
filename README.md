@@ -28,6 +28,7 @@ Production URL: `https://forgetfulfish.com`.
 - Lint: `pnpm lint`
 - Typecheck: `pnpm typecheck`
 - Tests: `pnpm test`
+- Browser E2E: `pnpm test:e2e`
 - Auth smoke check: `pnpm smoke:auth`
 - Format check: `pnpm format:check`
 
