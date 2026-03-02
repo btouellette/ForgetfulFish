@@ -15,6 +15,12 @@ describe("session helpers", () => {
     expect(token).toBeUndefined();
   });
 
+  it("returns undefined for malformed percent-encoding in session cookies", () => {
+    const token = getSessionToken("authjs.session-token=%");
+
+    expect(token).toBeUndefined();
+  });
+
   it("caches valid lookups and refreshes after TTL", async () => {
     let now = 1_000;
     const dateNowSpy = vi.spyOn(Date, "now").mockImplementation(() => now);

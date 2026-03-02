@@ -63,7 +63,11 @@ export function getSessionToken(cookieHeader: string | undefined) {
       continue;
     }
 
-    return decodeURIComponent(rawValue);
+    try {
+      return decodeURIComponent(rawValue);
+    } catch {
+      return undefined;
+    }
   }
 
   return undefined;
