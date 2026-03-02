@@ -21,8 +21,11 @@ These rules define how AI agents should operate in this repository.
 ## GitHub Workflow
 
 - Use a pull-request workflow for all GitHub work; do not push direct commits to `main`.
-- Check the current git branch before starting work and again before finishing work.
-- After submitting a PR, check out the local `main` branch and pull the latest remote changes.
+- For each new user request, start from an updated `main`: `git checkout main` then fast-forward from `origin/main`.
+- Create a new branch from updated `main` for that request unless the user explicitly asks to continue the same branch/PR.
+- Do not reuse a branch that already has an open or merged PR for unrelated follow-up work.
+- Before pushing, confirm `git log origin/main..HEAD` contains only commits for the current request.
+- After submitting a PR, check out local `main` and pull latest remote changes.
 
 ## Testing Standards
 
