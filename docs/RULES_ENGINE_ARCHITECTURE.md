@@ -62,13 +62,13 @@ GameState
 ├── id, version, rngSeed
 ├── players[2]
 │   ├── id, life, manaPool
-│   ├── hand: CardId[]           // indices into objectPool
+│   ├── hand: ObjectId[]         // indices into objectPool
 │   └── priority: boolean
 ├── zones
-│   ├── library: CardId[]        // single shared library
-│   ├── graveyard: CardId[]      // single shared graveyard
-│   ├── battlefield: PermanentId[]
-│   └── exile: CardId[]
+│   ├── library: ObjectId[]      // single shared library
+│   ├── graveyard: ObjectId[]    // single shared graveyard
+│   ├── battlefield: ObjectId[]
+│   └── exile: ObjectId[]
 ├── objectPool: Map<ObjectId, GameObject>
 │   └── GameObject: { cardDef, owner, controller, counters,
 │                     tapped, summoningSick, attachments,
@@ -79,7 +79,7 @@ GameState
 │   ├── phase, step
 │   ├── attackers, blockers
 │   └── landPlayedThisTurn
-├── pendingChoice?: Choice        // blocks priority until resolved
+├── pendingChoice?: PendingChoice  // blocks priority until resolved
 └── continuousEffects: ContinuousEffect[]
 ```
 
@@ -202,13 +202,14 @@ When a spell or ability resolves:
      source: ObjectId
      controller: PlayerId
      targets: ResolvedTarget[]
-     pendingActions: Action[]   // kernel's planned work
+     pendingActions: Action[]      // kernel's planned work
+     requiredChoice?: PendingChoice // set when onResolve needs player input
    }
    ```
 
 2. **Card's `onResolve` handler fires**, reading/writing `pendingActions`:
    ```typescript
-   onResolve(ctx: EffectContext, state: GameState, choices: ChoicePayload | null): EffectContext
+   onResolve(ctx: EffectContext, state: Readonly<GameState>, choices: ChoicePayload | null): EffectContext
    ```
 
 3. **Replacement effects intercept** — cards with `replacementEffect` definitions scan
@@ -245,11 +246,13 @@ Implementation: `computeGameObject(objectId, state): DerivedGameObject` applies 
 `ContinuousEffect`s in layer order. The `objectPool` stores the "base" state; layers produce a
 derived view used for legality checks, rendering, and SBA checks — never mutated directly.
 
-Timestamp ordering is used within layers. Dependency detection (apply effect A before B when B
-depends on A's result) is required for Layer 7 only.
+Timestamp ordering is used within layers. In the full MTG rules, dependency detection (apply
+effect A before B when B depends on A's result) can arise in any layer — not exclusively Layer 7.
+The data structures must allow adding dependency detection to any layer without breaking changes.
 
-Nothing in the current deck requires the full Layer 7 dependency graph — the most complex
-interactions are text/type/control changing (Layers 2–6) with duration.
+In the initial implementation, explicit dependency resolution is only required for Layer 7, because
+nothing in the current deck requires cross-effect dependency handling in other layers. The most
+complex interactions in the current deck are text/type/control changing (Layers 2–6) with duration.
 
 ---
 
@@ -294,6 +297,10 @@ When `processCommand` encounters a choice point, it returns:
 { nextState: stateWithPendingChoice, newEvents: [], pendingChoice }
 ```
 
+`pendingChoice` is stored in both `GameState.pendingChoice` (durable, survives reconnects) and
+the `CommandResult` envelope (convenience for the server to react immediately without unpacking
+state). The two must always agree; the engine is responsible for keeping them in sync.
+
 The server broadcasts `pendingChoice` to the relevant player's client. The client submits a
 `MAKE_CHOICE` command. The engine resumes from the `continuation` token.
 
@@ -309,18 +316,19 @@ lightweight resumable computation without coroutines.
 Every mutation the kernel makes emits a `GameEvent`:
 
 ```typescript
+// PlayerId is an alias for string (opaque nominal type in implementation)
 type GameEvent =
-  | { type: 'CARD_DRAWN';         playerId: string; cardId: ObjectId }
+  | { type: 'CARD_DRAWN';         playerId: PlayerId; cardId: ObjectId }
   | { type: 'PERMANENT_ENTERED';  objectId: ObjectId; zone: Zone }
   | { type: 'PERMANENT_LEFT';     objectId: ObjectId; zone: Zone; destination: Zone }
   | { type: 'SPELL_CAST';         objectId: ObjectId; controller: PlayerId }
   | { type: 'ABILITY_ACTIVATED';  sourceId: ObjectId; controller: PlayerId }
   | { type: 'SPELL_COUNTERED';    objectId: ObjectId }
   | { type: 'DAMAGE_DEALT';       sourceId: ObjectId; targetId: ObjectId; amount: number }
-  | { type: 'LIFE_CHANGED';       playerId: string; amount: number; newTotal: number }
-  | { type: 'PRIORITY_PASSED';    playerId: string }
+  | { type: 'LIFE_CHANGED';       playerId: PlayerId; amount: number; newTotal: number }
+  | { type: 'PRIORITY_PASSED';    playerId: PlayerId }
   | { type: 'PHASE_CHANGED';      phase: Phase; step: Step }
-  | { type: 'PLAYER_LOST';        playerId: string; reason: LossReason }
+  | { type: 'PLAYER_LOST';        playerId: PlayerId; reason: LossReason }
   | ...
 ```
 
@@ -335,9 +343,14 @@ The server stores events in the database; the engine just returns them. Full gam
 
 ## 10. RNG and shuffle
 
-The engine receives a seeded `Rng` instance. Shuffles use Fisher-Yates with this RNG.
-The seed is stored in `GameState.rngSeed` and advanced on each use. This makes the entire
-game deterministic given the initial seed — enabling replay without re-randomizing.
+`GameState.rngSeed` is the single source of truth for randomness. The engine constructs a
+short-lived `Rng` instance from `state.rngSeed` at the start of each `processCommand` call,
+runs any required Fisher-Yates shuffles or random operations using it, and writes the advanced
+seed back into `nextState.rngSeed` before returning. Callers must not maintain a separate RNG
+state outside `GameState`.
+
+This makes the entire game deterministic given the initial seed — enabling full replay without
+re-randomizing.
 
 ---
 
