@@ -18,6 +18,7 @@ type RealtimeControl = {
 async function installRealtimeControl(context: BrowserContext) {
   await context.addInitScript(() => {
     const originalWebSocket = window.WebSocket;
+    const isRoomSocketUrl = (url: string) => url.includes("/ws/rooms/");
     const controlWindow = window as Window & {
       __ffRealtimeControl?: RealtimeControl;
     };
@@ -29,15 +30,19 @@ async function installRealtimeControl(context: BrowserContext) {
 
     class ControlledWebSocket extends originalWebSocket {
       constructor(url: string | URL, protocols?: string | string[]) {
+        const urlText = typeof url === "string" ? url : url.toString();
+        const isRoomSocket = isRoomSocketUrl(urlText);
+
         super(url, protocols);
 
-        controlWindow.__ffRealtimeControl?.trackedSockets.push(this);
+        if (isRoomSocket) {
+          controlWindow.__ffRealtimeControl?.trackedSockets.push(this);
+        }
 
         this.addEventListener("open", () => {
           const shouldBlock = controlWindow.__ffRealtimeControl?.blockConnections;
-          const urlText = typeof url === "string" ? url : url.toString();
 
-          if (shouldBlock && urlText.includes("/ws/rooms/")) {
+          if (shouldBlock && isRoomSocket) {
             this.close();
           }
         });
@@ -157,10 +162,22 @@ test("resyncs canonical lobby state after reconnect", async ({ browser, request 
 
   const ownerPage = await ownerContext.newPage();
   const secondPage = await secondContext.newPage();
+  let blockLobbyPollRequests = false;
 
   try {
+    await ownerPage.route(`**/api/rooms/${roomId}`, async (route, request) => {
+      if (request.method() === "GET" && blockLobbyPollRequests) {
+        await route.abort("failed");
+        return;
+      }
+
+      await route.continue();
+    });
+
     await Promise.all([ownerPage.goto(`/play/${roomId}`), secondPage.goto(`/play/${roomId}`)]);
     await Promise.all([expectRoomLoaded(ownerPage, "P1"), expectRoomLoaded(secondPage, "P2")]);
+
+    blockLobbyPollRequests = true;
 
     await ownerPage.evaluate(() => {
       const controlWindow = window as Window & {
@@ -199,6 +216,8 @@ test("resyncs canonical lobby state after reconnect", async ({ browser, request 
 
       controlWindow.__ffRealtimeControl.blockConnections = false;
     });
+    blockLobbyPollRequests = false;
+
     await expect(ownerPage.getByText("Live connection: connected")).toBeVisible({
       timeout: 20_000
     });
