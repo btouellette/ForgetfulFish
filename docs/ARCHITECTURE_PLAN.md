@@ -33,6 +33,8 @@ See `docs/NEXTJS_RULES.md` for strict web/server boundary rules.
 - Endpoint: `GET /ws/rooms/:roomId`.
 - Handshake auth: same Auth.js session cookie lookup as protected HTTP routes.
 - Authorization: only room participants may subscribe.
+- Connection fanout uses an in-process room socket map in `apps/server`.
+- Current realtime model is single-instance; multi-instance fanout requires external pub/sub (for example Redis).
 - On successful connect, server sends canonical `subscribed` snapshot.
 - Server broadcasts authoritative events to room subscribers after room mutations:
   - `room_lobby_updated`

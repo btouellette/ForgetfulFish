@@ -60,6 +60,12 @@
 - Route `/ws/*` at `nginx-proxy` via container env path split (`forgetful-fish-server` uses `VIRTUAL_PATH=/ws/`).
 - Do not proxy `/api/auth/*` to server; Auth.js routes remain on `forgetful-fish-web`.
 
+## 2026-03-02 Reliability Hardening
+
+- Server auth lookup now uses a 60-second in-process session cache for repeated HTTP and WebSocket auth checks.
+- Room join input parsing accepts UUID room IDs only (raw ID or `/play/:roomId` URL) and maps common join statuses to clearer UI messages.
+- Removed unused `rooms.closedAt` from Prisma schema and migrations.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import WebSocket from "ws";
 
 import { buildServer } from "../src/app";
@@ -342,6 +342,43 @@ async function bootstrapRoom(roomStore: InMemoryRoomStore) {
 }
 
 describe("room websocket", () => {
+  it("logs and closes websocket when async handler throws", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await bootstrapRoom(roomStore);
+    const lookupError = new Error("session lookup exploded");
+    const app = buildServer({
+      sessionLookup: async () => {
+        throw lookupError;
+      },
+      roomStore
+    });
+    const errorSpy = vi.spyOn(app.log, "error");
+
+    try {
+      await app.listen({ port: 0, host: "127.0.0.1" });
+      const address = app.server.address();
+
+      if (!address || typeof address === "string") {
+        throw new Error("server did not expose an address");
+      }
+
+      const rejected = await connectExpectRejected(
+        `ws://127.0.0.1:${address.port}/ws/rooms/${roomId}`,
+        "owner"
+      );
+
+      expect(rejected.code).toBe(1011);
+      expect(rejected.reason).toBe("internal_error");
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ event: "ws_handler_error", err: lookupError }),
+        "ws async handler failed"
+      );
+    } finally {
+      errorSpy.mockRestore();
+      await app.close();
+    }
+  });
+
   it("rejects websocket room connections without a valid session", async () => {
     const roomStore = createInMemoryRoomStore();
     const roomId = await bootstrapRoom(roomStore);
@@ -369,6 +406,57 @@ describe("room websocket", () => {
     }
 
     await app.close();
+  });
+
+  it("reuses cached session lookup for repeated websocket auth", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await bootstrapRoom(roomStore);
+    let sessionLookupCalls = 0;
+    const app = buildServer({
+      sessionLookup: async (sessionToken) => {
+        sessionLookupCalls += 1;
+
+        if (sessionToken !== "owner") {
+          return null;
+        }
+
+        return {
+          expires: new Date("2100-01-01T00:00:00.000Z"),
+          user: {
+            id: "owner-1",
+            email: "owner-1@example.com"
+          }
+        };
+      },
+      roomStore
+    });
+
+    try {
+      await app.listen({ port: 0, host: "127.0.0.1" });
+      const address = app.server.address();
+
+      if (!address || typeof address === "string") {
+        throw new Error("server did not expose an address");
+      }
+
+      const firstSocket = await connectSocket(
+        `ws://127.0.0.1:${address.port}/ws/rooms/${roomId}`,
+        "owner"
+      );
+      await waitForMessageType(firstSocket, "subscribed");
+      await closeSocket(firstSocket);
+
+      const secondSocket = await connectSocket(
+        `ws://127.0.0.1:${address.port}/ws/rooms/${roomId}`,
+        "owner"
+      );
+      await waitForMessageType(secondSocket, "subscribed");
+      await closeSocket(secondSocket);
+
+      expect(sessionLookupCalls).toBe(1);
+    } finally {
+      await app.close();
+    }
   });
 
   it("sends subscribed snapshot for participant and rejects non-participants", async () => {

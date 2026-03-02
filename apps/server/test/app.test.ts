@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createInitialGameState } from "@forgetful-fish/game-engine";
 
@@ -442,6 +442,134 @@ describe("server", () => {
         userId: "user-1",
         email: "user@example.com"
       });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("caches valid session lookups within the TTL", async () => {
+    let sessionLookupCalls = 0;
+    const app = buildServer({
+      sessionLookup: async (token) => {
+        sessionLookupCalls += 1;
+
+        if (token !== "valid") {
+          return null;
+        }
+
+        return {
+          expires: new Date("2100-01-01T00:00:00.000Z"),
+          user: {
+            id: "user-1",
+            email: "user@example.com"
+          }
+        };
+      }
+    });
+
+    try {
+      const firstResponse = await app.inject({
+        method: "GET",
+        url: "/api/me",
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      const secondResponse = await app.inject({
+        method: "GET",
+        url: "/api/me",
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      expect(firstResponse.statusCode).toBe(200);
+      expect(secondResponse.statusCode).toBe(200);
+      expect(sessionLookupCalls).toBe(1);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("refreshes cached session lookups after the TTL expires", async () => {
+    let now = 1_000_000;
+    const dateNowSpy = vi.spyOn(Date, "now").mockImplementation(() => now);
+    let sessionLookupCalls = 0;
+    const app = buildServer({
+      sessionLookup: async (token) => {
+        sessionLookupCalls += 1;
+
+        if (token !== "valid") {
+          return null;
+        }
+
+        return {
+          expires: new Date("2100-01-01T00:00:00.000Z"),
+          user: {
+            id: "user-1",
+            email: "user@example.com"
+          }
+        };
+      }
+    });
+
+    try {
+      const firstResponse = await app.inject({
+        method: "GET",
+        url: "/api/me",
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      now += 60_001;
+
+      const secondResponse = await app.inject({
+        method: "GET",
+        url: "/api/me",
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      expect(firstResponse.statusCode).toBe(200);
+      expect(secondResponse.statusCode).toBe(200);
+      expect(sessionLookupCalls).toBe(2);
+    } finally {
+      dateNowSpy.mockRestore();
+      await app.close();
+    }
+  });
+
+  it("rejects oversized session cookie values before lookup", async () => {
+    let sessionLookupCalls = 0;
+    const app = buildServer({
+      sessionLookup: async () => {
+        sessionLookupCalls += 1;
+
+        return {
+          expires: new Date("2100-01-01T00:00:00.000Z"),
+          user: {
+            id: "user-1",
+            email: "user@example.com"
+          }
+        };
+      }
+    });
+
+    try {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/me",
+        headers: {
+          cookie: `authjs.session-token=${"a".repeat(4097)}`
+        }
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.json()).toEqual({ error: "unauthorized" });
+      expect(sessionLookupCalls).toBe(0);
     } finally {
       await app.close();
     }
