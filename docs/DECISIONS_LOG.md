@@ -74,7 +74,7 @@
 - Card definitions are plain data objects (`CardDefinition`) in one file per card under `packages/game-engine/src/cards/`; no class inheritance.
 - Effect resolution follows the whiteboard/naps model: kernel writes `pendingActions`, card handlers modify them, replacement effects intercept, kernel executes.
 - Continuous effects are computed via `computeGameObject` applying the 7-layer MTG layer system in order; `objectPool` holds base state, derived view is never mutated.
-- Player input mid-resolution is handled by a `PendingChoice` returned from `processCommand`; resumption uses a phase-enum continuation (no coroutines).
+- Player input mid-resolution is handled via a `PendingChoice` returned from `processCommand`; resumption uses an opaque `ContinuationToken` and `requiredChoice` on `EffectContext` as described in `docs/RULES_ENGINE_ARCHITECTURE.md` (no coroutines).
 - RNG is seeded and deterministic (Fisher-Yates); seed is stored in `GameState.rngSeed` and advanced on each use, enabling full replay.
 - Implementation follows a five-phase order: core turn loop → spells/targeting → combat → complex effects (choices/layers) → full deck completion.
 
