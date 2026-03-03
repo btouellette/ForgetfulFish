@@ -4,6 +4,7 @@
 - `docs/PROJECT_OVERVIEW.md`: product scope, variant rules, canonical decklist.
 - `docs/ARCHITECTURE_PLAN.md`: system boundaries and runtime model.
 - `docs/RULES_ENGINE_ARCHITECTURE.md`: full rules engine design (GameState, Command, Event, Kernel, Layers, Triggers, Choices).
+- `docs/RULES_ENGINE_IMPLEMENTATION_PLAN.md`: granular task breakdown of the rules engine architecture into agent-executable steps.
 - `docs/TECH_DECISIONS_DRAFT.md`: current stack and key rationale.
 - `docs/AUTH_API_CONTRACT.md`: auth strategy, route contract, and security controls.
 - `docs/ROADMAP_DRAFT.md`: phased delivery plan.
