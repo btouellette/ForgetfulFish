@@ -78,6 +78,22 @@
 - RNG is seeded and deterministic (Fisher-Yates); seed is stored in `GameState.rngSeed` and advanced on each use, enabling full replay.
 - Implementation follows a five-phase order: core turn loop → spells/targeting → combat → complex effects (choices/layers) → full deck completion.
 
+## 2026-03-03 Rules Engine Architecture Revision
+
+- Revised `docs/RULES_ENGINE_ARCHITECTURE.md` based on deep analysis of XMage, Forge, SabberStone, MTG Arena, and Argentum architectures.
+- Key architectural changes from original plan:
+  - **Object identity**: all object references now use `(id, zcc)` pairs with zone-change counter; LKI snapshots stored on zone changes.
+  - **Choice re-entry**: replaced "re-call onResolve" model with persisted `EffectContext` (whiteboard + resolution cursor) on stack items — prevents double-application bugs and makes handlers trivially idempotent.
+  - **Action Modifier Pipeline**: expanded from "replacement effects intercept pendingActions" to a 4-stage pipeline (rewrite/filter/redirect/augment) covering replacement effects, task cancellation, damage redirection, and action-space modification.
+  - **Ability AST**: card abilities use structured AST nodes (not closures) so Layer 3 text-changing effects (Mind Bend, Crystal Spray) can find and substitute tokens at runtime.
+  - **Layer dependency**: implemented for Layer 3 from the start (not deferred to Layer 7 only) because Mind Bend/Crystal Spray interactions require it.
+  - **Trigger ordering**: added within-player ordering choice (not just APNAP between players).
+  - **Hidden information**: added `GameView` projection and event redaction — clients never receive full GameState, rngSeed, or opponent's hidden zone contents.
+  - **Event facts**: events now carry explicit results (shuffle permutations, RNG draws, choices) for replay robustness across engine versions.
+  - **GameMode hooks**: formalized shared-deck variant as a `GameMode` interface for resolving "your library"/"your graveyard" references.
+  - **ETB lookahead**: data structures support CR 614.12 hypothetical state evaluation; implementation deferred until a deck card requires it.
+- Implementation phases expanded from 5 to 7, front-loading identity/LKI and the action modifier pipeline.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.
