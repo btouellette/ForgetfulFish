@@ -105,9 +105,9 @@ Define per §12:
   `PHASE_CHANGED`, `PLAYER_LOST`, `SHUFFLED`, `CHOICE_MADE`, `RNG_CONSUMED`,
   `CONTINUOUS_EFFECT_ADDED`, `CONTINUOUS_EFFECT_REMOVED`, `CONTROL_CHANGED`
 - `GameEvent = GameEventBase & GameEventPayload`
-- Helper: `createEvent(seq: number, payload: GameEventPayload): GameEvent` — generates stable ID
+- Helper: `createEvent(envelope: EventEnvelope, seq: number, payload: GameEventPayload): GameEvent` — generates stable ID from `envelope.gameId` and `seq`
 
-<!-- TODO: Decide on event ID format — UUID v4, or `${gameId}:${seq}`? Architecture doc says "stable unique ID" but doesn't specify format. Leaning toward `${gameId}:${seq}` since seq is already monotonic and unique within a game. -->
+<!-- TODO: Decide on event ID format — UUID v4, or `${gameId}:${seq}`? Architecture doc says "stable unique ID" but doesn't specify format. Leaning toward `${gameId}:${seq}` since seq is already monotonic and unique within a game. The `envelope` parameter provides `gameId`. -->
 
 Depends: P0.1 (needs ObjectRef, PlayerId, ZoneRef for event payloads)
 Test: Construct one event of each type, verify discriminated union narrows correctly in switch.
@@ -126,7 +126,7 @@ Implement per §15:
   - `getSeed(): string` — current advanced seed (for writing back to `GameState.rngSeed`)
 - Pure: no side effects, same seed always produces same sequence.
 
-<!-- TODO: Choose PRNG algorithm. Architecture doc says "seeded deterministic RNG" but doesn't specify. Options: (1) xoshiro256** — fast, good statistical properties, 256-bit state. (2) Mulberry32 — simpler, 32-bit, adequate for card games. (3) PCG — excellent distribution, 64-bit. Recommend xoshiro256** for future-proofing. Need to verify a TypeScript implementation exists or write one. -->
+<!-- TODO: Choose PRNG algorithm. Architecture doc says "seeded deterministic RNG" but doesn't specify. Options: (1) `xoshiro256**` — fast, good statistical properties, 256-bit state. (2) Mulberry32 — simpler, 32-bit, adequate for card games. (3) PCG — excellent distribution, 64-bit. Recommend `xoshiro256**` for future-proofing. Need to verify a TypeScript implementation exists or write one. -->
 
 Depends: none
 Test:
@@ -205,7 +205,7 @@ processCommand(state: Readonly<GameState>, command: Command, rng: Rng): CommandR
 ```
 - `CommandResult = { nextState: GameState; newEvents: GameEvent[]; pendingChoice?: PendingChoice }`
 - Initial implementation: switch on `command.type`, delegate to stub handlers that return state unchanged.
-- Wire up RNG: derive `Rng` from `state.rngSeed`, write advanced seed back to `nextState.rngSeed`.
+- Wire up RNG: use the provided `rng` instance for all randomness, then write its advanced seed (via `rng.getSeed()`) back to `nextState.rngSeed`. Callers are responsible for constructing `rng` from `state.rngSeed` before invoking `processCommand`.
 
 Depends: P0.3, P0.5, P0.6, P0.9
 Test: Call `processCommand` with `PASS_PRIORITY` on a minimal state → returns same state, no events, no pending choice. Verify `rngSeed` is unchanged when no RNG consumed.
@@ -326,7 +326,7 @@ Test:
 2. Draw emits `CARD_DRAWN` event with correct playerId and cardId.
 3. Object's zone updated to hand, zcc bumped.
 4. LKI snapshot stored for the pre-draw state.
-Acceptance: Draw works end-to-end through `processCommand` with `PLAY_LAND` ... (actually draw is triggered by turn structure, not a command — wire into draw step).
+Acceptance: Draw is invoked via the turn structure (draw step through `advanceStep` calling `drawCard`) and produces the behavior described in tests 1–4 when run in an end-to-end game flow.
 
 ### P1.4 — Play land command
 
@@ -683,10 +683,10 @@ Cards: **Mystical Tutor** (search library for instant/sorcery, put on top)
 Implement:
 - CardDefinition: instant, {U}, `onResolve`:
   - Step 0: Emit `PendingChoice { type: 'CHOOSE_CARDS'; candidates: instants/sorceries in library; min: 0; max: 1 }`
-  - Step 1 (after choice): `MOVE_ZONE` chosen card to top of library
-  - Step 2: `SHUFFLE` library (Mystical Tutor doesn't shuffle — re-check)
+  - Step 1 (after choice): `SHUFFLE` library
+  - Step 2: `MOVE_ZONE` chosen card to top of library
 
-<!-- TODO: Mystical Tutor Oracle text: "Search your library for an instant or sorcery card and reveal that card. Shuffle your library, then put the card on top of it." So the order is: search → reveal → shuffle → put on top. The shuffle happens BEFORE the put-on-top. This means the resolution steps should be: choose card, shuffle, then move card to top. Verify and implement in that order. -->
+<!-- TODO: Mystical Tutor Oracle text: "Search your library for an instant or sorcery card and reveal that card. Shuffle your library, then put the card on top of it." Resolution order is: search → reveal → shuffle → put on top. Steps above reflect this. Verify shared-deck semantics for "your library" via GameMode. -->
 
 Depends: P0.6 (RNG for shuffle), P0.11, P2.1, P2.2, P2.3
 Test:
@@ -930,7 +930,7 @@ Implement:
   - Step 0: Emit choices for which word to change and what to change it to
   - Step 1: Create `TextChangeEffect` continuous effect with `duration: 'permanent'` in Layer 3
 
-<!-- TODO: Mind Bend's Oracle text: "Change the text of target permanent by replacing all instances of one basic land type with another (This effect lasts indefinitely)." This means ALL instances on the permanent, not just one. Verify the TextChangeEffect AST walker replaces all matching tokens on the permanent, not just one occurrence. -->
+<!-- Note: Mind Bend's Oracle text says "replacing all instances of one basic land type with another (This effect lasts indefinitely)." The TextChangeEffect AST walker must replace ALL matching tokens on the permanent, not just one occurrence. This is confirmed and not an open question. -->
 
 Depends: P0.11, P2.1, P2.2, P3.5
 Test:
@@ -1686,7 +1686,7 @@ Collected from `<!-- TODO -->` markers above — items needing clarification bef
 1. **P0.2** — Whether `abilities: AbilityAst[]` lives on `GameObjectBase` or only on derived view
 2. **P0.3** — Phase/Step enum structure (nested vs flat)
 3. **P0.5** — Event ID format (`UUID` vs `gameId:seq`)
-4. **P0.6** — PRNG algorithm selection (xoshiro256** recommended)
+4. **P0.6** — PRNG algorithm selection (`xoshiro256**` recommended)
 5. **P0.7** — `determineOwner` on draw: confirm variant rules
 6. **P0.8** — Full enumeration of `ActionType` variants for the 80-card deck
 7. **P0.11** — `ActivatedAbilityAst` type for mana abilities (tap vs activated, stack interaction)
@@ -1697,18 +1697,17 @@ Collected from `<!-- TODO -->` markers above — items needing clarification bef
 12. **P2.8** — Accumulated Knowledge count timing (stack vs graveyard)
 13. **P2.9** — Brainstorm put-back: one choice or two choices
 14. **P2.10** — Mystical Tutor resolution order (search → shuffle → put on top)
-15. **P3.11** — Mind Bend: all instances vs single instance (confirmed: all instances)
-16. **P3.12** — Crystal Spray: instance selection mechanism for UI/choice
-17. **P3.13** — Dance of the Skywise: "becomes" effect — does it remove existing abilities?
-18. **P4.1** — Dandan attack legality: check Layer 3-rewritten condition at declaration time
-19. **P4.7** — Mystic Sanctuary: "3+ other Islands" — self doesn't count
-20. **P4.9** — Scry choice type (CHOOSE_YES_NO vs CHOOSE_CARDS)
-21. **P5.1** — Diminishing Returns: "you lose 1 life" — caster only, confirm
-22. **P5.4** — Metamorphose: actual Oracle text vs architecture doc characterization
-23. **P5.6** — Vision Charm phase out: minimal scope needed
-24. **P5.7** — Flashback subsystem design (alternative cost + exile replacement)
-25. **P5.10** — ETB lookahead: review if any card needs CR 614.12
-26. **P5.11** — Cross-layer dependency scenarios enumeration
-27. **P6.3** — Event-stream replication: game-engine vs server scope boundary
-28. **P6.4** — Reconnect protocol: game-engine vs server scope boundary
-29. **P7.4** — Property-testing library selection (fast-check recommended)
+15. **P3.12** — Crystal Spray: instance selection mechanism for UI/choice
+16. **P3.13** — Dance of the Skywise: "becomes" effect — does it remove existing abilities?
+17. **P4.1** — Dandan attack legality: check Layer 3-rewritten condition at declaration time
+18. **P4.7** — Mystic Sanctuary: "3+ other Islands" — self doesn't count
+19. **P4.9** — Scry choice type (CHOOSE_YES_NO vs CHOOSE_CARDS)
+20. **P5.1** — Diminishing Returns: "you lose 1 life" — caster only, confirm
+21. **P5.4** — Metamorphose: actual Oracle text vs architecture doc characterization
+22. **P5.6** — Vision Charm phase out: minimal scope needed
+23. **P5.7** — Flashback subsystem design (alternative cost + exile replacement)
+24. **P5.10** — ETB lookahead: review if any card needs CR 614.12
+25. **P5.11** — Cross-layer dependency scenarios enumeration
+26. **P6.3** — Event-stream replication: game-engine vs server scope boundary
+27. **P6.4** — Reconnect protocol: game-engine vs server scope boundary
+28. **P7.4** — Property-testing library selection (fast-check recommended)
