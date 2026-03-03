@@ -95,6 +95,7 @@ GameState
 │   ├── attackers, blockers
 │   └── landPlayedThisTurn
 ├── continuousEffects: ContinuousEffect[]
+├── pendingChoice: PendingChoice | null  // persisted — survives reconnect/restart
 ├── lkiStore: Map<string, LKISnapshot>  // keyed by "objectId:zcc"
 └── triggerQueue: TriggeredAbility[]    // waiting to be put on stack
 ```
@@ -165,12 +166,12 @@ type Command =
   | { type: 'DECLARE_BLOCKERS';   assignments: BlockerAssignment[] }
   | { type: 'PLAY_LAND';          cardId: ObjectId }
   | { type: 'CONCEDE' }
-  | { type: 'ORDER_TRIGGERS';     triggerOrder: string[] }
 ```
 
-Commands carry intent only. Validation happens inside `processCommand`. The `ORDER_TRIGGERS`
-command handles the case where a player has multiple simultaneous triggers to order (Gap 7
-from analysis).
+Commands carry intent only. Validation happens inside `processCommand`. Trigger ordering and
+replacement-effect ordering are handled via `MAKE_CHOICE` with `PendingChoice.type` set to
+`ORDER_TRIGGERS` or `CHOOSE_REPLACEMENT` respectively — they do not have dedicated command
+types because the choice system already provides the mechanism for player decisions mid-flow.
 
 ---
 
@@ -548,6 +549,11 @@ When `processCommand` encounters a choice point, it returns:
 { nextState: stateWithPendingChoice, newEvents: [], pendingChoice }
 ```
 
+`pendingChoice` lives in `GameState.pendingChoice` (durable — persisted to Postgres, survives
+reconnects and server restarts). The `CommandResult` also carries `pendingChoice` as a
+convenience field so the server can react immediately without unpacking state. The two always
+agree; the engine sets both atomically.
+
 **Re-entry model (persisted whiteboard):** The `EffectContext` (including `cursor`,
 `whiteboard`, and `scratch`) is stored on the resolving `StackItem`. When a `MAKE_CHOICE`
 command arrives:
@@ -586,8 +592,8 @@ type GameEventBase = {
 
 type GameEventPayload =
   | { type: 'CARD_DRAWN';         playerId: PlayerId; cardId: ObjectId }
-  | { type: 'ZONE_CHANGE';        object: ObjectRef; from: ZoneRef; to: ZoneRef;
-                                   toIndex?: number; newZcc: number }
+  | { type: 'ZONE_CHANGE';        objectId: ObjectId; oldZcc: number; newZcc: number;
+                                   from: ZoneRef; to: ZoneRef; toIndex?: number }
   | { type: 'SPELL_CAST';         object: ObjectRef; controller: PlayerId }
   | { type: 'ABILITY_TRIGGERED';  source: ObjectRef; controller: PlayerId }
   | { type: 'ABILITY_ACTIVATED';  source: ObjectRef; controller: PlayerId }
@@ -669,7 +675,7 @@ interface GameMode {
   // Simultaneous draws from same effect: dealing order
   simultaneousDrawOrder(state: GameState, count: number, activePlayer: PlayerId): PlayerId[]
   // Ownership rules for cards drawn/played
-  determineOwner(state: GameState, cardId: ObjectId, action: 'draw' | 'play'): PlayerId
+  determineOwner(state: GameState, objectId: ObjectId, action: 'draw' | 'play'): PlayerId
 }
 ```
 
@@ -689,11 +695,12 @@ variant assumptions into the kernel.
 
 ## 15. RNG and shuffle
 
-`GameState.rngSeed` is the single source of truth for randomness. The engine constructs a
-short-lived `Rng` instance from `state.rngSeed` at the start of each `processCommand` call,
-runs any required Fisher-Yates shuffles or random operations using it, and writes the advanced
-seed back into `nextState.rngSeed` before returning. Callers must not maintain a separate RNG
-state outside `GameState`.
+`GameState.rngSeed` is the single source of truth for randomness. At the start of each
+`processCommand` call, the caller constructs a short-lived `Rng` instance from `state.rngSeed`
+(this is the `rng: Rng` parameter in the earlier signature — it must always be freshly derived
+from `state.rngSeed`, never maintained externally). The engine runs any required Fisher-Yates
+shuffles or random operations using it, and writes the advanced seed back into
+`nextState.rngSeed` before returning. Callers must not evolve any RNG state outside `GameState`.
 
 Every RNG consumption emits an `RNG_CONSUMED` event with the explicit result, and every shuffle
 emits a `SHUFFLED` event with the resulting permutation. This makes the game deterministic given
