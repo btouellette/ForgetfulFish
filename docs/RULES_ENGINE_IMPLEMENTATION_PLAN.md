@@ -413,7 +413,7 @@ Test: **Write tests FIRST**, then implement.
 6. `ConditionAst` correctly represents "defender controls Island".
 Acceptance: All AST types compile, used by `CardDefinition` in P0.11.
 
-### P0.13 — Update index.ts exports and remove old state.ts
+### [x] P0.13 — Update index.ts exports and remove old state.ts
 
 **Files**: `index.ts`, delete old `state.ts`
 
