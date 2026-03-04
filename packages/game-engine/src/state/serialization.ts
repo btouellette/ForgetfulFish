@@ -23,6 +23,10 @@ const defaultModeRegistry: ModeRegistry = {
   [SharedDeckMode.id]: SharedDeckMode
 };
 
+function createRecord<V>(): Record<string, V> {
+  return Object.create(null) as Record<string, V>;
+}
+
 export type SerializedGameObjectBase = Omit<GameObjectBase, "counters"> & {
   counters: NumberMap;
 };
@@ -61,23 +65,11 @@ export type SerializedGameState = {
 };
 
 function numberMapToRecord(value: Map<string, number>): NumberMap {
-  const record: NumberMap = {};
-
-  for (const [key, mapValue] of value.entries()) {
-    record[key] = mapValue;
-  }
-
-  return record;
+  return mapToRecord(value);
 }
 
 function recordToNumberMap(value: NumberMap): Map<string, number> {
-  const map = new Map<string, number>();
-
-  for (const [key, mapValue] of Object.entries(value)) {
-    map.set(key, mapValue);
-  }
-
-  return map;
+  return recordToMap(value);
 }
 
 function serializeGameObject(gameObject: GameObject): SerializedGameObject {
@@ -125,7 +117,7 @@ function deserializeSnapshot(snapshot: SerializedLKISnapshot): LKISnapshot {
 }
 
 function mapToRecord<V>(value: Map<string, V>): Record<string, V> {
-  const record: Record<string, V> = {};
+  const record = createRecord<V>();
 
   for (const [key, mapValue] of value.entries()) {
     record[key] = mapValue;
@@ -145,8 +137,11 @@ function recordToMap<V>(value: Record<string, V>): Map<string, V> {
 }
 
 export function serializeGameState(state: GameState): SerializedGameState {
-  const serializedObjectPool: Record<ObjectId, SerializedGameObject> = {};
-  const serializedLkiStore: Record<string, SerializedLKISnapshot> = {};
+  const serializedObjectPool = createRecord<SerializedGameObject>() as Record<
+    ObjectId,
+    SerializedGameObject
+  >;
+  const serializedLkiStore = createRecord<SerializedLKISnapshot>();
 
   for (const [objectId, gameObject] of state.objectPool.entries()) {
     serializedObjectPool[objectId] = serializeGameObject(gameObject);
