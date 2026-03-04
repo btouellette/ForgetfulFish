@@ -11,6 +11,7 @@ import type { GameObject, GameObjectBase, GameObjectView } from "./gameObject";
 import type { LKISnapshot } from "./lki";
 import type { ObjectId } from "./objectRef";
 import type { ZoneKey, ZoneRef } from "./zones";
+import { SharedDeckMode } from "../mode/sharedDeck";
 
 type NumberMap = Record<string, number>;
 type ZoneCollection = Record<ZoneKey, ObjectId[]>;
@@ -171,6 +172,10 @@ export function deserializeGameState(serialized: SerializedGameState): GameState
   const objectPool = new Map<ObjectId, GameObject>();
   const lkiStore = new Map<string, LKISnapshot>();
 
+  if (serialized.modeId !== SharedDeckMode.id) {
+    throw new Error(`unsupported game mode '${serialized.modeId}'`);
+  }
+
   for (const [objectId, gameObject] of Object.entries(serialized.objectPool)) {
     objectPool.set(objectId as ObjectId, deserializeGameObject(gameObject));
   }
@@ -184,7 +189,7 @@ export function deserializeGameState(serialized: SerializedGameState): GameState
     version: serialized.version,
     engineVersion: serialized.engineVersion,
     rngSeed: serialized.rngSeed,
-    mode: { id: serialized.modeId },
+    mode: SharedDeckMode,
     players: serialized.players,
     zones: recordToMap(serialized.zones),
     zoneCatalog: serialized.zoneCatalog,
