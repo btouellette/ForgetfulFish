@@ -226,7 +226,7 @@ Test: **Write tests FIRST**, then implement.
 6. Sequence numbers are correctly assigned and monotonic.
 Acceptance: All event types compile, exhaustiveness check via `never` in switch default.
 
-### P0.6 — Seeded deterministic RNG
+### [x] P0.6 — Seeded deterministic RNG
 
 **Files**: `rng/rng.ts`
 
