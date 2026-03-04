@@ -28,6 +28,23 @@ function passThrough(state: Readonly<GameState>): HandlerResult {
   };
 }
 
+function normalizeRngSeed(seed: string): string {
+  return seed.startsWith("u32:") ? seed : new Rng(seed).getSeed();
+}
+
+function applyRngSeedIfChanged(
+  state: GameState,
+  baselineSeed: string,
+  nextSeed: string
+): GameState {
+  return nextSeed === baselineSeed
+    ? state
+    : {
+        ...state,
+        rngSeed: nextSeed
+      };
+}
+
 export function processCommand(
   state: Readonly<GameState>,
   command: Command,
@@ -50,17 +67,8 @@ export function processCommand(
     }
   })();
 
-  const nextSeed = rng.getSeed();
-  const baselineSeed = state.rngSeed.startsWith("u32:")
-    ? state.rngSeed
-    : new Rng(state.rngSeed).getSeed();
-  const nextState: GameState =
-    nextSeed === baselineSeed
-      ? handlerResult.state
-      : {
-          ...handlerResult.state,
-          rngSeed: nextSeed
-        };
+  const baselineSeed = normalizeRngSeed(state.rngSeed);
+  const nextState = applyRngSeedIfChanged(handlerResult.state, baselineSeed, rng.getSeed());
 
   return {
     nextState,

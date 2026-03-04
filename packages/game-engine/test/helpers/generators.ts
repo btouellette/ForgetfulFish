@@ -21,9 +21,13 @@ const SHARED_DECK_ZONE_REFS: readonly ZoneRef[] = [
 
 const playerIdArbitrary: fc.Arbitrary<PlayerId> = fc.constantFrom(...PLAYER_IDS);
 
+function toObjectId(id: number): ObjectId {
+  return `obj-${id}`;
+}
+
 const objectIdArbitrary: fc.Arbitrary<ObjectId> = fc
   .integer({ min: 0, max: 100_000 })
-  .map((id) => `obj-${id}`);
+  .map((id) => toObjectId(id));
 
 const manaPoolArbitrary: fc.Arbitrary<ManaPool> = fc.record({
   white: fc.integer({ min: 0, max: 12 }),
@@ -39,21 +43,27 @@ const mapFromRecord = (record: Record<string, number>): Map<string, number> =>
 
 export const zoneRefArbitrary: fc.Arbitrary<ZoneRef> = fc.constantFrom(...SHARED_DECK_ZONE_REFS);
 
-const gameObjectBaseArbitrary = fc.record({
-  id: objectIdArbitrary,
+const countersArbitrary = fc.dictionary(
+  fc.string({ minLength: 1, maxLength: 8 }),
+  fc.integer({ min: 0, max: 5 })
+);
+
+const objectCoreArbitraries = {
   zcc: fc.integer({ min: 0, max: 10 }),
   cardDefId: fc.constantFrom(...CARD_IDS),
   owner: playerIdArbitrary,
   controller: playerIdArbitrary,
-  counters: fc.dictionary(
-    fc.string({ minLength: 1, maxLength: 8 }),
-    fc.integer({ min: 0, max: 5 })
-  ),
+  counters: countersArbitrary,
   damage: fc.integer({ min: 0, max: 10 }),
   tapped: fc.boolean(),
   summoningSick: fc.boolean(),
-  attachments: fc.uniqueArray(objectIdArbitrary, { maxLength: 3 }),
   zone: zoneRefArbitrary
+};
+
+const gameObjectBaseArbitrary = fc.record({
+  id: objectIdArbitrary,
+  ...objectCoreArbitraries,
+  attachments: fc.uniqueArray(objectIdArbitrary, { maxLength: 3 })
 });
 
 export const gameObjectArbitrary: fc.Arbitrary<GameObject> = gameObjectBaseArbitrary.map(
@@ -79,18 +89,7 @@ type StateObjectModel = {
 
 const stateObjectModelArbitrary: fc.Arbitrary<StateObjectModel> = fc.record({
   id: fc.integer({ min: 0, max: 999_999 }),
-  zcc: fc.integer({ min: 0, max: 10 }),
-  cardDefId: fc.constantFrom(...CARD_IDS),
-  owner: playerIdArbitrary,
-  controller: playerIdArbitrary,
-  counters: fc.dictionary(
-    fc.string({ minLength: 1, maxLength: 8 }),
-    fc.integer({ min: 0, max: 5 })
-  ),
-  damage: fc.integer({ min: 0, max: 10 }),
-  tapped: fc.boolean(),
-  summoningSick: fc.boolean(),
-  zone: zoneRefArbitrary
+  ...objectCoreArbitraries
 });
 
 type StateModel = {
@@ -126,12 +125,18 @@ const stateModelArbitrary: fc.Arbitrary<StateModel> = fc.record({
   })
 });
 
-export const gameStateArbitrary: fc.Arbitrary<GameState> = stateModelArbitrary.map((model) => {
-  const state = createInitialGameState("p1", "p2", {
-    id: `g-${model.id}`,
-    rngSeed: `seed-${model.rngSeed}`
-  });
+function getRequiredZone(state: GameState, zoneRef: ZoneRef): ObjectId[] {
+  const key = zoneKey(zoneRef);
+  const zone = state.zones.get(key);
 
+  if (!zone) {
+    throw new Error(`missing expected zone key '${key}' in shared-deck state`);
+  }
+
+  return zone;
+}
+
+function applyStateModel(state: GameState, model: StateModel): void {
   state.version = model.version;
   state.turnState.activePlayerId = model.activePlayerId;
   state.turnState.priorityState = {
@@ -146,40 +151,44 @@ export const gameStateArbitrary: fc.Arbitrary<GameState> = stateModelArbitrary.m
   state.players[1].life = model.playerTwo.life;
   state.players[1].manaPool = model.playerTwo.manaPool;
   state.players[1].priority = model.playerTwo.priority;
+}
+
+function toGameObject(model: StateObjectModel): GameObject {
+  return {
+    id: toObjectId(model.id),
+    zcc: model.zcc,
+    cardDefId: model.cardDefId,
+    owner: model.owner,
+    controller: model.controller,
+    counters: mapFromRecord(model.counters),
+    damage: model.damage,
+    tapped: model.tapped,
+    summoningSick: model.summoningSick,
+    attachments: [],
+    abilities: [],
+    zone: model.zone
+  };
+}
+
+export const gameStateArbitrary: fc.Arbitrary<GameState> = stateModelArbitrary.map((model) => {
+  const state = createInitialGameState("p1", "p2", {
+    id: `g-${model.id}`,
+    rngSeed: `seed-${model.rngSeed}`
+  });
+
+  applyStateModel(state, model);
 
   for (const objectModel of model.objects) {
-    const id = `obj-${objectModel.id}`;
-    const object: GameObject = {
-      id,
-      zcc: objectModel.zcc,
-      cardDefId: objectModel.cardDefId,
-      owner: objectModel.owner,
-      controller: objectModel.controller,
-      counters: mapFromRecord(objectModel.counters),
-      damage: objectModel.damage,
-      tapped: objectModel.tapped,
-      summoningSick: objectModel.summoningSick,
-      attachments: [],
-      abilities: [],
-      zone: objectModel.zone
-    };
+    const object = toGameObject(objectModel);
 
-    state.objectPool.set(id, object);
+    state.objectPool.set(object.id, object);
 
-    const key = zoneKey(objectModel.zone);
-    const zone = state.zones.get(key);
-    if (!zone) {
-      throw new Error(`missing expected zone key '${key}' in shared-deck state`);
-    }
-    zone.push(id);
+    const zone = getRequiredZone(state, objectModel.zone);
+    zone.push(object.id);
   }
 
   for (const player of state.players) {
-    const handZoneKey = zoneKey({ kind: "hand", scope: "player", playerId: player.id });
-    const handZone = state.zones.get(handZoneKey);
-    if (!handZone) {
-      throw new Error(`missing expected hand zone '${handZoneKey}'`);
-    }
+    const handZone = getRequiredZone(state, { kind: "hand", scope: "player", playerId: player.id });
     player.hand = [...handZone];
   }
 
