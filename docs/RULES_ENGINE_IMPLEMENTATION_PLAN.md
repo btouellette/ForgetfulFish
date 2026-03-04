@@ -338,7 +338,7 @@ Test: **Write tests FIRST**, then implement.
 5. TypeScript narrows command types correctly in switch statements.
 Acceptance: Types compile, exported.
 
-### P0.10 — processCommand shell
+### [x] P0.10 — processCommand shell
 
 **Files**: `engine/processCommand.ts`
 
