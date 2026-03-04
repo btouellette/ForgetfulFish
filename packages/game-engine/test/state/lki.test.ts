@@ -31,6 +31,8 @@ describe("state/lki", () => {
 
     expect(snapshot.ref).toEqual({ id: "obj-1", zcc: 0 });
     expect(snapshot.zone).toEqual(zone);
+    expect(snapshot.base.zone).toEqual(zone);
+    expect(snapshot.derived.zone).toEqual(zone);
     expect(snapshot.base.id).toBe("obj-1");
     expect(snapshot.derived.id).toBe("obj-1");
   });

@@ -4,39 +4,45 @@ import { createEvent, type EventEnvelope, type GameEventPayload } from "../../sr
 
 function samplePayloads(): GameEventPayload[] {
   return [
-    { type: "CARD_DRAWN", playerId: "p1", card: { id: "obj-1", zcc: 0 } },
+    { type: "CARD_DRAWN", playerId: "p1", cardId: "obj-1" },
     {
       type: "ZONE_CHANGE",
       objectId: "obj-1",
+      oldZcc: 0,
+      newZcc: 1,
       from: { kind: "library", scope: "shared" },
-      to: { kind: "hand", scope: "player", playerId: "p1" }
+      to: { kind: "hand", scope: "player", playerId: "p1" },
+      toIndex: 0
     },
-    { type: "SPELL_CAST", playerId: "p1", spell: { id: "obj-2", zcc: 1 } },
+    { type: "SPELL_CAST", object: { id: "obj-2", zcc: 1 }, controller: "p1" },
     {
       type: "ABILITY_TRIGGERED",
       source: { id: "obj-3", zcc: 0 },
-      controller: "p1",
-      abilityId: "a1"
+      controller: "p1"
     },
     {
       type: "ABILITY_ACTIVATED",
       source: { id: "obj-3", zcc: 0 },
-      controller: "p1",
-      abilityId: "a2"
+      controller: "p1"
     },
-    { type: "SPELL_RESOLVED", spell: { id: "obj-2", zcc: 1 } },
-    { type: "SPELL_COUNTERED", spell: { id: "obj-2", zcc: 1 }, by: { id: "obj-4", zcc: 0 } },
-    { type: "DAMAGE_DEALT", amount: 3, source: { id: "obj-5", zcc: 0 }, targetPlayerId: "p2" },
-    { type: "LIFE_CHANGED", playerId: "p2", delta: -3 },
+    { type: "SPELL_RESOLVED", object: { id: "obj-2", zcc: 1 } },
+    { type: "SPELL_COUNTERED", object: { id: "obj-2", zcc: 1 } },
+    {
+      type: "DAMAGE_DEALT",
+      amount: 3,
+      source: { id: "obj-5", zcc: 0 },
+      target: { id: "obj-6", zcc: 0 }
+    },
+    { type: "LIFE_CHANGED", playerId: "p2", amount: -3, newTotal: 17 },
     { type: "PRIORITY_PASSED", playerId: "p1" },
-    { type: "PHASE_CHANGED", from: "MAIN_1", to: "BEGIN_COMBAT", activePlayerId: "p1" },
+    { type: "PHASE_CHANGED", phase: "BEGIN_COMBAT", step: "BEGIN_COMBAT" },
     { type: "PLAYER_LOST", playerId: "p2", reason: "life_zero" },
-    { type: "SHUFFLED", zone: { kind: "library", scope: "shared" } },
-    { type: "CHOICE_MADE", playerId: "p1", choiceId: "choice-1" },
-    { type: "RNG_CONSUMED", label: "shuffle", value: 0.42 },
-    { type: "CONTINUOUS_EFFECT_ADDED", effectId: "ce-1" },
+    { type: "SHUFFLED", zone: { kind: "library", scope: "shared" }, resultOrder: ["obj-1"] },
+    { type: "CHOICE_MADE", playerId: "p1", choiceId: "choice-1", selection: { pick: 1 } },
+    { type: "RNG_CONSUMED", purpose: "shuffle", result: 0.42 },
+    { type: "CONTINUOUS_EFFECT_ADDED", effectId: "ce-1", source: { id: "obj-7", zcc: 0 } },
     { type: "CONTINUOUS_EFFECT_REMOVED", effectId: "ce-1" },
-    { type: "CONTROL_CHANGED", objectId: "obj-6", from: "p1", to: "p2" }
+    { type: "CONTROL_CHANGED", object: { id: "obj-6", zcc: 1 }, from: "p1", to: "p2" }
   ];
 }
 
@@ -83,7 +89,7 @@ describe("events/event", () => {
     }
 
     expect(payload.amount).toBe(3);
-    expect(payload.targetPlayerId).toBe("p2");
+    expect(payload.target.id).toBe("obj-6");
   });
 
   it("createEvent uses stable gameId:seq identifier", () => {
@@ -107,7 +113,12 @@ describe("events/event", () => {
       gameId: "game-222"
     });
 
-    const event = createEvent(envelope, 1, { type: "CHOICE_MADE", playerId: "p1", choiceId: "c1" });
+    const event = createEvent(envelope, 1, {
+      type: "CHOICE_MADE",
+      playerId: "p1",
+      choiceId: "c1",
+      selection: { chosen: ["obj-1"] }
+    });
 
     expect(event.engineVersion).toBe("0.1.0");
     expect(event.schemaVersion).toBe(2);

@@ -27,11 +27,17 @@ export function captureSnapshot(
   derivedView: GameObjectView,
   zone: ZoneRef
 ): LKISnapshot {
+  const base = cloneGameObjectShape(obj);
+  const derived = cloneGameObjectShape(derivedView);
+
+  base.zone = zone;
+  derived.zone = zone;
+
   return {
     ref: { id: obj.id, zcc: obj.zcc },
     zone,
-    base: cloneGameObjectShape(obj),
-    derived: cloneGameObjectShape(derivedView)
+    base,
+    derived
   };
 }
 

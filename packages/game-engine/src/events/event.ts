@@ -1,4 +1,5 @@
 import type { ObjectId, ObjectRef, PlayerId } from "../state/objectRef";
+import type { TurnPhase, TurnStep } from "../state/gameState";
 import type { ZoneRef } from "../state/zones";
 
 export type EventEnvelope = Readonly<{
@@ -12,31 +13,36 @@ export type GameEventBase = {
   seq: number;
 };
 
+export type LossReason = string;
+export type ChoicePayload = unknown;
+
 export type GameEventPayload =
-  | { type: "CARD_DRAWN"; playerId: PlayerId; card: ObjectRef }
-  | { type: "ZONE_CHANGE"; objectId: ObjectId; from: ZoneRef; to: ZoneRef }
-  | { type: "SPELL_CAST"; playerId: PlayerId; spell: ObjectRef }
-  | { type: "ABILITY_TRIGGERED"; source: ObjectRef; controller: PlayerId; abilityId: string }
-  | { type: "ABILITY_ACTIVATED"; source: ObjectRef; controller: PlayerId; abilityId: string }
-  | { type: "SPELL_RESOLVED"; spell: ObjectRef }
-  | { type: "SPELL_COUNTERED"; spell: ObjectRef; by: ObjectRef | null }
+  | { type: "CARD_DRAWN"; playerId: PlayerId; cardId: ObjectId }
   | {
-      type: "DAMAGE_DEALT";
-      amount: number;
-      source: ObjectRef | null;
-      targetPlayerId?: PlayerId;
-      targetObject?: ObjectRef;
+      type: "ZONE_CHANGE";
+      objectId: ObjectId;
+      oldZcc: number;
+      newZcc: number;
+      from: ZoneRef;
+      to: ZoneRef;
+      toIndex?: number;
     }
-  | { type: "LIFE_CHANGED"; playerId: PlayerId; delta: number }
+  | { type: "SPELL_CAST"; object: ObjectRef; controller: PlayerId }
+  | { type: "ABILITY_TRIGGERED"; source: ObjectRef; controller: PlayerId }
+  | { type: "ABILITY_ACTIVATED"; source: ObjectRef; controller: PlayerId }
+  | { type: "SPELL_RESOLVED"; object: ObjectRef }
+  | { type: "SPELL_COUNTERED"; object: ObjectRef }
+  | { type: "DAMAGE_DEALT"; source: ObjectRef; target: ObjectRef; amount: number }
+  | { type: "LIFE_CHANGED"; playerId: PlayerId; amount: number; newTotal: number }
   | { type: "PRIORITY_PASSED"; playerId: PlayerId }
-  | { type: "PHASE_CHANGED"; from: string; to: string; activePlayerId: PlayerId }
-  | { type: "PLAYER_LOST"; playerId: PlayerId; reason: string }
-  | { type: "SHUFFLED"; zone: ZoneRef; playerId?: PlayerId }
-  | { type: "CHOICE_MADE"; playerId: PlayerId; choiceId: string }
-  | { type: "RNG_CONSUMED"; label: string; value: number }
-  | { type: "CONTINUOUS_EFFECT_ADDED"; effectId: string }
+  | { type: "PHASE_CHANGED"; phase: TurnPhase; step: TurnStep }
+  | { type: "PLAYER_LOST"; playerId: PlayerId; reason: LossReason }
+  | { type: "SHUFFLED"; zone: ZoneRef; resultOrder: ObjectId[] }
+  | { type: "CHOICE_MADE"; choiceId: string; playerId: PlayerId; selection: ChoicePayload }
+  | { type: "RNG_CONSUMED"; purpose: string; result: number }
+  | { type: "CONTINUOUS_EFFECT_ADDED"; effectId: string; source: ObjectRef }
   | { type: "CONTINUOUS_EFFECT_REMOVED"; effectId: string }
-  | { type: "CONTROL_CHANGED"; objectId: ObjectId; from: PlayerId; to: PlayerId };
+  | { type: "CONTROL_CHANGED"; object: ObjectRef; from: PlayerId; to: PlayerId };
 
 export type GameEvent = GameEventBase & EventEnvelope & GameEventPayload;
 
