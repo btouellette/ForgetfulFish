@@ -4,24 +4,22 @@ import { zoneKey } from "../../src/state/zones";
 export function assertStateInvariants(state: GameState): void {
   const zoneLocations = new Map<string, string[]>();
 
-  for (const [, objectIds] of state.zones) {
+  for (const [zone, objectIds] of state.zones) {
+    const seenInZone = new Set<string>();
+
     for (const objectId of objectIds) {
       if (!state.objectPool.has(objectId)) {
         throw new Error(`zone object '${objectId}' missing from objectPool`);
       }
 
-      const existing = zoneLocations.get(objectId) ?? [];
-      zoneLocations.set(objectId, existing);
-    }
-  }
-
-  for (const [zone, objectIds] of state.zones) {
-    for (const objectId of objectIds) {
-      const existing = zoneLocations.get(objectId) ?? [];
-      if (!existing.includes(zone)) {
-        existing.push(zone);
-        zoneLocations.set(objectId, existing);
+      if (seenInZone.has(objectId)) {
+        throw new Error(`duplicate object id '${objectId}' within zone '${zone}'`);
       }
+      seenInZone.add(objectId);
+
+      const existing = zoneLocations.get(objectId) ?? [];
+      existing.push(zone);
+      zoneLocations.set(objectId, existing);
     }
   }
 

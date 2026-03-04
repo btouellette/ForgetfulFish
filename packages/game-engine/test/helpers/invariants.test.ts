@@ -66,6 +66,36 @@ describe("helpers/invariants", () => {
     expect(() => assertStateInvariants(state)).toThrow(/duplicate object id/);
   });
 
+  it("fails when an object's recorded zone does not match its actual zone", () => {
+    const state = makeState();
+    const object = makeObject("obj-zone-mismatch");
+    object.zone = { kind: "library", scope: "shared" };
+    state.objectPool.set(object.id, object);
+
+    const graveyard = state.zones.get(zoneKey({ kind: "graveyard", scope: "shared" }));
+    if (!graveyard) {
+      throw new Error("missing shared graveyard zone");
+    }
+    graveyard.push(object.id);
+
+    expect(() => assertStateInvariants(state)).toThrow(/zone mismatch/);
+  });
+
+  it("fails when a zone contains the same object id multiple times", () => {
+    const state = makeState();
+    const object = makeObject("obj-dup-same-zone");
+    state.objectPool.set(object.id, object);
+
+    const library = state.zones.get(zoneKey({ kind: "library", scope: "shared" }));
+    if (!library) {
+      throw new Error("missing shared library zone");
+    }
+    library.push(object.id);
+    library.push(object.id);
+
+    expect(() => assertStateInvariants(state)).toThrow(/duplicate object id/);
+  });
+
   it("fails when a player's mana pool contains a negative value", () => {
     const state = makeState();
     state.players[0].manaPool.blue = -1;
