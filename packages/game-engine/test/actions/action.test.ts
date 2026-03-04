@@ -19,15 +19,17 @@ import {
   type UntapAction
 } from "../../src/actions/action";
 
-function sampleActions(): GameAction[] {
-  const base = {
+function createBaseActionFields() {
+  return {
     source: { id: "source-1", zcc: 0 },
     controller: "p1",
-    appliedReplacements: []
-  } as const;
+    appliedReplacements: [] as string[]
+  };
+}
 
+function sampleActions(): GameAction[] {
   const drawAction: DrawAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-draw",
     type: "DRAW",
     playerId: "p1",
@@ -35,7 +37,7 @@ function sampleActions(): GameAction[] {
   };
 
   const moveZoneAction: MoveZoneAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-move",
     type: "MOVE_ZONE",
     objectId: "obj-1",
@@ -45,7 +47,7 @@ function sampleActions(): GameAction[] {
   };
 
   const dealDamageAction: DealDamageAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-damage",
     type: "DEAL_DAMAGE",
     amount: 3,
@@ -53,14 +55,14 @@ function sampleActions(): GameAction[] {
   };
 
   const counterAction: CounterAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-counter",
     type: "COUNTER",
     object: { id: "obj-3", zcc: 2 }
   };
 
   const setControlAction: SetControlAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-control",
     type: "SET_CONTROL",
     objectId: "obj-4",
@@ -68,28 +70,28 @@ function sampleActions(): GameAction[] {
   };
 
   const destroyAction: DestroyAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-destroy",
     type: "DESTROY",
     objectId: "obj-5"
   };
 
   const tapAction: TapAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-tap",
     type: "TAP",
     objectId: "obj-6"
   };
 
   const untapAction: UntapAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-untap",
     type: "UNTAP",
     objectId: "obj-7"
   };
 
   const addManaAction: AddManaAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-add-mana",
     type: "ADD_MANA",
     playerId: "p1",
@@ -97,7 +99,7 @@ function sampleActions(): GameAction[] {
   };
 
   const loseLifeAction: LoseLifeAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-lose-life",
     type: "LOSE_LIFE",
     playerId: "p1",
@@ -105,7 +107,7 @@ function sampleActions(): GameAction[] {
   };
 
   const gainLifeAction: GainLifeAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-gain-life",
     type: "GAIN_LIFE",
     playerId: "p1",
@@ -113,7 +115,7 @@ function sampleActions(): GameAction[] {
   };
 
   const createTokenAction: CreateTokenAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-create-token",
     type: "CREATE_TOKEN",
     tokenDefId: "token-drake",
@@ -122,7 +124,7 @@ function sampleActions(): GameAction[] {
   };
 
   const shuffleAction: ShuffleAction = {
-    ...base,
+    ...createBaseActionFields(),
     id: "action-shuffle",
     type: "SHUFFLE",
     zone: { kind: "library", scope: "shared" }
@@ -214,7 +216,7 @@ describe("actions/action", () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it("enforces command variant exhaustiveness via never", () => {
+  it("enforces action variant exhaustiveness via never", () => {
     const seenTypes = sampleActions().map((action) => assertExhaustive(action));
     expect(seenTypes).toContain("SHUFFLE");
   });
