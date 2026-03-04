@@ -5,13 +5,12 @@ import type {
   LKISnapshot,
   PendingChoice,
   PlayerInfo,
-  PriorityState,
   StackItem,
   TriggeredAbility,
   TurnState
 } from "./gameState";
 import type { GameObject, GameObjectBase, GameObjectView } from "./gameObject";
-import type { ObjectId, PlayerId } from "./objectRef";
+import type { ObjectId } from "./objectRef";
 import type { ZoneKey, ZoneRef } from "./zones";
 
 type NumberMap = Record<string, number>;
