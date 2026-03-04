@@ -8,9 +8,56 @@ import {
   serializeGameState,
   serializeGameStateForPersistence,
   zoneKey,
+  type GameMode,
   type GameObject,
+  type PlayerId,
   type SerializedGameState
 } from "../../src/index";
+
+const splitZonesMode: GameMode = {
+  id: "split-zones-test",
+  resolveZone(_state, logicalZone, playerId) {
+    if (
+      (logicalZone === "library" || logicalZone === "graveyard" || logicalZone === "hand") &&
+      playerId
+    ) {
+      return { kind: logicalZone, scope: "player", playerId };
+    }
+
+    return { kind: logicalZone, scope: "shared" };
+  },
+  createInitialZones(players) {
+    const zoneCatalog = [
+      { kind: "library", scope: "player", playerId: players[0] },
+      { kind: "library", scope: "player", playerId: players[1] },
+      { kind: "graveyard", scope: "player", playerId: players[0] },
+      { kind: "graveyard", scope: "player", playerId: players[1] },
+      { kind: "battlefield", scope: "shared" },
+      { kind: "exile", scope: "shared" },
+      { kind: "stack", scope: "shared" },
+      { kind: "hand", scope: "player", playerId: players[0] },
+      { kind: "hand", scope: "player", playerId: players[1] }
+    ] as const;
+
+    return {
+      zoneCatalog: [...zoneCatalog],
+      zones: new Map(zoneCatalog.map((zone) => [zoneKey(zone), []]))
+    };
+  },
+  simultaneousDrawOrder(drawCount, activePlayerId, players) {
+    const otherPlayerId = players[0] === activePlayerId ? players[1] : players[0];
+    const order: PlayerId[] = [];
+
+    for (let index = 0; index < drawCount; index += 1) {
+      order.push(index % 2 === 0 ? activePlayerId : otherPlayerId);
+    }
+
+    return order;
+  },
+  determineOwner(playerId) {
+    return playerId;
+  }
+};
 
 function containsMap(value: unknown): boolean {
   if (value instanceof Map) {
@@ -217,6 +264,19 @@ describe("state/serialization", () => {
     const payload = serializeGameStateForPersistence(state);
     const restored = deserializeGameStateFromPersistence(payload);
 
+    expect(serializeGameState(restored)).toEqual(payload);
+  });
+
+  it("round-trips a custom mode when a mode registry is provided", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "game-1",
+      rngSeed: "seed-1",
+      mode: splitZonesMode
+    });
+    const payload = serializeGameState(state);
+    const restored = deserializeGameState(payload, { [splitZonesMode.id]: splitZonesMode });
+
+    expect(restored.mode.id).toBe(splitZonesMode.id);
     expect(serializeGameState(restored)).toEqual(payload);
   });
 });

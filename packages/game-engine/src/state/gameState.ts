@@ -1,7 +1,9 @@
 import type { GameObject } from "./gameObject";
 import type { LKISnapshot } from "./lki";
 import type { ObjectId, PlayerId } from "./objectRef";
-import { zoneKey, type ZoneKey, type ZoneRef } from "./zones";
+import type { GameMode } from "../mode/gameMode";
+import { SharedDeckMode } from "../mode/sharedDeck";
+import type { ZoneKey, ZoneRef } from "./zones";
 
 export type ManaPool = {
   white: number;
@@ -67,10 +69,6 @@ export type TriggeredAbility = {
   id: string;
 };
 
-export type GameMode = {
-  id: string;
-};
-
 export type GameState = {
   id: string;
   version: number;
@@ -92,6 +90,7 @@ export type GameState = {
 export type CreateInitialGameStateOptions = {
   id: string;
   rngSeed: string;
+  mode?: GameMode;
 };
 
 function createPlayer(id: PlayerId): PlayerInfo {
@@ -109,28 +108,15 @@ export function createInitialGameState(
   playerTwoId: PlayerId,
   options: CreateInitialGameStateOptions
 ): GameState {
-  const zoneCatalog: ZoneRef[] = [
-    { kind: "library", scope: "shared" },
-    { kind: "graveyard", scope: "shared" },
-    { kind: "battlefield", scope: "shared" },
-    { kind: "exile", scope: "shared" },
-    { kind: "stack", scope: "shared" },
-    { kind: "hand", scope: "player", playerId: playerOneId },
-    { kind: "hand", scope: "player", playerId: playerTwoId }
-  ];
-
-  const zones = new Map<ZoneKey, ObjectId[]>();
-
-  for (const zone of zoneCatalog) {
-    zones.set(zoneKey(zone), []);
-  }
+  const mode = options.mode ?? SharedDeckMode;
+  const { zoneCatalog, zones } = mode.createInitialZones([playerOneId, playerTwoId]);
 
   return {
     id: options.id,
     version: 1,
     engineVersion: "0.1.0",
     rngSeed: options.rngSeed,
-    mode: { id: "shared-deck" },
+    mode,
     players: [createPlayer(playerOneId), createPlayer(playerTwoId)],
     zones,
     zoneCatalog,

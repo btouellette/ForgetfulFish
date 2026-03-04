@@ -1,5 +1,7 @@
 export * from "./cards/abilityAst";
 export * from "./events/event";
+export * from "./mode/gameMode";
+export * from "./mode/sharedDeck";
 export * from "./rng/rng";
 export * from "./state/gameObject";
 export * from "./state/gameState";

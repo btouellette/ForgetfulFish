@@ -11,9 +11,17 @@ import type { GameObject, GameObjectBase, GameObjectView } from "./gameObject";
 import type { LKISnapshot } from "./lki";
 import type { ObjectId } from "./objectRef";
 import type { ZoneKey, ZoneRef } from "./zones";
+import type { GameMode } from "../mode/gameMode";
+import { SharedDeckMode } from "../mode/sharedDeck";
 
 type NumberMap = Record<string, number>;
 type ZoneCollection = Record<ZoneKey, ObjectId[]>;
+
+export type ModeRegistry = Record<string, GameMode>;
+
+const defaultModeRegistry: ModeRegistry = {
+  [SharedDeckMode.id]: SharedDeckMode
+};
 
 export type SerializedGameObjectBase = Omit<GameObjectBase, "counters"> & {
   counters: NumberMap;
@@ -167,9 +175,17 @@ export function serializeGameState(state: GameState): SerializedGameState {
   };
 }
 
-export function deserializeGameState(serialized: SerializedGameState): GameState {
+export function deserializeGameState(
+  serialized: SerializedGameState,
+  modeRegistry: ModeRegistry = defaultModeRegistry
+): GameState {
   const objectPool = new Map<ObjectId, GameObject>();
   const lkiStore = new Map<string, LKISnapshot>();
+  const mode = modeRegistry[serialized.modeId];
+
+  if (!mode) {
+    throw new Error(`unsupported game mode '${serialized.modeId}'`);
+  }
 
   for (const [objectId, gameObject] of Object.entries(serialized.objectPool)) {
     objectPool.set(objectId as ObjectId, deserializeGameObject(gameObject));
@@ -184,7 +200,7 @@ export function deserializeGameState(serialized: SerializedGameState): GameState
     version: serialized.version,
     engineVersion: serialized.engineVersion,
     rngSeed: serialized.rngSeed,
-    mode: { id: serialized.modeId },
+    mode,
     players: serialized.players,
     zones: recordToMap(serialized.zones),
     zoneCatalog: serialized.zoneCatalog,
@@ -202,6 +218,9 @@ export function serializeGameStateForPersistence(state: GameState): SerializedGa
   return serializeGameState(state);
 }
 
-export function deserializeGameStateFromPersistence(value: SerializedGameState): GameState {
-  return deserializeGameState(value);
+export function deserializeGameStateFromPersistence(
+  value: SerializedGameState,
+  modeRegistry?: ModeRegistry
+): GameState {
+  return deserializeGameState(value, modeRegistry);
 }
