@@ -310,7 +310,7 @@ Test: **Write tests FIRST**, then implement.
 6. Mandatory fields for each action type are enforced by TypeScript.
 Acceptance: All action types compile and are exported.
 
-### P0.9 — Command types
+### [x] P0.9 — Command types
 
 **Files**: `commands/command.ts`
 
