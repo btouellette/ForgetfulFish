@@ -177,7 +177,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` (P0.14) passes on a freshly created initial state.
 Acceptance: Existing `state.test.ts` updated and passing with new types.
 
-### P0.4 — LKI snapshot types and helpers
+### [x] P0.4 — LKI snapshot types and helpers
 
 **Files**: `state/lki.ts`
 
@@ -198,7 +198,7 @@ Test: **Write tests FIRST**, then implement.
 6. Key format verification: `"${id}:${zcc}"` exactly.
 Acceptance: Tests pass, exported.
 
-### P0.5 — Event types and EventEnvelope
+### [x] P0.5 — Event types and EventEnvelope
 
 **Files**: `events/event.ts`
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  captureSnapshot,
   createInitialGameState,
   deserializeGameState,
   deserializeGameStateFromPersistence,
@@ -49,7 +50,10 @@ describe("state/serialization", () => {
     };
 
     state.objectPool.set(object.id, object);
-    state.lkiStore.set("obj-1:0", { id: "snap-1" });
+    state.lkiStore.set(
+      "obj-1:0",
+      captureSnapshot(object, { ...object }, { kind: "library", scope: "shared" })
+    );
 
     const libraryKey = zoneKey({ kind: "library", scope: "shared" });
     const library = state.zones.get(libraryKey);
@@ -64,7 +68,8 @@ describe("state/serialization", () => {
 
     expect(serialized.zones[libraryKey]).toEqual(["obj-1"]);
     expect(serialized.objectPool["obj-1"]?.counters).toEqual({ charge: 2 });
-    expect(serialized.lkiStore["obj-1:0"]).toEqual({ id: "snap-1" });
+    expect(serialized.lkiStore["obj-1:0"]?.ref).toEqual({ id: "obj-1", zcc: 0 });
+    expect(serialized.lkiStore["obj-1:0"]?.base.counters).toEqual({ charge: 2 });
   });
 
   it("deserializes serialized state into map-based runtime structures", () => {
@@ -137,7 +142,38 @@ describe("state/serialization", () => {
       continuousEffects: [],
       pendingChoice: null,
       lkiStore: {
-        "obj-1:0": { id: "snap-1" }
+        "obj-1:0": {
+          ref: { id: "obj-1", zcc: 0 },
+          zone: { kind: "library", scope: "shared" },
+          base: {
+            id: "obj-1",
+            zcc: 0,
+            cardDefId: "island",
+            owner: "p1",
+            controller: "p1",
+            counters: { charge: 1 },
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            abilities: [],
+            zone: { kind: "library", scope: "shared" }
+          },
+          derived: {
+            id: "obj-1",
+            zcc: 0,
+            cardDefId: "island",
+            owner: "p1",
+            controller: "p1",
+            counters: { charge: 1 },
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            abilities: [],
+            zone: { kind: "library", scope: "shared" }
+          }
+        }
       },
       triggerQueue: []
     };

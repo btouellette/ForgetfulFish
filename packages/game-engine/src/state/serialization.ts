@@ -1,7 +1,6 @@
 import type {
   ContinuousEffect,
   GameState,
-  LKISnapshot,
   PendingChoice,
   PlayerInfo,
   StackItem,
@@ -9,6 +8,7 @@ import type {
   TurnState
 } from "./gameState";
 import type { GameObject, GameObjectBase, GameObjectView } from "./gameObject";
+import type { LKISnapshot } from "./lki";
 import type { ObjectId } from "./objectRef";
 import type { ZoneKey, ZoneRef } from "./zones";
 
@@ -27,6 +27,13 @@ export type SerializedGameObject = Omit<GameObject, "counters"> & {
   counters: NumberMap;
 };
 
+export type SerializedLKISnapshot = {
+  ref: LKISnapshot["ref"];
+  zone: LKISnapshot["zone"];
+  base: SerializedGameObjectBase;
+  derived: SerializedGameObjectView;
+};
+
 export type SerializedGameState = {
   id: string;
   version: number;
@@ -41,7 +48,7 @@ export type SerializedGameState = {
   turnState: TurnState;
   continuousEffects: ContinuousEffect[];
   pendingChoice: PendingChoice | null;
-  lkiStore: Record<string, LKISnapshot>;
+  lkiStore: Record<string, SerializedLKISnapshot>;
   triggerQueue: TriggeredAbility[];
 };
 
@@ -79,6 +86,36 @@ function deserializeGameObject(gameObject: SerializedGameObject): GameObject {
   };
 }
 
+function serializeSnapshot(snapshot: LKISnapshot): SerializedLKISnapshot {
+  return {
+    ref: snapshot.ref,
+    zone: snapshot.zone,
+    base: {
+      ...snapshot.base,
+      counters: numberMapToRecord(snapshot.base.counters)
+    },
+    derived: {
+      ...snapshot.derived,
+      counters: numberMapToRecord(snapshot.derived.counters)
+    }
+  };
+}
+
+function deserializeSnapshot(snapshot: SerializedLKISnapshot): LKISnapshot {
+  return {
+    ref: snapshot.ref,
+    zone: snapshot.zone,
+    base: {
+      ...snapshot.base,
+      counters: recordToNumberMap(snapshot.base.counters)
+    },
+    derived: {
+      ...snapshot.derived,
+      counters: recordToNumberMap(snapshot.derived.counters)
+    }
+  };
+}
+
 function mapToRecord<V>(value: Map<string, V>): Record<string, V> {
   const record: Record<string, V> = {};
 
@@ -101,9 +138,14 @@ function recordToMap<V>(value: Record<string, V>): Map<string, V> {
 
 export function serializeGameState(state: GameState): SerializedGameState {
   const serializedObjectPool: Record<ObjectId, SerializedGameObject> = {};
+  const serializedLkiStore: Record<string, SerializedLKISnapshot> = {};
 
   for (const [objectId, gameObject] of state.objectPool.entries()) {
     serializedObjectPool[objectId] = serializeGameObject(gameObject);
+  }
+
+  for (const [key, snapshot] of state.lkiStore.entries()) {
+    serializedLkiStore[key] = serializeSnapshot(snapshot);
   }
 
   return {
@@ -120,16 +162,21 @@ export function serializeGameState(state: GameState): SerializedGameState {
     turnState: state.turnState,
     continuousEffects: state.continuousEffects,
     pendingChoice: state.pendingChoice,
-    lkiStore: mapToRecord(state.lkiStore),
+    lkiStore: serializedLkiStore,
     triggerQueue: state.triggerQueue
   };
 }
 
 export function deserializeGameState(serialized: SerializedGameState): GameState {
   const objectPool = new Map<ObjectId, GameObject>();
+  const lkiStore = new Map<string, LKISnapshot>();
 
   for (const [objectId, gameObject] of Object.entries(serialized.objectPool)) {
     objectPool.set(objectId as ObjectId, deserializeGameObject(gameObject));
+  }
+
+  for (const [key, snapshot] of Object.entries(serialized.lkiStore)) {
+    lkiStore.set(key, deserializeSnapshot(snapshot));
   }
 
   return {
@@ -146,7 +193,7 @@ export function deserializeGameState(serialized: SerializedGameState): GameState
     turnState: serialized.turnState,
     continuousEffects: serialized.continuousEffects,
     pendingChoice: serialized.pendingChoice,
-    lkiStore: recordToMap(serialized.lkiStore),
+    lkiStore,
     triggerQueue: serialized.triggerQueue
   };
 }
