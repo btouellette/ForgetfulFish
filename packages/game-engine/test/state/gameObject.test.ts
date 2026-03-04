@@ -35,7 +35,7 @@ describe("state/gameObject", () => {
       tapped: true,
       summoningSick: true,
       attachments: ["obj-3"],
-      abilities: [{ kind: "keyword" }],
+      abilities: [{ kind: "keyword", keyword: "flying" }],
       zone: { kind: "battlefield", scope: "shared" }
     };
 
@@ -86,7 +86,14 @@ describe("state/gameObject", () => {
   });
 
   it("abilities can be empty or populated", () => {
-    const populated: AbilityAst[] = [{ kind: "keyword" }, { kind: "static" }];
+    const populated: AbilityAst[] = [
+      { kind: "keyword", keyword: "flying" },
+      {
+        kind: "static",
+        staticKind: "cant_attack_unless",
+        condition: { kind: "defender_controls_land_type", landType: "Island" }
+      }
+    ];
     const empty: AbilityAst[] = [];
 
     expect(populated).toHaveLength(2);
