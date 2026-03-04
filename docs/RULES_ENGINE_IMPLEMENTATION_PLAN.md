@@ -455,7 +455,7 @@ Test: **Write tests FIRST**, then implement.
 7. State where hand count does not match `hand` zone array length fails.
 Acceptance: Utility reliably catches corrupt state in tests.
 
-### P0.15 — Property-Based Test Utilities
+### [x] P0.15 — Property-Based Test Utilities
 
 **Files**: `test/helpers/generators.ts`
 
