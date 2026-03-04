@@ -1,4 +1,5 @@
 import type { ObjectId, ObjectRef, PlayerId } from "../state/objectRef";
+import type { ReplacementId } from "../actions/action";
 
 export const COMMAND_TYPES = [
   "CAST_SPELL",
@@ -29,51 +30,55 @@ export type ChoicePayload =
   | { type: "CHOOSE_CARDS"; selected: ObjectId[]; min: number; max: number }
   | { type: "ORDER_CARDS"; ordered: ObjectId[] }
   | { type: "NAME_CARD"; cardName: string }
-  | { type: "CHOOSE_REPLACEMENT"; replacementId: string }
+  | { type: "CHOOSE_REPLACEMENT"; replacementId: ReplacementId }
   | { type: "CHOOSE_MODE"; mode: Mode }
   | { type: "CHOOSE_TARGET"; target: Target }
   | { type: "CHOOSE_YES_NO"; accepted: boolean }
   | { type: "ORDER_TRIGGERS"; triggerIds: string[] };
 
-export type CastSpellCommand = {
+export type CommandBase = {
+  type: CommandType;
+};
+
+export type CastSpellCommand = CommandBase & {
   type: "CAST_SPELL";
   cardId: ObjectId;
   targets?: Target[];
   modePick?: Mode;
 };
 
-export type ActivateAbilityCommand = {
+export type ActivateAbilityCommand = CommandBase & {
   type: "ACTIVATE_ABILITY";
   sourceId: ObjectId;
   abilityIndex: number;
   targets?: Target[];
 };
 
-export type PassPriorityCommand = {
+export type PassPriorityCommand = CommandBase & {
   type: "PASS_PRIORITY";
 };
 
-export type MakeChoiceCommand = {
+export type MakeChoiceCommand = CommandBase & {
   type: "MAKE_CHOICE";
   payload: ChoicePayload;
 };
 
-export type DeclareAttackersCommand = {
+export type DeclareAttackersCommand = CommandBase & {
   type: "DECLARE_ATTACKERS";
   attackers: ObjectId[];
 };
 
-export type DeclareBlockersCommand = {
+export type DeclareBlockersCommand = CommandBase & {
   type: "DECLARE_BLOCKERS";
   assignments: BlockerAssignment[];
 };
 
-export type PlayLandCommand = {
+export type PlayLandCommand = CommandBase & {
   type: "PLAY_LAND";
   cardId: ObjectId;
 };
 
-export type ConcedeCommand = {
+export type ConcedeCommand = CommandBase & {
   type: "CONCEDE";
 };
 

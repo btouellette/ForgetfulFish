@@ -14,7 +14,7 @@ export type GameEventBase = {
 };
 
 export type LossReason = string;
-export type ChoicePayload = unknown;
+export type EventChoicePayload = unknown;
 
 export type GameEventPayload =
   | { type: "CARD_DRAWN"; playerId: PlayerId; cardId: ObjectId }
@@ -38,7 +38,7 @@ export type GameEventPayload =
   | { type: "PHASE_CHANGED"; phase: TurnPhase; step: TurnStep }
   | { type: "PLAYER_LOST"; playerId: PlayerId; reason: LossReason }
   | { type: "SHUFFLED"; zone: ZoneRef; resultOrder: ObjectId[] }
-  | { type: "CHOICE_MADE"; choiceId: string; playerId: PlayerId; selection: ChoicePayload }
+  | { type: "CHOICE_MADE"; choiceId: string; playerId: PlayerId; selection: EventChoicePayload }
   | { type: "RNG_CONSUMED"; purpose: string; result: number }
   | { type: "CONTINUOUS_EFFECT_ADDED"; effectId: string; source: ObjectRef }
   | { type: "CONTINUOUS_EFFECT_REMOVED"; effectId: string }

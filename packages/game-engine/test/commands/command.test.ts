@@ -81,9 +81,21 @@ describe("commands/command", () => {
 
   it("supports all required ChoicePayload responses", () => {
     const payloads = sampleChoicePayloads();
+    const payloadTypes = new Set(payloads.map((payload) => payload.type));
 
     expect(payloads).toHaveLength(8);
-    expect(payloads.some((payload) => payload.type === "NAME_CARD")).toBe(true);
+    expect(payloadTypes).toEqual(
+      new Set<ChoicePayload["type"]>([
+        "CHOOSE_CARDS",
+        "ORDER_CARDS",
+        "NAME_CARD",
+        "CHOOSE_REPLACEMENT",
+        "CHOOSE_MODE",
+        "CHOOSE_TARGET",
+        "CHOOSE_YES_NO",
+        "ORDER_TRIGGERS"
+      ])
+    );
   });
 
   it("BlockerAssignment maps attacker ids to blocker ids", () => {
