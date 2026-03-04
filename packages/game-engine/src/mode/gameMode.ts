@@ -16,7 +16,7 @@ export interface GameMode {
   simultaneousDrawOrder(
     drawCount: number,
     activePlayerId: PlayerId,
-    players?: [PlayerId, PlayerId]
+    players: [PlayerId, PlayerId]
   ): PlayerId[];
   determineOwner(playerId: PlayerId, reason: OwnershipReason): PlayerId;
 }

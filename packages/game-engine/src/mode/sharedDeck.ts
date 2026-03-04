@@ -51,7 +51,7 @@ export const SharedDeckMode: GameMode = {
       zones: createZones(zoneCatalog)
     };
   },
-  simultaneousDrawOrder(drawCount, activePlayerId, players = ["p1", "p2"]): PlayerId[] {
+  simultaneousDrawOrder(drawCount, activePlayerId, players): PlayerId[] {
     return Array.from({ length: drawCount }, (_, index) =>
       getAlternatingPlayer(activePlayerId, players, index)
     );

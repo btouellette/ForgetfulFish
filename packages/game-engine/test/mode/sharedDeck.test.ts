@@ -42,11 +42,14 @@ const splitZonesTestMode: GameMode = {
     const zones = new Map(zoneCatalog.map((zone) => [zoneKey(zone), []]));
     return { zoneCatalog: [...zoneCatalog], zones };
   },
-  simultaneousDrawOrder(drawCount, activePlayerId) {
+  simultaneousDrawOrder(drawCount, activePlayerId, players) {
     const order: string[] = [];
+    const otherPlayerId = players[0] === activePlayerId ? players[1] : players[0];
+
     for (let index = 0; index < drawCount; index += 1) {
-      order.push(index % 2 === 0 ? activePlayerId : activePlayerId === "p1" ? "p2" : "p1");
+      order.push(index % 2 === 0 ? activePlayerId : otherPlayerId);
     }
+
     return order;
   },
   determineOwner(playerId) {
@@ -92,7 +95,12 @@ describe("mode/sharedDeck", () => {
   });
 
   it("alternates simultaneous draw order from active player", () => {
-    expect(SharedDeckMode.simultaneousDrawOrder(4, "p1")).toEqual(["p1", "p2", "p1", "p2"]);
+    expect(SharedDeckMode.simultaneousDrawOrder(4, "p1", ["p1", "p2"])).toEqual([
+      "p1",
+      "p2",
+      "p1",
+      "p2"
+    ]);
   });
 
   it("determines owner from draw action player", () => {
@@ -106,15 +114,16 @@ describe("mode/sharedDeck", () => {
       mode: splitZonesTestMode
     });
 
-    expect(splitZonesTestMode.resolveZone(state, "library", "p1")).toEqual({
-      kind: "library",
-      scope: "player",
-      playerId: "p1"
-    });
-    expect(splitZonesTestMode.resolveZone(state, "library", "p2")).toEqual({
-      kind: "library",
-      scope: "player",
-      playerId: "p2"
-    });
+    expect(state.mode.id).toBe("split-zones-test");
+
+    const p1LibraryKey = zoneKey({ kind: "library", scope: "player", playerId: "p1" });
+    const p2LibraryKey = zoneKey({ kind: "library", scope: "player", playerId: "p2" });
+    const p1GraveyardKey = zoneKey({ kind: "graveyard", scope: "player", playerId: "p1" });
+    const p2GraveyardKey = zoneKey({ kind: "graveyard", scope: "player", playerId: "p2" });
+
+    expect(state.zones.has(p1LibraryKey)).toBe(true);
+    expect(state.zones.has(p2LibraryKey)).toBe(true);
+    expect(state.zones.has(p1GraveyardKey)).toBe(true);
+    expect(state.zones.has(p2GraveyardKey)).toBe(true);
   });
 });
