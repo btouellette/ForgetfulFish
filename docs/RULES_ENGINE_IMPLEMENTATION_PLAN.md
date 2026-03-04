@@ -47,9 +47,28 @@ Every integration test, scenario test, and property-based test MUST call `assert
 ### Regression Prevention
 Any bug found during or after implementation must be reproduced with a failing test in `test/regression/` before being fixed.
 
-## Card Test Harness (MANDATORY for every card)
+### Real-Card-First Test Data Policy
 
-Every card implementation (and Phase 7 sanity sweep) must pass this 7-category harness:
+Use real card definitions in tests wherever possible.
+
+- Prefer canonical deck cards first.
+- If a canonical card is not yet implemented for an engine-phase test, use a real-card fixture (not a hypothetical card) in `test/helpers/cards/` and replace it with the production card definition once that task lands.
+- Preferred fixture pool should come from commonly used fan alternates so tests stay close to real Forgetful Fish play patterns.
+
+Current candidate fixtures from popular fan alternates:
+- **Mental Note** (cheap instant draw/mill primitive) and **Miscalculation** (counter primitive) from `https://moxfield.com/decks/CsFDriThmEGanyZ5YpOunQ`
+- **Telling Time** (ordered library-choice primitive) and **Portent** (topdeck manipulation primitive) from `https://moxfield.com/decks/CsFDriThmEGanyZ5YpOunQ`
+- **Thought Scour** and **Frantic Inventory** (draw/graveyard-count primitives) from `https://www.mtgvault.com/friendlyfriend/decks/dandan/`
+
+## Card Test Harness (PHASE-GATED MANDATORY)
+
+Every card implementation is validated against this 7-category harness, but enforcement is phase-gated:
+
+- During the card's implementation phase, cover all categories that are supported by currently implemented engine subsystems.
+- If a category depends on a later subsystem (for example, layer/replacement interactions before those phases exist), mark it deferred in the card test file and track it for completion in Phase 7.
+- By Phase 7 (`P7.2`), every card must pass all 7 categories with no deferrals.
+
+Harness categories:
 
 1. **Definition tests**: Card loads correctly from registry with all attributes (mana cost, types, power/toughness, abilities).
 2. **Casting tests**: Card can be cast when legal (correct mana, valid targets) and is rejected when illegal.
@@ -61,9 +80,11 @@ Every card implementation (and Phase 7 sanity sweep) must pass this 7-category h
 
 ### New Card PR Checklist
 - [ ] Test file exists in `test/cards/`
-- [ ] All 7 harness categories are covered
+- [ ] All currently unblocked harness categories are covered now
+- [ ] Any blocked categories are explicitly marked with the task/phase that unblocks them
 - [ ] Minimum 8 test cases implemented
 - [ ] `assertStateInvariants` called in every test
+- [ ] Card has full 7-category coverage by `P7.2`
 
 ---
 
@@ -582,7 +603,7 @@ Implement basic spell casting per §4/§6:
 **Test file**: `test/engine/cast.test.ts`
 Depends: P0.3, P0.5, P0.8, P0.9, P0.10, P1.1, P1.5
 Test: **Write tests FIRST**, then implement.
-1. Cast a hypothetical 1-mana instant → moves to stack, mana is deducted from pool.
+1. Cast a real 1-mana instant fixture (prefer **Mental Note**) → moves to stack, mana is deducted from pool.
 2. Both players pass priority → spell resolves, moves to graveyard.
 3. Cast a creature card → resolves and moves to the battlefield.
 4. Cast with insufficient mana → command rejected.
