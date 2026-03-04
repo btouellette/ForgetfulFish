@@ -25,21 +25,26 @@ export type Duration =
   | "until_cleanup"
   | { kind: "as_long_as"; condition: ConditionAst };
 
-export type KeywordAbilityAst = {
-  kind: "keyword";
-  keyword?: "landwalk" | "flying" | "first_strike";
-  landType?: BasicLandType;
-};
+export type KeywordAbilityAst =
+  | {
+      kind: "keyword";
+      keyword: "flying" | "first_strike";
+    }
+  | {
+      kind: "keyword";
+      keyword: "landwalk";
+      landType: BasicLandType;
+    };
 
 export type StaticAbilityAst =
   | {
       kind: "static";
-      staticKind?: "cant_attack_unless";
-      condition?: AttackConditionAst;
+      staticKind: "cant_attack_unless";
+      condition: AttackConditionAst;
     }
   | {
       kind: "static";
-      staticKind?: "when_no_islands_sacrifice";
+      staticKind: "when_no_islands_sacrifice";
     };
 
 export type TextChangeEffect = {
@@ -57,10 +62,14 @@ export type ResolutionStep = {
   payload?: Record<string, unknown>;
 };
 
-export type ActivatedAbilityCost = { kind: "tap" } | { kind: "mana"; mana: Record<string, number> };
+export type ManaSymbol = Color | "colorless" | "generic";
+
+export type ManaAmount = Partial<Record<ManaSymbol, number>>;
+
+export type ActivatedAbilityCost = { kind: "tap" } | { kind: "mana"; mana: ManaAmount };
 
 export type ActivatedAbilityEffect =
-  | { kind: "add_mana"; mana: Record<string, number> }
+  | { kind: "add_mana"; mana: ManaAmount }
   | { kind: string; payload?: Record<string, unknown> };
 
 export type ActivatedAbilityAst = {
