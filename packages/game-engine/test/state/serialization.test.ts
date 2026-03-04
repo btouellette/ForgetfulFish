@@ -119,6 +119,37 @@ describe("state/serialization", () => {
     expect(serialized.lkiStore["obj-1:0"]?.base.counters).toEqual({ charge: 2 });
   });
 
+  it("serializes __proto__ keys without mutating object prototypes", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "game-proto",
+      rngSeed: "seed-proto"
+    });
+    const object: GameObject = {
+      id: "__proto__",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p1",
+      controller: "p1",
+      counters: new Map([["charge", 7]]),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "library", scope: "shared" }
+    };
+
+    state.objectPool.set(object.id, object);
+
+    const serialized = serializeGameState(state);
+    const objectPool = serialized.objectPool;
+
+    expect(objectPool["__proto__"]?.cardDefId).toBe("island");
+    expect(Object.getPrototypeOf(objectPool)).toBeNull();
+    expect(Object.getPrototypeOf(serialized.lkiStore)).toBeNull();
+    expect(Object.getPrototypeOf({})).toBe(Object.prototype);
+  });
+
   it("deserializes serialized state into map-based runtime structures", () => {
     const serialized: SerializedGameState = {
       id: "game-1",
