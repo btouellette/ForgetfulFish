@@ -430,7 +430,7 @@ Test: **Write tests FIRST**, then implement.
 4. Old `state.ts` references are removed or replaced.
 Acceptance: Clean build, no dead imports, all new types accessible from package root.
 
-### P0.14 — State Invariant Checker utility
+### [x] P0.14 — State Invariant Checker utility
 
 **Files**: `test/helpers/invariants.ts`
 
