@@ -22,8 +22,8 @@ const SHARED_DECK_ZONE_REFS: readonly ZoneRef[] = [
 const playerIdArbitrary: fc.Arbitrary<PlayerId> = fc.constantFrom(...PLAYER_IDS);
 
 const objectIdArbitrary: fc.Arbitrary<ObjectId> = fc
-  .tuple(fc.constant("obj"), fc.integer({ min: 0, max: 100_000 }))
-  .map(([, id]) => `obj-${id}`);
+  .integer({ min: 0, max: 100_000 })
+  .map((id) => `obj-${id}`);
 
 const manaPoolArbitrary: fc.Arbitrary<ManaPool> = fc.record({
   white: fc.integer({ min: 0, max: 12 }),
