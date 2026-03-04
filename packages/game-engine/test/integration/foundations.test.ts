@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -40,7 +40,7 @@ describe("integration/foundations", () => {
   });
 
   it("confirms legacy state.ts is removed", () => {
-    const legacyStatePath = resolve(process.cwd(), "src", "state.ts");
+    const legacyStatePath = fileURLToPath(new URL("../../src/state.ts", import.meta.url));
     expect(existsSync(legacyStatePath)).toBe(false);
   });
 });
