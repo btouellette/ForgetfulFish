@@ -1,4 +1,5 @@
 import type { GameObject } from "./gameObject";
+import type { LKISnapshot } from "./lki";
 import type { ObjectId, PlayerId } from "./objectRef";
 import { zoneKey, type ZoneKey, type ZoneRef } from "./zones";
 
@@ -60,10 +61,6 @@ export type ContinuousEffect = {
 
 export type PendingChoice = {
   type: string;
-};
-
-export type LKISnapshot = {
-  id: string;
 };
 
 export type TriggeredAbility = {
