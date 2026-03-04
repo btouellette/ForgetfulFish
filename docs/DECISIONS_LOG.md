@@ -94,6 +94,12 @@
   - **ETB lookahead**: data structures support CR 614.12 hypothetical state evaluation; implementation deferred until a deck card requires it.
 - Implementation phases expanded from 5 to 7, front-loading identity/LKI and the action modifier pipeline.
 
+## 2026-03-04 Rules Engine Plan Portability Guardrail
+
+- Updated `docs/RULES_ENGINE_IMPLEMENTATION_PLAN.md` to prevent shared-zone lock-in in foundations.
+- Phase 0 now plans mode-routed logical zones (`resolveZone` + `createInitialZones`) and zone storage keyed by `ZoneRef`/`ZoneKey`, instead of fixed `{ library, graveyard, ... }` fields.
+- Shared-deck behavior remains a concrete baseline mode, with an added split-zone conformance test fixture to prove the kernel stays mode-agnostic.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.
