@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -14,6 +15,8 @@ import {
   processCommand,
   zoneKey
 } from "../../src";
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
 
 describe("integration/foundations", () => {
   it("exports Phase 0 foundations from the package root", () => {
@@ -40,7 +43,7 @@ describe("integration/foundations", () => {
   });
 
   it("confirms legacy state.ts is removed", () => {
-    const legacyStatePath = resolve(process.cwd(), "src", "state.ts");
+    const legacyStatePath = resolve(currentDir, "..", "..", "src", "state.ts");
     expect(existsSync(legacyStatePath)).toBe(false);
   });
 });
