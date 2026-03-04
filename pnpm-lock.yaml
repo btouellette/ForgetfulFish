@@ -141,7 +141,11 @@ importers:
         specifier: ^7.4.1
         version: 7.4.1(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@5.9.3)
 
-  packages/game-engine: {}
+  packages/game-engine:
+    devDependencies:
+      fast-check:
+        specifier: ^3.23.2
+        version: 3.23.2
 
   packages/realtime-contract:
     dependencies:
