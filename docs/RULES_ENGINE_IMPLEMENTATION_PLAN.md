@@ -13,6 +13,9 @@ Tasks within a phase are ordered by dependency — earlier tasks unblock later o
 - "Depends:" lists prerequisite tasks.
 - "Test:" describes the test file(s), what to test, and the expected behavior — **written BEFORE implementation code**.
 - "Acceptance:" describes the concrete success condition beyond tests.
+- Mode-portability guardrail: kernel/state tasks must target logical zones through `GameMode` zone routing and must not hardcode shared-library/shared-graveyard assumptions.
+- Backward-compat note: if any future task text reintroduces `resolveLibrary`/`resolveGraveyard`, implement it via `resolveZone` adapters to preserve plan continuity while avoiding lock-in.
+- Interpretation rule: when a task says "shared library" or "shared graveyard," treat that as a SharedDeckMode expectation in tests, not as an implementation directive.
 
 **Current baseline**: `packages/game-engine/` has `src/state.ts` (basic `PlayerState`,
 `GameState` stub, `createInitialGameState`), `src/index.ts` (re-exports), and
@@ -73,7 +76,7 @@ Harness categories:
 1. **Definition tests**: Card loads correctly from registry with all attributes (mana cost, types, power/toughness, abilities).
 2. **Casting tests**: Card can be cast when legal (correct mana, valid targets) and is rejected when illegal.
 3. **Resolution tests**: Card's `onResolve` or ETB effects produce the exact expected state changes.
-4. **Shared-deck tests**: Card interacts correctly with the shared library and shared graveyard via the `GameMode` hooks.
+4. **Mode-routing tests**: Card routes zone-dependent behavior through `GameMode` hooks, then validates expected Forgetful Fish shared-deck behavior.
 5. **Interaction tests**: Card interacts correctly with continuous effects (layers) and replacement effects.
 6. **Edge case tests**: What happens if targets disappear? If the library is empty? If the player has no hand?
 7. **State invariant check**: `assertStateInvariants(state)` passes before, during, and after resolution.
@@ -90,14 +93,17 @@ Harness categories:
 
 ## Phase 0 — Foundations (determinism + identity + mode)
 
-### P0.1 — Core type definitions: ObjectRef, ObjectId, ZoneRef
+### [x] P0.1 — Core type definitions: ObjectRef, ObjectId, ZoneRef
 
 **Files**: `state/objectRef.ts`, `state/zones.ts`
 
 Define:
 - `ObjectId` (string type alias)
 - `ObjectRef { id: ObjectId; zcc: number }` per §2
-- `ZoneRef` discriminated union: `{ zone: 'library' } | { zone: 'graveyard' } | { zone: 'battlefield' } | { zone: 'exile' } | { zone: 'stack' } | { zone: 'hand'; playerId: PlayerId }`
+- `ZoneKind` union: `'library' | 'graveyard' | 'battlefield' | 'exile' | 'stack' | 'hand'`
+- `ZoneScope` union: `{ scope: 'shared' } | { scope: 'player'; playerId: PlayerId }`
+- `ZoneRef`: `{ kind: ZoneKind } & ZoneScope`
+- `ZoneKey` serializer helper (stable key for `ZoneRef`, e.g. `shared:library`, `player:p1:graveyard`)
 - `PlayerId` (string type alias)
 - Zone-change helper: `bumpZcc(obj: GameObject): GameObject` — returns new object with incremented `zcc`
 
@@ -108,11 +114,11 @@ Test: **Write tests FIRST**, then implement.
 2. `ObjectRef` equality comparison (same ID and ZCC).
 3. `ObjectRef` inequality (different ID or different ZCC).
 4. `bumpZcc` on object with `zcc=0` returns new object with `zcc=1`.
-5. `ZoneRef` union exhaustiveness check (all 6 variants representable).
-6. `ZoneRef` for `hand` correctly requires and stores `PlayerId`.
+5. `ZoneRef` supports both shared and player-scoped variants for the same logical zone kind.
+6. `ZoneKey` serialization is deterministic and unique per `ZoneRef`.
 Acceptance: Types compile, tests pass, exported from `index.ts`.
 
-### P0.2 — GameObject and GameObjectBase types
+### [x] P0.2 — GameObject and GameObjectBase types
 
 **Files**: `state/gameObject.ts`
 
@@ -134,7 +140,7 @@ Test: **Write tests FIRST**, then implement.
 6. Object reference equality for the same object instance.
 Acceptance: Types compile, exported.
 
-### P0.3 — Full GameState type
+### [x] P0.3 — Full GameState type
 
 **Files**: `state/gameState.ts` (new file replacing current `state.ts`)
 
@@ -143,7 +149,8 @@ Define the complete `GameState` per §1:
 - `rngSeed: string`
 - `mode: GameMode` (interface reference, implemented in P0.7)
 - `players: [PlayerInfo, PlayerInfo]` with `id`, `life`, `manaPool`, `hand: ObjectId[]`, `priority: boolean`
-- `zones: { library, graveyard, battlefield, exile, stack }` — each `ObjectId[]`
+- `zones: Map<ZoneKey, ObjectId[]>` (mode-provided zone registry)
+- `zoneCatalog: ZoneRef[]` (all zones active for the current mode)
 - `objectPool: Map<ObjectId, GameObject>`
 - `stack: StackItem[]` (type stub — fleshed out in Phase 2)
 - `turnState: TurnState { activePlayerId, phase, step, priorityState, attackers, blockers, landPlayedThisTurn }`
@@ -155,13 +162,15 @@ Define the complete `GameState` per §1:
 Migrate existing `createInitialGameState` to use the new types. Update existing test in
 `test/state.test.ts` to match.
 
+`players[].hand` remains a compatibility view during migration; zone arrays in `zones` are the canonical mutation source for engine logic.
+
 <!-- TODO: Define Phase and Step enums (UNTAP, UPKEEP, DRAW, MAIN_1, BEGIN_COMBAT, DECLARE_ATTACKERS, DECLARE_BLOCKERS, COMBAT_DAMAGE, END_COMBAT, MAIN_2, END, CLEANUP). Check whether a single Phase enum with Step sub-enum is cleaner or if flat enum is better for pattern matching. -->
 
 **Test file**: `test/state/gameState.test.ts`
 Depends: P0.1, P0.2
 Test: **Write tests FIRST**, then implement.
 1. `GameState` construction with all top-level fields populated.
-2. `createInitialGameState` produces valid `GameState` with all zones empty.
+2. `createInitialGameState` produces valid `GameState` with mode-provided zones initialized and empty.
 3. `PlayerInfo` initialization (defaults: 20 life, zero mana, empty hand).
 4. `turnState` initialization (active player set, phase=UNTAP, landPlayed=false).
 5. `objectPool` is a Map and starts empty.
@@ -243,30 +252,40 @@ Test: **Write tests FIRST**, then implement.
 6. `getSeed()` after operations allows resumption with same continuation sequence.
 Acceptance: Determinism tests pass. No external dependencies (pure implementation).
 
-### P0.7 — GameMode interface and shared-deck implementation
+### P0.7 — GameMode interface, zone policy, and shared-deck baseline
 
 **Files**: `mode/gameMode.ts`, `mode/sharedDeck.ts`
 
-Define per §14:
-- `GameMode` interface with `id`, `resolveLibrary`, `resolveGraveyard`, `simultaneousDrawOrder`, `determineOwner`
+Define per §14 (updated for future modes):
+- `GameMode` interface with `id`, `resolveZone`, `createInitialZones`, `simultaneousDrawOrder`, `determineOwner`
+  - `resolveZone(state, logicalZone, playerId?) => ZoneRef`
+  - `createInitialZones(players) => { zoneCatalog: ZoneRef[]; zones: Map<ZoneKey, ObjectId[]> }`
 - `SharedDeckMode` implementation:
-  - `resolveLibrary` → always returns shared library zone
-  - `resolveGraveyard` → always returns shared graveyard zone
+  - `resolveZone(..., 'library', ...)` → shared library zone
+  - `resolveZone(..., 'graveyard', ...)` → shared graveyard zone
+  - `resolveZone(..., 'hand', playerId)` → player-scoped hand zone
   - `simultaneousDrawOrder` → alternating starting with active player
   - `determineOwner` → player who drew/played the card
+- Add a lightweight conformance fixture mode in tests (for example `SplitZonesTestMode`) to prove non-shared library/graveyard routing works without kernel changes.
 
 <!-- TODO: For `determineOwner` on draw: the variant rules say each player draws from the shared deck — does the drawn card's `owner` become the drawing player? Architecture doc §14 says yes (`'draw' | 'play'`). Confirm this matches the canonical Forgetful Fish variant rules in PROJECT_OVERVIEW.md. -->
 
 **Test file**: `test/mode/sharedDeck.test.ts`
 Depends: P0.1, P0.3 (needs GameState, PlayerId, ZoneRef)
 Test: **Write tests FIRST**, then implement.
-1. `resolveLibrary` returns `{ zone: 'library' }` regardless of input player.
-2. `resolveGraveyard` returns `{ zone: 'graveyard' }` regardless of input player.
-3. `simultaneousDrawOrder(4, 'p1')` returns `['p1','p2','p1','p2']`.
-4. `determineOwner` for 'draw' action returns the drawing player's ID.
-5. `determineOwner` for 'play' action returns the playing player's ID.
-6. `simultaneousDrawOrder(1, 'p1')` returns `['p1']`.
-Acceptance: Tests pass, mode can be injected into GameState.
+1. `SharedDeckMode.resolveZone(..., 'library', p1)` and `(..., 'library', p2)` both return shared-scoped library.
+2. `SharedDeckMode.resolveZone(..., 'graveyard', p1)` and `(..., 'graveyard', p2)` both return shared-scoped graveyard.
+3. `SharedDeckMode.resolveZone(..., 'hand', p1)` returns player-scoped hand for `p1`.
+4. `simultaneousDrawOrder(4, 'p1')` returns `['p1','p2','p1','p2']`.
+5. `determineOwner` for 'draw' action returns the drawing player's ID.
+6. `SplitZonesTestMode.resolveZone(..., 'library', p1)` and `(..., 'library', p2)` return distinct player-scoped libraries.
+Acceptance: Tests pass, mode can be injected into GameState, and kernel code remains unchanged between shared and split-zone mode fixtures.
+
+Zone routing rules (apply to all downstream tasks):
+- "your library/graveyard" routes via `mode.resolveZone(state, 'library' | 'graveyard', playerId)`.
+- "owner's library" routes with `playerId = object.owner`.
+- "controller's graveyard" (if used) routes with `playerId = object.controller`.
+- Implementations may not directly construct shared-zone keys for library/graveyard behavior.
 
 ### P0.8 — GameAction base types
 
@@ -513,7 +532,7 @@ Acceptance: Full turn cycle works with trivial (pass-only) game flow.
 
 Implement drawing:
 - `drawCard(state: GameState, playerId: PlayerId, rng: Rng): { state: GameState; events: GameEvent[] }`
-- Remove top card from library, add to player's hand
+- Resolve draw source via `mode.resolveZone(state, 'library', playerId)`, remove top card from that zone, add to player's hand zone
 - Update object's zone and owner (via `GameMode.determineOwner`)
 - Bump `zcc`, store LKI snapshot
 - Emit `CARD_DRAWN` event
@@ -530,7 +549,7 @@ Test: **Write tests FIRST**, then implement.
 6. Multiple sequential draws correctly advance the library.
 7. Draw when hand is already at maximum (no immediate discard, handled in cleanup).
 8. `assertStateInvariants` passes after draw.
-Acceptance: Draw is invoked via the turn structure and produces the behavior described in tests when run in an end-to-end game flow.
+Acceptance: Draw is invoked via the turn structure and produces the behavior described in tests when run in an end-to-end game flow, including a split-zone mode conformance test that requires no kernel changes.
 
 ### P1.4 — Play land command
 
@@ -597,7 +616,7 @@ Implement basic spell casting per §4/§6:
 - Basic resolution (when both pass on non-empty stack):
   1. Pop top stack item
   2. Run resolution steps (via whiteboard — simplified in this phase)
-  3. Move card to appropriate zone (battlefield for permanents, graveyard for instants/sorceries)
+  3. Move card to appropriate zone (battlefield for permanents; for instants/sorceries route graveyard via `mode.resolveZone(state, 'graveyard', ownerOrController)` per card/rules semantics)
   4. Emit `SPELL_RESOLVED` event
 
 **Test file**: `test/engine/cast.test.ts`
@@ -609,7 +628,7 @@ Test: **Write tests FIRST**, then implement.
 4. Cast with insufficient mana → command rejected.
 5. Opponent responds to spell on stack → opponent's spell resolves first.
 6. `assertStateInvariants` passes after cast and after resolution.
-Acceptance: Spell lifecycle (hand → stack → resolve → destination) works end-to-end.
+Acceptance: Spell lifecycle (hand → stack → resolve → destination) works end-to-end and passes the same assertions under SharedDeckMode and split-zone test mode.
 
 ### P1.7 — Legal command generation
 
@@ -688,7 +707,7 @@ Acceptance: Event emission pipeline exists, ready for triggers.
 ### P1.10 — Integration test: full turn with Island
 
 Wire everything together:
-- Set up game: 2 players, shared library of 20 Islands
+- Set up game via mode-provided zone initialization: 2 players, active draw zone seeded with 20 Islands
 - Player 1's turn: untap → upkeep → draw → main phase → play Island → tap Island for mana (pool has {U}) → pass → opponent passes → next phase → ... → end turn
 - Player 2's turn: draw → play Island → pass through
 - Verify: correct events emitted at each step, state consistent throughout
@@ -874,7 +893,7 @@ Implement per card-mechanism mapping:
 - Resolution steps:
   - Step 0: counter target spell (via whiteboard `COUNTER` action)
   - Step 1: move countered spell to top of library (via `MOVE_ZONE` with `toIndex: 0`)
-- Shared-deck interaction: "owner's library" resolves via `GameMode.resolveLibrary` → shared library
+- Shared-deck interaction: "owner's library" routes via `mode.resolveZone(state, 'library', ownerId)` and resolves to shared library under SharedDeckMode
 
 **Test file**: `test/cards/memoryLapse.test.ts`
 Depends: P0.11, P2.1, P2.4, P1.6
@@ -899,7 +918,7 @@ Implement:
 - CardDefinition: instant, {1}{U}, `onResolve`:
   - Step 0: count cards named "Accumulated Knowledge" in graveyard (shared graveyard — includes the AK about to resolve, which is still on stack, so count graveyard only)
   - Step 1: draw X+1 cards where X = that count
-- Uses `GameMode.resolveGraveyard` → shared graveyard
+- Uses `mode.resolveZone(state, 'graveyard', playerId)` and resolves to shared graveyard under SharedDeckMode
 
 <!-- TODO: Verify the count timing — when AK resolves, it's still on the stack, not in graveyard yet. So the count is of AKs already in graveyard. After resolution, AK itself goes to graveyard. This means first AK draws 1, second draws 2, etc. Confirm this matches Oracle text: "Draw a card, then draw a card for each card named Accumulated Knowledge in each graveyard." -->
 
@@ -1627,7 +1646,7 @@ Cards: **Diminishing Returns** (exile hand and graveyard, shuffle library, draw 
 Implement:
 - CardDefinition: sorcery, {2}{U}{U}, `onResolve`:
   - Each player exiles their hand (to exile zone)
-  - Exile shared graveyard (`GameMode.resolveGraveyard`)
+- Exile graveyard zone resolved by `mode.resolveZone(state, 'graveyard', casterId)`
   - Shuffle shared library
   - Each player draws 7 (alternating per `GameMode.simultaneousDrawOrder`)
   - Each player loses 1 life
@@ -2230,3 +2249,4 @@ Collected from `<!-- TODO -->` markers above — items needing clarification bef
 28. **P7.4** — Property-testing library selection (fast-check recommended)
 29. **P0.14** — State Invariant Checker: ensure all objectPool entries have valid zone references
 30. **P0.15** — Property-Based Test Utilities: generate diverse but internally consistent GameStates
+31. **P0.7** — Define `resolveZone` logical zone enum shape (`library | graveyard | hand | battlefield | exile | stack`) and whether to reserve future-only logical zones now.

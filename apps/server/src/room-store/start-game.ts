@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@forgetful-fish/database";
 import { createInitialGameState } from "@forgetful-fish/game-engine";
 
+import { toPersistedGameState } from "./state-persistence";
 import type { StartGameResult } from "./types";
 import { compareSeats, isUniqueConstraintError, normalizeRoomSeat } from "./utils";
 
@@ -80,9 +81,13 @@ export async function startGameInDatabase(
     };
   }
 
-  const initialState = createInitialGameState(firstParticipant.userId, secondParticipant.userId);
-  const stateVersion = 1;
   const gameId = randomUUID();
+  const initialState = createInitialGameState(firstParticipant.userId, secondParticipant.userId, {
+    id: gameId,
+    rngSeed: randomUUID()
+  });
+  const serializedInitialState = toPersistedGameState(initialState);
+  const stateVersion = 1;
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -91,7 +96,7 @@ export async function startGameInDatabase(
           id: gameId,
           roomId,
           startedByUserId: userId,
-          state: initialState,
+          state: serializedInitialState,
           stateVersion,
           lastAppliedEventSeq: 0
         }
@@ -106,7 +111,7 @@ export async function startGameInDatabase(
           causedByUserId: userId,
           payload: {
             stateVersion,
-            state: initialState,
+            state: serializedInitialState,
             playersBySeat: participantsBySeat.map((participant) => ({
               seat: participant.seat,
               userId: participant.userId
