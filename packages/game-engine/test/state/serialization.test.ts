@@ -29,7 +29,10 @@ function containsMap(value: unknown): boolean {
 
 describe("state/serialization", () => {
   it("serializes map-based state into JSON-safe records", () => {
-    const state = createInitialGameState("p1", "p2");
+    const state = createInitialGameState("p1", "p2", {
+      id: "game-1",
+      rngSeed: "seed-1"
+    });
     const object: GameObject = {
       id: "obj-1",
       zcc: 0,
@@ -70,7 +73,7 @@ describe("state/serialization", () => {
       version: 2,
       engineVersion: "0.2.0",
       rngSeed: "seed-2",
-      mode: { id: "shared-deck" },
+      modeId: "shared-deck",
       players: [
         {
           id: "p1",
@@ -149,7 +152,10 @@ describe("state/serialization", () => {
   });
 
   it("preserves state through serialize/deserialize round trip", () => {
-    const state = createInitialGameState("p1", "p2");
+    const state = createInitialGameState("p1", "p2", {
+      id: "game-1",
+      rngSeed: "seed-1"
+    });
     const serialized = serializeGameState(state);
     const rehydrated = deserializeGameState(serialized);
     const reserialized = serializeGameState(rehydrated);
@@ -158,14 +164,20 @@ describe("state/serialization", () => {
   });
 
   it("produces persistence payloads with no Map instances", () => {
-    const state = createInitialGameState("p1", "p2");
+    const state = createInitialGameState("p1", "p2", {
+      id: "game-1",
+      rngSeed: "seed-1"
+    });
     const payload = serializeGameStateForPersistence(state);
 
     expect(containsMap(payload)).toBe(false);
   });
 
   it("supports persistence helper round trip", () => {
-    const state = createInitialGameState("p1", "p2");
+    const state = createInitialGameState("p1", "p2", {
+      id: "game-1",
+      rngSeed: "seed-1"
+    });
     const payload = serializeGameStateForPersistence(state);
     const restored = deserializeGameStateFromPersistence(payload);
 

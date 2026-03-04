@@ -4,7 +4,10 @@ import { createInitialGameState } from "../src/state/gameState";
 
 describe("createInitialGameState", () => {
   it("starts both players at 20 life and sets active player in turnState", () => {
-    const state = createInitialGameState("player-1", "player-2");
+    const state = createInitialGameState("player-1", "player-2", {
+      id: "game-test",
+      rngSeed: "seed-test"
+    });
 
     expect(state.players).toEqual([
       {

@@ -4,9 +4,16 @@ import { createInitialGameState, type GameState } from "../../src/state/gameStat
 import { zoneKey } from "../../src/state/zones";
 import { assertStateInvariants } from "../helpers/invariants";
 
+function createTestState() {
+  return createInitialGameState("player-1", "player-2", {
+    id: "game-test",
+    rngSeed: "seed-test"
+  });
+}
+
 describe("state/gameState", () => {
   it("constructs GameState with all top-level fields", () => {
-    const state = createInitialGameState("player-1", "player-2");
+    const state = createTestState();
 
     expect(state.id).toBeTypeOf("string");
     expect(state.version).toBe(1);
@@ -24,8 +31,18 @@ describe("state/gameState", () => {
     expect(state.triggerQueue).toEqual([]);
   });
 
+  it("accepts custom game id and rng seed", () => {
+    const state = createInitialGameState("player-1", "player-2", {
+      id: "game-123",
+      rngSeed: "seed-123"
+    });
+
+    expect(state.id).toBe("game-123");
+    expect(state.rngSeed).toBe("seed-123");
+  });
+
   it("initializes all zones as empty arrays", () => {
-    const state = createInitialGameState("player-1", "player-2");
+    const state = createTestState();
 
     expect(state.zones.get(zoneKey({ kind: "library", scope: "shared" }))).toEqual([]);
     expect(state.zones.get(zoneKey({ kind: "graveyard", scope: "shared" }))).toEqual([]);
@@ -41,7 +58,7 @@ describe("state/gameState", () => {
   });
 
   it("initializes players with 20 life, empty mana pool, and empty hand", () => {
-    const state = createInitialGameState("player-1", "player-2");
+    const state = createTestState();
 
     expect(state.players).toEqual([
       {
@@ -62,7 +79,7 @@ describe("state/gameState", () => {
   });
 
   it("initializes turnState with active player and untap phase", () => {
-    const state = createInitialGameState("player-1", "player-2");
+    const state = createTestState();
 
     expect(state.turnState.activePlayerId).toBe("player-1");
     expect(state.turnState.phase).toBe("UNTAP");
@@ -71,14 +88,14 @@ describe("state/gameState", () => {
   });
 
   it("starts with an empty objectPool Map", () => {
-    const state = createInitialGameState("player-1", "player-2");
+    const state = createTestState();
 
     expect(state.objectPool).toBeInstanceOf(Map);
     expect(state.objectPool.size).toBe(0);
   });
 
   it("passes state invariants on initial state", () => {
-    const state: GameState = createInitialGameState("player-1", "player-2");
+    const state: GameState = createTestState();
     expect(() => assertStateInvariants(state)).not.toThrow();
   });
 });

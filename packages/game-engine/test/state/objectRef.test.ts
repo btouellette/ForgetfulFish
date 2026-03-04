@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { GameObject } from "../../src/state/gameObject";
-import type { ObjectRef, PlayerId } from "../../src/state/objectRef";
+import type { ObjectId, ObjectRef, PlayerId } from "../../src/state/objectRef";
 import { bumpZcc, zoneKey, type ZoneRef } from "../../src/state/zones";
 
 describe("state/objectRef", () => {
   it("ObjectId is usable as a string alias", () => {
-    const objectId = "obj-1";
+    const objectId: ObjectId = "obj-1";
     expect(objectId).toBe("obj-1");
   });
 

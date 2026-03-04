@@ -1,6 +1,5 @@
 import type {
   ContinuousEffect,
-  GameMode,
   GameState,
   LKISnapshot,
   PendingChoice,
@@ -33,7 +32,7 @@ export type SerializedGameState = {
   version: number;
   engineVersion: string;
   rngSeed: string;
-  mode: GameMode;
+  modeId: string;
   players: [PlayerInfo, PlayerInfo];
   zones: ZoneCollection;
   zoneCatalog: ZoneRef[];
@@ -112,7 +111,7 @@ export function serializeGameState(state: GameState): SerializedGameState {
     version: state.version,
     engineVersion: state.engineVersion,
     rngSeed: state.rngSeed,
-    mode: state.mode,
+    modeId: state.mode.id,
     players: state.players,
     zones: mapToRecord(state.zones),
     zoneCatalog: state.zoneCatalog,
@@ -138,7 +137,7 @@ export function deserializeGameState(serialized: SerializedGameState): GameState
     version: serialized.version,
     engineVersion: serialized.engineVersion,
     rngSeed: serialized.rngSeed,
-    mode: serialized.mode,
+    mode: { id: serialized.modeId },
     players: serialized.players,
     zones: recordToMap(serialized.zones),
     zoneCatalog: serialized.zoneCatalog,

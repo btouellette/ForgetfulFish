@@ -92,6 +92,11 @@ export type GameState = {
   triggerQueue: TriggeredAbility[];
 };
 
+export type CreateInitialGameStateOptions = {
+  id: string;
+  rngSeed: string;
+};
+
 function createPlayer(id: PlayerId): PlayerInfo {
   return {
     id,
@@ -102,7 +107,11 @@ function createPlayer(id: PlayerId): PlayerInfo {
   };
 }
 
-export function createInitialGameState(playerOneId: PlayerId, playerTwoId: PlayerId): GameState {
+export function createInitialGameState(
+  playerOneId: PlayerId,
+  playerTwoId: PlayerId,
+  options: CreateInitialGameStateOptions
+): GameState {
   const zoneCatalog: ZoneRef[] = [
     { kind: "library", scope: "shared" },
     { kind: "graveyard", scope: "shared" },
@@ -120,10 +129,10 @@ export function createInitialGameState(playerOneId: PlayerId, playerTwoId: Playe
   }
 
   return {
-    id: "game-initial",
+    id: options.id,
     version: 1,
     engineVersion: "0.1.0",
-    rngSeed: "seed-initial",
+    rngSeed: options.rngSeed,
     mode: { id: "shared-deck" },
     players: [createPlayer(playerOneId), createPlayer(playerTwoId)],
     zones,
