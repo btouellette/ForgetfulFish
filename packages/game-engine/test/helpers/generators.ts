@@ -22,8 +22,8 @@ const SHARED_DECK_ZONE_REFS: readonly ZoneRef[] = [
 const playerIdArbitrary: fc.Arbitrary<PlayerId> = fc.constantFrom(...PLAYER_IDS);
 
 const objectIdArbitrary: fc.Arbitrary<ObjectId> = fc
-  .tuple(fc.constant("obj"), fc.integer({ min: 0, max: 100_000 }))
-  .map(([, id]) => `obj-${id}`);
+  .integer({ min: 0, max: 100_000 })
+  .map((id) => `obj-${id}`);
 
 const manaPoolArbitrary: fc.Arbitrary<ManaPool> = fc.record({
   white: fc.integer({ min: 0, max: 12 }),
@@ -202,12 +202,18 @@ const modeArbitrary: fc.Arbitrary<Mode> = fc.record({
 });
 
 const choicePayloadArbitrary: fc.Arbitrary<ChoicePayload> = fc.oneof(
-  fc.record({
-    type: fc.constant("CHOOSE_CARDS" as const),
-    selected: fc.uniqueArray(objectIdArbitrary, { maxLength: 5 }),
-    min: fc.integer({ min: 0, max: 2 }),
-    max: fc.integer({ min: 2, max: 5 })
-  }),
+  fc
+    .record({
+      type: fc.constant("CHOOSE_CARDS" as const),
+      selected: fc.uniqueArray(objectIdArbitrary, { maxLength: 5 }),
+      bounds: fc.tuple(fc.integer({ min: 0, max: 5 }), fc.integer({ min: 0, max: 5 }))
+    })
+    .map(({ type, selected, bounds }) => ({
+      type,
+      selected,
+      min: Math.min(...bounds),
+      max: Math.max(...bounds)
+    })),
   fc.record({
     type: fc.constant("ORDER_CARDS" as const),
     ordered: fc.uniqueArray(objectIdArbitrary, { maxLength: 5 })
