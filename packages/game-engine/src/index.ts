@@ -18,6 +18,7 @@ export {
   type PlayLandCommand,
   type Target
 } from "./commands/command";
+export * from "./engine/processCommand";
 export * from "./events/event";
 export * from "./mode/gameMode";
 export * from "./mode/sharedDeck";
