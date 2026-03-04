@@ -212,7 +212,11 @@ describe("state/serialization", () => {
         activePlayerId: "p1",
         phase: "UNTAP",
         step: "UNTAP",
-        priorityState: { holder: "p1", passedBy: [] },
+        priorityState: {
+          activePlayerPassed: false,
+          nonActivePlayerPassed: false,
+          playerWithPriority: "p1"
+        },
         attackers: [],
         blockers: [],
         landPlayedThisTurn: false

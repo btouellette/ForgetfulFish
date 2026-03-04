@@ -1,6 +1,7 @@
 import type { GameObject } from "./gameObject";
 import type { LKISnapshot } from "./lki";
 import type { ObjectId, PlayerId } from "./objectRef";
+import { createInitialPriorityState, type PriorityState } from "./priorityState";
 import type { GameMode } from "../mode/gameMode";
 import { SharedDeckMode } from "../mode/sharedDeck";
 import type { ZoneKey, ZoneRef } from "./zones";
@@ -20,11 +21,6 @@ export type PlayerInfo = {
   manaPool: ManaPool;
   hand: ObjectId[];
   priority: boolean;
-};
-
-export type PriorityState = {
-  holder: PlayerId;
-  passedBy: PlayerId[];
 };
 
 export type TurnPhase =
@@ -126,10 +122,7 @@ export function createInitialGameState(
       activePlayerId: playerOneId,
       phase: "UNTAP",
       step: "UNTAP",
-      priorityState: {
-        holder: playerOneId,
-        passedBy: []
-      },
+      priorityState: createInitialPriorityState(playerOneId),
       attackers: [],
       blockers: [],
       landPlayedThisTurn: false
