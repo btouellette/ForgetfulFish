@@ -287,7 +287,7 @@ Zone routing rules (apply to all downstream tasks):
 - "controller's graveyard" (if used) routes with `playerId = object.controller`.
 - Implementations may not directly construct shared-zone keys for library/graveyard behavior.
 
-### P0.8 — GameAction base types
+### [x] P0.8 — GameAction base types
 
 **Files**: `actions/action.ts`
 
