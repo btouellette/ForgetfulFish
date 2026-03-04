@@ -220,7 +220,11 @@ export function createInMemoryRoomStore() {
       const stateVersion = 1;
       const gameState = createInitialGameState(
         firstParticipant[1].userId,
-        secondParticipant[1].userId
+        secondParticipant[1].userId,
+        {
+          id: gameId,
+          rngSeed: `seed-${gameId}`
+        }
       );
       room.gameState = gameState;
       room.stateVersion = stateVersion;

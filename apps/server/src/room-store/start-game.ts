@@ -1,18 +1,11 @@
 import { randomUUID } from "node:crypto";
 
-import { prisma, type Prisma } from "@forgetful-fish/database";
-import {
-  createInitialGameState,
-  serializeGameStateForPersistence,
-  type SerializedGameState
-} from "@forgetful-fish/game-engine";
+import { prisma } from "@forgetful-fish/database";
+import { createInitialGameState } from "@forgetful-fish/game-engine";
 
+import { toPersistedGameState } from "./state-persistence";
 import type { StartGameResult } from "./types";
 import { compareSeats, isUniqueConstraintError, normalizeRoomSeat } from "./utils";
-
-function toInputJsonValue(value: SerializedGameState): Prisma.InputJsonValue {
-  return value as Prisma.InputJsonValue;
-}
 
 export async function startGameInDatabase(
   roomId: string,
@@ -88,10 +81,13 @@ export async function startGameInDatabase(
     };
   }
 
-  const initialState = createInitialGameState(firstParticipant.userId, secondParticipant.userId);
-  const serializedInitialState = toInputJsonValue(serializeGameStateForPersistence(initialState));
-  const stateVersion = 1;
   const gameId = randomUUID();
+  const initialState = createInitialGameState(firstParticipant.userId, secondParticipant.userId, {
+    id: gameId,
+    rngSeed: randomUUID()
+  });
+  const serializedInitialState = toPersistedGameState(initialState);
+  const stateVersion = 1;
 
   try {
     await prisma.$transaction(async (tx) => {

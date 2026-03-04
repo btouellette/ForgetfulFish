@@ -492,11 +492,17 @@ describe("server room routes", () => {
     expect(retryStartResponse.statusCode).toBe(200);
     expect(retryStartResponse.json()).toEqual(startResponse.json());
 
+    const startedGameId: string = startResponse.json().gameId;
+    const expectedInitialState = createInitialGameState("owner-1", "user-2", {
+      id: startedGameId,
+      rngSeed: `seed-${startedGameId}`
+    });
+
     const room = roomStore.inspectRoom(roomId);
     expect(room).toBeDefined();
     expect(room?.stateVersion).toBe(1);
     expect(room?.lastAppliedEventSeq).toBe(0);
-    expect(room?.gameState).toEqual(createInitialGameState("owner-1", "user-2"));
+    expect(room?.gameState).toEqual(expectedInitialState);
     expect(room?.gameEvents).toHaveLength(1);
     expect(room?.gameEvents[0]).toEqual({
       seq: 0,
@@ -505,7 +511,7 @@ describe("server room routes", () => {
       causedByUserId: "owner-1",
       payload: {
         stateVersion: 1,
-        state: createInitialGameState("owner-1", "user-2"),
+        state: expectedInitialState,
         playersBySeat: [
           {
             seat: "P1",
