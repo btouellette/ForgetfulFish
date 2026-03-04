@@ -81,6 +81,20 @@ describe("engine/processCommand", () => {
     expect(result).toHaveProperty("pendingChoice");
   });
 
+  it("keeps CommandResult.pendingChoice synchronized with nextState.pendingChoice", () => {
+    const state = createInitialGameState("p1", "p2", { id: "game-4b", rngSeed: "seed-4b" });
+    const stateWithChoice = {
+      ...state,
+      pendingChoice: { type: "CHOOSE_YES_NO" }
+    };
+    const rng = new Rng(stateWithChoice.rngSeed);
+
+    const result = processCommand(stateWithChoice, { type: "PASS_PRIORITY" }, rng);
+
+    expect(result.pendingChoice).toEqual(stateWithChoice.pendingChoice);
+    expect(result.pendingChoice).toEqual(result.nextState.pendingChoice);
+  });
+
   it("does not mutate the input Readonly<GameState>", () => {
     const state = createInitialGameState("p1", "p2", { id: "game-5", rngSeed: "seed-5" });
     const before = serializeGameState(state);

@@ -17,6 +17,10 @@ type HandlerResult = {
   pendingChoice?: PendingChoice | null;
 };
 
+function assertNeverCommand(_command: never): never {
+  throw new Error("Unhandled command type in processCommand");
+}
+
 function passThrough(state: Readonly<GameState>): HandlerResult {
   return {
     state: { ...state },
@@ -41,14 +45,15 @@ export function processCommand(
       case "CONCEDE":
         return passThrough(state);
       default: {
-        const neverCommand: never = command;
-        return neverCommand;
+        return assertNeverCommand(command);
       }
     }
   })();
 
   const nextSeed = rng.getSeed();
-  const baselineSeed = new Rng(state.rngSeed).getSeed();
+  const baselineSeed = state.rngSeed.startsWith("u32:")
+    ? state.rngSeed
+    : new Rng(state.rngSeed).getSeed();
   const nextState: GameState =
     nextSeed === baselineSeed
       ? handlerResult.state
@@ -60,6 +65,9 @@ export function processCommand(
   return {
     nextState,
     newEvents: handlerResult.events,
-    pendingChoice: handlerResult.pendingChoice ?? null
+    pendingChoice:
+      handlerResult.pendingChoice !== undefined
+        ? handlerResult.pendingChoice
+        : (nextState.pendingChoice ?? null)
   };
 }
