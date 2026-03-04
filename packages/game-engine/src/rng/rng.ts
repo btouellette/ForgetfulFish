@@ -43,8 +43,8 @@ export class Rng {
   }
 
   public nextInt(min: number, max: number): number {
-    if (!Number.isInteger(min) || !Number.isInteger(max)) {
-      throw new RangeError("nextInt bounds must be integers");
+    if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max)) {
+      throw new RangeError("nextInt bounds must be safe integers");
     }
 
     if (max < min) {
@@ -60,22 +60,21 @@ export class Rng {
   }
 
   public shuffle<T>(arr: T[]): T[] {
-    const result = [...arr];
+    const pool = [...arr];
+    const shuffled: T[] = [];
 
-    for (let index = result.length - 1; index > 0; index -= 1) {
-      const swapIndex = this.nextInt(0, index);
-      const current = result[index];
-      const target = result[swapIndex];
+    while (pool.length > 0) {
+      const pickIndex = this.nextInt(0, pool.length - 1);
+      const picked = pool.splice(pickIndex, 1);
 
-      if (current === undefined || target === undefined) {
+      if (picked.length !== 1) {
         throw new Error("Shuffle index out of bounds");
       }
 
-      result[index] = target;
-      result[swapIndex] = current;
+      shuffled.push(...picked);
     }
 
-    return result;
+    return shuffled;
   }
 
   public getSeed(): string {

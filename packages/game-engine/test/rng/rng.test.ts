@@ -17,6 +17,15 @@ describe("rng/rng", () => {
     expect(rng.nextInt(4, 4)).toBe(4);
   });
 
+  it("nextInt rejects unsafe integer bounds", () => {
+    const rng = new Rng("seed-safe");
+
+    expect(() => rng.nextInt(Number.MAX_SAFE_INTEGER + 1, Number.MAX_SAFE_INTEGER + 1)).toThrow(
+      RangeError
+    );
+    expect(() => rng.nextInt(0, Number.MAX_SAFE_INTEGER + 1)).toThrow(RangeError);
+  });
+
   it("shuffle of an empty array returns a new empty array", () => {
     const rng = new Rng("seed-c");
     const source: number[] = [];
@@ -33,6 +42,18 @@ describe("rng/rng", () => {
 
     expect(shuffled).toEqual([42]);
     expect(shuffled).not.toBe(source);
+  });
+
+  it("shuffle preserves undefined entries without throwing", () => {
+    const rng = new Rng("seed-undefined");
+    const source: Array<number | undefined> = [1, undefined, 2];
+    const shuffled = rng.shuffle(source);
+
+    expect(shuffled).not.toBe(source);
+    expect(shuffled).toHaveLength(source.length);
+    expect(shuffled.filter((value) => value === undefined)).toHaveLength(1);
+    expect(shuffled.filter((value) => value === 1)).toHaveLength(1);
+    expect(shuffled.filter((value) => value === 2)).toHaveLength(1);
   });
 
   it("next() always stays in [0,1) over repeated calls", () => {
