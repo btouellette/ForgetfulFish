@@ -361,7 +361,7 @@ Test: **Write tests FIRST**, then implement.
 6. Exhaustiveness check for all command types in the switch.
 Acceptance: Entry point callable, returns valid `CommandResult`.
 
-### P0.11 — Island card definition (reference implementation)
+### [x] P0.11 — Island card definition (reference implementation)
 
 **Files**: `cards/cardDefinition.ts`, `cards/island.ts`, `cards/index.ts`
 
@@ -386,7 +386,7 @@ Test: **Write tests FIRST**, then implement.
 8. `pnpm typecheck` validates the registry map.
 Acceptance: Card registry works, Island loads cleanly.
 
-### P0.12 — AbilityAst base types
+### [x] P0.12 — AbilityAst base types
 
 **Files**: `cards/abilityAst.ts`
 
