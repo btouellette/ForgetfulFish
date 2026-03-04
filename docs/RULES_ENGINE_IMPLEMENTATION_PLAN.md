@@ -252,7 +252,7 @@ Test: **Write tests FIRST**, then implement.
 6. `getSeed()` after operations allows resumption with same continuation sequence.
 Acceptance: Determinism tests pass. No external dependencies (pure implementation).
 
-### P0.7 — GameMode interface, zone policy, and shared-deck baseline
+### [x] P0.7 — GameMode interface, zone policy, and shared-deck baseline
 
 **Files**: `mode/gameMode.ts`, `mode/sharedDeck.ts`
 
