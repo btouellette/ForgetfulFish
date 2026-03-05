@@ -275,7 +275,16 @@ export function advanceStep(state: Readonly<GameState>): GameState {
     }
   };
 
-  return stepHasPriority(followingStep)
-    ? givePriority(steppedState, steppedState.turnState.activePlayerId)
-    : steppedState;
+  if (!stepHasPriority(followingStep)) {
+    return steppedState;
+  }
+
+  return {
+    ...steppedState,
+    players: updatePlayerPriority(steppedState, steppedState.turnState.activePlayerId),
+    turnState: {
+      ...steppedState.turnState,
+      priorityState: createInitialPriorityState(steppedState.turnState.activePlayerId)
+    }
+  };
 }

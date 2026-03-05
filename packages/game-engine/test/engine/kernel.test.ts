@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { advanceStep, advanceTurn } from "../../src/engine/kernel";
+import { advanceStep, advanceTurn, handlePassPriority } from "../../src/engine/kernel";
 import { createInitialGameState, type GameState } from "../../src/state/gameState";
+import { createInitialPriorityState } from "../../src/state/priorityState";
 import { zoneKey } from "../../src/state/zones";
 import type { GameObject } from "../../src/state/gameObject";
 
@@ -93,7 +94,8 @@ describe("engine/kernel", () => {
         ...base,
         turnState: {
           ...base.turnState,
-          activePlayerId: "p2"
+          activePlayerId: "p2",
+          priorityState: createInitialPriorityState("p2")
         },
         players: [
           { ...base.players[0], priority: false },
@@ -177,5 +179,35 @@ describe("engine/kernel", () => {
     expect(next.turnState.step).toBe("UNTAP");
     expect(next.turnState.activePlayerId).toBe("p2");
     expect(next.continuousEffects).toEqual([{ id: "effect-kept" }]);
+  });
+
+  it("resets pass flags when entering a new priority step", () => {
+    const base = createInitialGameState("p1", "p2", {
+      id: "kernel-priority-reset",
+      rngSeed: "seed-kernel-priority-reset"
+    });
+    const state = withStep(
+      {
+        ...base,
+        turnState: {
+          ...base.turnState,
+          phase: "MAIN_1",
+          step: "MAIN_1",
+          priorityState: {
+            playerWithPriority: "p1",
+            activePlayerPassed: true,
+            nonActivePlayerPassed: true
+          }
+        }
+      },
+      "MAIN_1"
+    );
+
+    const stepped = advanceStep(state);
+    expect(stepped.turnState.step).toBe("BEGIN_COMBAT");
+    expect(stepped.turnState.priorityState).toEqual(createInitialPriorityState("p1"));
+
+    const afterSinglePass = handlePassPriority(stepped, "p1");
+    expect(afterSinglePass).not.toBe("both_passed");
   });
 });
