@@ -3,7 +3,6 @@ export * from "./actions/whiteboard";
 export * from "./cards/abilityAst";
 export * from "./cards/index";
 export * from "./choices/pendingChoice";
-export * from "./choices/resume";
 export {
   COMMAND_TYPES,
   type ActivateAbilityCommand,

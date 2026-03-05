@@ -10,7 +10,7 @@ type ResumeChoiceResult = {
 
 function assertChoicePayload(condition: boolean, message: string): void {
   if (!condition) {
-    throw new Error(`choice payload ${message}`);
+    throw new Error(message);
   }
 }
 
@@ -19,7 +19,9 @@ function assertPayloadType<T extends ChoicePayload["type"]>(
   expectedType: T
 ): asserts payload is Extract<ChoicePayload, { type: T }> {
   if (payload.type !== expectedType) {
-    throw new Error("choice payload type does not match pending choice type");
+    throw new Error(
+      `choice payload type mismatch: expected "${expectedType}", got "${payload.type}"`
+    );
   }
 }
 
@@ -50,21 +52,24 @@ function sameItems(left: string[], right: string[]): boolean {
 }
 
 function validateChoicePayload(choice: PendingChoice, payload: ChoicePayload): void {
+  const choiceContext = `[choice ${choice.id}:${choice.type}]`;
+
   switch (choice.type) {
     case "CHOOSE_CARDS": {
       assertPayloadType(payload, "CHOOSE_CARDS");
       const { selected } = payload;
+      const candidateIds = new Set(choice.constraints.candidates);
       assertChoicePayload(
         selected.length >= choice.constraints.min,
-        "selected fewer cards than minimum"
+        `${choiceContext} selected fewer cards than minimum`
       );
       assertChoicePayload(
         selected.length <= choice.constraints.max,
-        "selected more cards than maximum"
+        `${choiceContext} selected more cards than maximum`
       );
       assertChoicePayload(
-        selected.every((objectId) => choice.constraints.candidates.includes(objectId)),
-        "selected card is not a valid candidate"
+        selected.every((objectId) => candidateIds.has(objectId)),
+        `${choiceContext} selected card is not a valid candidate`
       );
       return;
     }
@@ -72,7 +77,7 @@ function validateChoicePayload(choice: PendingChoice, payload: ChoicePayload): v
       assertPayloadType(payload, "ORDER_CARDS");
       assertChoicePayload(
         sameItems(payload.ordered, choice.constraints.cards),
-        "ordered cards do not match required cards"
+        `${choiceContext} ordered cards do not match required cards`
       );
       return;
     }
@@ -80,20 +85,23 @@ function validateChoicePayload(choice: PendingChoice, payload: ChoicePayload): v
       assertPayloadType(payload, "ORDER_TRIGGERS");
       assertChoicePayload(
         sameItems(payload.triggerIds, choice.constraints.triggers),
-        "ordered triggers do not match required triggers"
+        `${choiceContext} ordered triggers do not match required triggers`
       );
       return;
     }
     case "NAME_CARD": {
       assertPayloadType(payload, "NAME_CARD");
-      assertChoicePayload(payload.cardName.trim().length > 0, "named card must be non-empty");
+      assertChoicePayload(
+        payload.cardName.trim().length > 0,
+        `${choiceContext} named card must be non-empty`
+      );
       return;
     }
     case "CHOOSE_REPLACEMENT": {
       assertPayloadType(payload, "CHOOSE_REPLACEMENT");
       assertChoicePayload(
         choice.constraints.replacements.includes(payload.replacementId),
-        "replacement id is not available"
+        `${choiceContext} replacement id is not available`
       );
       return;
     }
@@ -101,21 +109,24 @@ function validateChoicePayload(choice: PendingChoice, payload: ChoicePayload): v
       assertPayloadType(payload, "CHOOSE_MODE");
       assertChoicePayload(
         choice.constraints.modes.some((mode) => mode.id === payload.mode.id),
-        "chosen mode is not available"
+        `${choiceContext} chosen mode is not available`
       );
       return;
     }
     case "CHOOSE_TARGET": {
       assertPayloadType(payload, "CHOOSE_TARGET");
       const allowedKinds = new Set(choice.constraints.targetConstraints.allowedKinds);
-      assertChoicePayload(allowedKinds.has(payload.target.kind), "target kind is not allowed");
+      assertChoicePayload(
+        allowedKinds.has(payload.target.kind),
+        `${choiceContext} target kind is not allowed`
+      );
 
       if (payload.target.kind === "object") {
         const objectIds = choice.constraints.targetConstraints.objectIds;
         if (objectIds !== undefined) {
           assertChoicePayload(
             objectIds.includes(payload.target.object.id),
-            "target object is not allowed"
+            `${choiceContext} target object is not allowed`
           );
         }
         return;
@@ -125,7 +136,7 @@ function validateChoicePayload(choice: PendingChoice, payload: ChoicePayload): v
       if (playerIds !== undefined) {
         assertChoicePayload(
           playerIds.includes(payload.target.playerId),
-          "target player is not allowed"
+          `${choiceContext} target player is not allowed`
         );
       }
       return;

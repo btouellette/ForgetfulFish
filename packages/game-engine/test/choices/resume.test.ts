@@ -141,7 +141,7 @@ describe("choices/resume", () => {
         },
         new Rng(state.rngSeed)
       )
-    ).toThrow(/choice payload/);
+    ).toThrow(/selected more cards than maximum/);
   });
 
   it("rejects MAKE_CHOICE when no pendingChoice exists", () => {
@@ -154,6 +154,60 @@ describe("choices/resume", () => {
         new Rng(state.rngSeed)
       )
     ).toThrow(/no pending choice/);
+  });
+
+  it("rejects MAKE_CHOICE from the wrong player", () => {
+    const state = buildPausedChoiceState({
+      ...pendingYesNoChoice(),
+      forPlayer: "p2"
+    });
+
+    expect(() =>
+      processCommand(
+        state,
+        { type: "MAKE_CHOICE", payload: { type: "CHOOSE_YES_NO", accepted: true } },
+        new Rng(state.rngSeed)
+      )
+    ).toThrow(/only the pending choice player/);
+  });
+
+  it("rejects MAKE_CHOICE when stack is empty", () => {
+    const state = buildPausedChoiceState(pendingYesNoChoice());
+    state.stack = [];
+
+    expect(() =>
+      processCommand(
+        state,
+        { type: "MAKE_CHOICE", payload: { type: "CHOOSE_YES_NO", accepted: true } },
+        new Rng(state.rngSeed)
+      )
+    ).toThrow(/without a stack item/);
+  });
+
+  it("rejects MAKE_CHOICE when stack cursor is not waiting_choice", () => {
+    const state = buildPausedChoiceState(pendingYesNoChoice());
+    state.stack[0]!.effectContext.cursor = { kind: "step", index: 1 };
+
+    expect(() =>
+      processCommand(
+        state,
+        { type: "MAKE_CHOICE", payload: { type: "CHOOSE_YES_NO", accepted: true } },
+        new Rng(state.rngSeed)
+      )
+    ).toThrow(/not waiting for a choice/);
+  });
+
+  it("rejects MAKE_CHOICE when cursor choiceId does not match pending choice id", () => {
+    const state = buildPausedChoiceState(pendingYesNoChoice());
+    state.stack[0]!.effectContext.cursor = { kind: "waiting_choice", choiceId: "choice-other" };
+
+    expect(() =>
+      processCommand(
+        state,
+        { type: "MAKE_CHOICE", payload: { type: "CHOOSE_YES_NO", accepted: true } },
+        new Rng(state.rngSeed)
+      )
+    ).toThrow(/does not match stack cursor choice id/);
   });
 
   it("preserves state invariants after choice resumption", () => {
