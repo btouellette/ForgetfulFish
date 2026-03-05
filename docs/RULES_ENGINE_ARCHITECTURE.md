@@ -63,6 +63,36 @@ processCommand(
 
 No mutation. No I/O. The server owns state storage and event persistence; the engine just transforms.
 
+### App-engine boundary contract (hardened)
+
+The boundary is **API-level only**. `apps/server` and `apps/web` interact with the engine through
+the package root exports, not engine internals.
+
+| Layer | Owns | Must not own |
+|------|------|---------------|
+| **packages/game-engine** | Rules correctness, command validation, legal command generation, deterministic state transitions, event generation, serialization, view/event projection | Auth/session, room membership, transport fanout, database transactions |
+| **apps/server** | AuthN/AuthZ, room lifecycle, command admission, persistence (`games`/`game_events`), event sequencing at transport boundary, reconnect/snapshot delivery | Card/rules logic, direct mutation of engine internals, rule-specific branching |
+| **apps/web** | UI state/view rendering, command intent creation, reconnect UX, optimistic UX policy (if any) | Authoritative rule resolution, hidden-info redaction logic |
+
+**Allowed crossings (server/app -> engine):**
+- `createInitialGameState` (and future deck bootstrap constructor)
+- `processCommand`
+- `getLegalCommands`
+- `serializeGameStateForPersistence` / `deserializeGameStateFromPersistence`
+- `projectView` / `projectEvent` (when enabled in runtime path)
+- engine domain types used for boundary payloads (`GameState`, `Command`, `GameEvent`, serialized state)
+
+**Forbidden crossings:**
+- Importing internal modules from `packages/game-engine/src/**` in apps (bypass of public contract)
+- Server-side mutation of `state.zones`, `state.objectPool`, `state.turnState` outside engine constructors
+- App-level rule forks (e.g., special-casing specific card behavior in server/web)
+
+**Contract invariants:**
+1. Every gameplay mutation path is `processCommand`-driven after initialization.
+2. Engine outputs are authoritative: `nextState`, `newEvents`, optional `pendingChoice`.
+3. Server persists engine outputs; it does not reinterpret rules semantics.
+4. Client receives only projected/redacted data, never raw authoritative hidden information.
+
 ---
 
 ## 1. GameState — the complete snapshot
@@ -966,6 +996,22 @@ packages/game-engine/src/
 | **Regression** | One test per fixed bug, preserved forever |
 
 The engine is pure (no I/O), so all tests run without any mocks or database.
+
+### Boundary test ownership matrix
+
+| Test surface | Owner | Primary assertions |
+|-------------|-------|--------------------|
+| **Engine unit/integration/property/determinism** | `packages/game-engine/test/**` | Rule correctness, event ordering, invariants, replay/determinism, hidden-info projection correctness |
+| **Server app tests** | `apps/server/test/**` | Auth, room permissions/lifecycle, command admission flow, persistence shape/versioning, websocket/http contracts |
+| **Cross-boundary contract tests** | `apps/server/test/**` + focused engine fixtures | Server uses engine public API only; persisted event/state schema compatibility; command -> processCommand -> persistence pipeline consistency |
+
+**Boundary-hardening expectations for tests:**
+- App tests treat engine as a black box API (no internal imports, no direct state mutation hacks).
+- Engine tests may build deterministic fixtures, but scenario/integration tests should prefer
+  command-driven flows over direct field mutation.
+- Any bug fixed at the boundary gets:
+  1) an engine regression test (rules-side), and
+  2) an app contract test if persistence/transport behavior was involved.
 
 ---
 

@@ -6,6 +6,9 @@
 - `apps/server`: authoritative API/realtime server.
 - `packages/game-engine`: pure deterministic rules engine.
 
+Boundary rule: apps consume game-engine through package exports only; no app imports from
+`packages/game-engine/src/**` internals.
+
 See `docs/NEXTJS_RULES.md` for strict web/server boundary rules.
 
 ## Runtime Model
@@ -46,3 +49,55 @@ See `docs/NEXTJS_RULES.md` for strict web/server boundary rules.
 - Strict command validation + server-authoritative enforcement.
 - Rate limiting and reconnect/session controls.
 - Tests: engine unit/scenario, API contract, and end-to-end game flows.
+
+Ownership split:
+- Engine tests (`packages/game-engine/test/**`) own rules correctness, determinism, invariants,
+  and projection/redaction correctness.
+- App tests (`apps/server/test/**`, `apps/web/**`) own auth, room lifecycle, transport contracts,
+  and persistence/replay wiring around engine outputs.
+- Cross-boundary tests live in app layer and validate command -> engine -> persistence/transport
+  integration without importing engine internals.
+
+## Server-Engine Contract Appendix
+
+### Supported server -> engine API surface
+
+Server code treats the following as the supported boundary contract:
+- `createInitialGameState` (and future deck bootstrap constructor)
+- `processCommand`
+- `getLegalCommands`
+- `serializeGameStateForPersistence` / `deserializeGameStateFromPersistence`
+- `projectView` / `projectEvent` (once wired into transport)
+
+Anything else exported by the engine package is not a supported app boundary.
+
+### Forbidden coupling
+
+- No app import from `@forgetful-fish/game-engine/src/**` or equivalent deep-internal paths.
+- No server mutation of engine internals (`state.zones`, `state.objectPool`, `state.turnState`) after initialization.
+- No app-layer card/rules branching (e.g., card-specific if/else in server/web).
+
+### Sequencing and version alignment
+
+- `GameState.version` is engine state version (authoritative state snapshot version).
+- DB `game_events.seq` is server persistence log ordering.
+- `game_initialized` at DB `seq = 0` is a server lifecycle event; engine-emitted events start after initialization.
+- Contract tests must assert monotonic ordering for DB event sequence and preserve explicit mapping between DB sequence and engine event sequence.
+
+### Persistence and replay contract
+
+- Server persists runtime state only through engine serialization APIs.
+- Server does not query/branch on internal engine JSON shape for gameplay decisions.
+- Deterministic replay uses persisted snapshot + ordered event log; server does not reconstruct rules outcomes outside engine logic.
+
+### RNG contract
+
+- Each command call uses RNG derived from current `state.rngSeed`.
+- Server never advances RNG outside engine execution.
+- Persisted next seed is always sourced from engine output.
+
+### Cross-boundary contract test expectations
+
+- App contract tests assert auth/admission, persistence/versioning, transport behavior, and boundary invariants.
+- Engine contract tests assert rules correctness, determinism, and projection/redaction correctness.
+- Boundary bug fixes include both: engine regression test and app contract test when persistence/transport is affected.

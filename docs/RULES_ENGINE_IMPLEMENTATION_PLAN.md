@@ -1915,6 +1915,32 @@ Test: **Write tests FIRST**, then implement.
 7. Every one of the 23 unique cards loads, casts, resolves, and behaves correctly.
 Acceptance: Every one of the 23 unique cards loads, casts, resolves, and behaves correctly.
 
+### P5.13 — Deck bootstrap API + deck-driven smoke tests
+
+Add explicit deck bootstrap support so integration tests can initialize game state from deck definitions instead of manual zone seeding.
+
+**Files**: `state/deckBootstrap.ts` (new), `state/gameState.ts` (extend API), `test/integration/deck-smoke.test.ts` (new)
+
+Implement:
+- `DeckDefinition` input shape for deterministic test fixtures (minimum: card IDs + counts)
+- `createInitialGameStateFromDecks(...)` (or equivalent) that:
+  - builds `objectPool` from deck definitions
+  - populates library zones through `GameMode.resolveZone(...)`
+  - supports deterministic opening draws from seeded RNG
+- Shared-deck baseline fixture (`20x Island` vs `20x Island`) plus one mixed-card fixture
+- Test driver usage that issues only external commands (`processCommand` / `getLegalCommands`) during smoke tests
+
+**Test file**: `test/integration/deck-smoke.test.ts`
+Depends: P0.6, P0.7, P1.3, P1.4, P1.7, P5.12
+Test: **Write tests FIRST**, then implement.
+1. Deck-defined shared-library game initializes without direct zone mutation in test setup.
+2. Opening draws come from deck/bootstrap API and are deterministic for a fixed seed.
+3. Baseline smoke (`20x Island` vs `20x Island`) supports draw, land play, mana activation, and pass-priority progression.
+4. Mixed fixture smoke verifies legal-command generation does not throw on deck-loaded objects.
+5. `assertStateInvariants(state)` passes after every command in smoke scenarios.
+6. Smoke tests avoid direct mutation of `state.zones`, `state.objectPool`, and `state.turnState`.
+Acceptance: Deck-driven smoke tests validate real initialization path and command-only gameplay flow.
+
 ---
 
 ## Phase 6 — View projection + networking + replay
