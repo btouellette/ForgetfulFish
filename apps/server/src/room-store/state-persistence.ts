@@ -7,7 +7,7 @@ import {
 } from "@forgetful-fish/game-engine";
 
 export function toPersistedGameState(state: GameState): Prisma.InputJsonValue {
-  return serializeGameStateForPersistence(state) as Prisma.InputJsonValue;
+  return JSON.parse(JSON.stringify(serializeGameStateForPersistence(state)));
 }
 
 export function fromPersistedGameState(serialized: SerializedGameState): GameState {

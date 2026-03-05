@@ -728,7 +728,7 @@ Acceptance: A full two-turn game cycle with only Islands works correctly end-to-
 
 ## Phase 2 — Stack resolution + whiteboard + choices + action pipeline
 
-### P2.1 — EffectContext, Whiteboard, and ResolutionCursor
+### [x] P2.1 — EffectContext, Whiteboard, and ResolutionCursor
 
 **Files**: `stack/stackItem.ts` (extend), `actions/whiteboard.ts`
 
