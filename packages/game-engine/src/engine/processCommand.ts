@@ -1,5 +1,5 @@
 import type { Command } from "../commands/command";
-import { advanceStepWithEvents, handlePassPriority } from "../engine/kernel";
+import { advanceStepWithEvents, passPriority } from "../engine/kernel";
 import type { GameEvent } from "../events/event";
 import { Rng } from "../rng/rng";
 import type { GameState, PendingChoice } from "../state/gameState";
@@ -31,10 +31,10 @@ function passThrough(state: Readonly<GameState>): HandlerResult {
 
 function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): HandlerResult {
   const playerWithPriority = state.turnState.priorityState.playerWithPriority;
-  const priorityResult = handlePassPriority(state, playerWithPriority);
+  const priorityResult = passPriority(state, playerWithPriority);
 
-  if (priorityResult === "both_passed") {
-    const stepped = advanceStepWithEvents(state, rng);
+  if (priorityResult.bothPassed) {
+    const stepped = advanceStepWithEvents(priorityResult.state, rng);
     return {
       state: stepped.state,
       events: stepped.events
@@ -42,7 +42,7 @@ function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): Handle
   }
 
   return {
-    state: priorityResult,
+    state: priorityResult.state,
     events: []
   };
 }

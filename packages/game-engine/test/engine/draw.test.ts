@@ -125,7 +125,22 @@ describe("engine/draw", () => {
 
     expect(object?.zone).toEqual({ kind: "hand", scope: "player", playerId: "p2" });
     expect(object?.owner).toBe("p2");
+    expect(object?.controller).toBe("p2");
     expect(object?.zcc).toBe(1);
+  });
+
+  it("increments state version when emitting draw event", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "draw-version",
+      rngSeed: "seed-version"
+    });
+    seedSharedLibrary(state, ["obj-ver"]);
+
+    const result = drawCard(state, "p1", new Rng(state.rngSeed));
+
+    expect(result.state.version).toBe(state.version + 1);
+    expect(result.events[0]?.seq).toBe(result.state.version);
+    expect(result.events[0]?.id).toBe(`${state.id}:${result.state.version}`);
   });
 
   it("stores LKI snapshot keyed by pre-draw id:zcc", () => {
@@ -185,7 +200,7 @@ describe("engine/draw", () => {
     const result = drawCard(state, "p1", new Rng(state.rngSeed));
 
     expect(result.state.players[0].hand).toHaveLength(8);
-    expect(result.state.players[0].hand.at(-1)).toBe("obj-next");
+    expect(result.state.players[0].hand[result.state.players[0].hand.length - 1]).toBe("obj-next");
   });
 
   it("passes invariants after draw and routes through split-zone mode without kernel changes", () => {

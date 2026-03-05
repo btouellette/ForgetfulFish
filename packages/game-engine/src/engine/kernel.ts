@@ -100,6 +100,11 @@ export type StepAdvanceResult = {
   events: GameEvent[];
 };
 
+export type PassPriorityResult = {
+  state: GameState;
+  bothPassed: boolean;
+};
+
 export function drawCard(state: Readonly<GameState>, playerId: PlayerId, _rng: Rng): DrawResult {
   const libraryZone = state.mode.resolveZone(state, "library", playerId);
   const handZone = state.mode.resolveZone(state, "hand", playerId);
@@ -135,9 +140,11 @@ export function drawCard(state: Readonly<GameState>, playerId: PlayerId, _rng: R
     throw new Error(`Cannot draw missing object '${drawnCardId}' from objectPool`);
   }
 
+  const nextOwner = state.mode.determineOwner(playerId, "draw");
   const bumpedObject = bumpZcc({
     ...drawnObject,
-    owner: state.mode.determineOwner(playerId, "draw"),
+    owner: nextOwner,
+    controller: playerId,
     zone: handZone
   });
   nextObjectPool.set(drawnCardId, bumpedObject);
@@ -167,6 +174,7 @@ export function drawCard(state: Readonly<GameState>, playerId: PlayerId, _rng: R
 
   const nextState: GameState = {
     ...state,
+    version: state.version + 1,
     players: nextPlayers,
     zones: nextZones,
     objectPool: nextObjectPool,
@@ -179,7 +187,7 @@ export function drawCard(state: Readonly<GameState>, playerId: PlayerId, _rng: R
       schemaVersion: 1,
       gameId: state.id
     },
-    state.version,
+    nextState.version,
     {
       type: "CARD_DRAWN",
       playerId,
@@ -230,6 +238,11 @@ export function handlePassPriority(
   state: Readonly<GameState>,
   player: PlayerId
 ): GameState | "both_passed" {
+  const result = passPriority(state, player);
+  return result.bothPassed ? "both_passed" : result.state;
+}
+
+export function passPriority(state: Readonly<GameState>, player: PlayerId): PassPriorityResult {
   assertKnownPlayerId(state, player);
 
   if (state.turnState.priorityState.playerWithPriority !== player) {
@@ -257,10 +270,16 @@ export function handlePassPriority(
     updatedState.turnState.priorityState.activePlayerPassed &&
     updatedState.turnState.priorityState.nonActivePlayerPassed
   ) {
-    return "both_passed";
+    return {
+      state: updatedState,
+      bothPassed: true
+    };
   }
 
-  return givePriority(updatedState, getOtherPlayerId(updatedState, player));
+  return {
+    state: givePriority(updatedState, getOtherPlayerId(updatedState, player)),
+    bothPassed: false
+  };
 }
 
 export function advanceTurn(state: Readonly<GameState>): GameState {
