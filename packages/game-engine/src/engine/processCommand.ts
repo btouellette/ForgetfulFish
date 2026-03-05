@@ -55,7 +55,7 @@ function handlePlayLandCommand(
   command: PlayLandCommand
 ): HandlerResult {
   const playerId = state.turnState.priorityState.playerWithPriority;
-  validatePlayLand(state, command, playerId);
+  validatePlayLand(state, command);
 
   const handZone = state.mode.resolveZone(state, "hand", playerId);
   const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);

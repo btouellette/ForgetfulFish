@@ -25,6 +25,13 @@ function createLandInHand(id: string, playerId: "p1" | "p2"): GameObject {
   };
 }
 
+function createNonLandInHand(id: string, playerId: "p1" | "p2"): GameObject {
+  return {
+    ...createLandInHand(id, playerId),
+    cardDefId: "not-a-land"
+  };
+}
+
 function setupLandInHand(state: GameState, playerId: "p1" | "p2", cardId = "obj-land"): void {
   const card = createLandInHand(cardId, playerId);
   state.objectPool.set(card.id, card);
@@ -105,6 +112,34 @@ describe("engine/land", () => {
     expect(() =>
       processCommand(state, { type: "PLAY_LAND", cardId: "obj-island" }, new Rng(state.rngSeed))
     ).toThrow("card must be in the hand of the player with priority");
+  });
+
+  it("rejects land play when player with priority is not active player", () => {
+    const state = createInitialGameState("p1", "p2", { id: "land-4b", rngSeed: "seed-land-4b" });
+    state.turnState.phase = "MAIN_1";
+    state.turnState.step = "MAIN_1";
+    state.turnState.activePlayerId = "p1";
+    state.turnState.priorityState = createInitialPriorityState("p2");
+    state.players[0].priority = false;
+    state.players[1].priority = true;
+    setupLandInHand(state, "p2", "obj-island");
+
+    expect(() =>
+      processCommand(state, { type: "PLAY_LAND", cardId: "obj-island" }, new Rng(state.rngSeed))
+    ).toThrow("can only play a land during your own turn");
+  });
+
+  it("rejects non-land cards for PLAY_LAND", () => {
+    const state = createInitialGameState("p1", "p2", { id: "land-4c", rngSeed: "seed-land-4c" });
+    setMainPhaseWithPriority(state, "p1");
+    const card = createNonLandInHand("obj-spell", "p1");
+    state.objectPool.set(card.id, card);
+    state.players[0].hand.push(card.id);
+    state.zones.get(zoneKey({ kind: "hand", scope: "player", playerId: "p1" }))?.push(card.id);
+
+    expect(() =>
+      processCommand(state, { type: "PLAY_LAND", cardId: "obj-spell" }, new Rng(state.rngSeed))
+    ).toThrow("card must be a land to be played as a land");
   });
 
   it("rejects land play when stack is not empty", () => {
