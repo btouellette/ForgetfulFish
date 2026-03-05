@@ -4,7 +4,11 @@ import { cardRegistry } from "../../src/cards";
 import type { CardDefinition } from "../../src/cards/cardDefinition";
 import { getLegalCommands } from "../../src/commands/validate";
 import type { GameObject } from "../../src/state/gameObject";
-import { createInitialGameState, type GameState } from "../../src/state/gameState";
+import {
+  createInitialGameState,
+  type GameState,
+  type PendingChoice
+} from "../../src/state/gameState";
 import { createInitialPriorityState } from "../../src/state/priorityState";
 import { zoneKey } from "../../src/state/zones";
 import { assertStateInvariants } from "../helpers/invariants";
@@ -83,6 +87,16 @@ function putOnBattlefield(
   state.zones.get(zoneKey({ kind: "battlefield", scope: "shared" }))?.push(object.id);
 }
 
+function yesNoPendingChoice(forPlayer: "p1" | "p2"): PendingChoice {
+  return {
+    id: `choice-${forPlayer}-yes-no`,
+    type: "CHOOSE_YES_NO",
+    forPlayer,
+    prompt: "Choose yes or no",
+    constraints: { prompt: "Choose yes or no" }
+  };
+}
+
 describe("commands/legal", () => {
   it("main phase with Island in hand includes PLAY_LAND and PASS_PRIORITY", () => {
     const state = createInitialGameState("p1", "p2", { id: "legal-1", rngSeed: "seed-legal-1" });
@@ -112,7 +126,7 @@ describe("commands/legal", () => {
     const base = createInitialGameState("p1", "p2", { id: "legal-3", rngSeed: "seed-legal-3" });
     const state: GameState = {
       ...base,
-      pendingChoice: { type: "CHOOSE_YES_NO" }
+      pendingChoice: yesNoPendingChoice("p1")
     };
 
     const commands = getLegalCommands(state);
