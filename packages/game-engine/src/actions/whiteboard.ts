@@ -3,7 +3,6 @@ import type { EffectContext } from "../stack/stackItem";
 function assertNeverCursor(value: never): never {
   throw new Error(`unhandled resolution cursor: ${String(value)}`);
 }
-
 export function advanceCursor(context: EffectContext): EffectContext {
   switch (context.cursor.kind) {
     case "start":
