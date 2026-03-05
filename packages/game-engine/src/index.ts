@@ -19,6 +19,7 @@ export {
   type PlayLandCommand,
   type Target
 } from "./commands/command";
+export * from "./engine/kernel";
 export * from "./engine/processCommand";
 export * from "./events/event";
 export * from "./mode/gameMode";
@@ -28,5 +29,6 @@ export * from "./state/gameObject";
 export * from "./state/gameState";
 export * from "./state/lki";
 export * from "./state/objectRef";
+export * from "./state/priorityState";
 export * from "./state/serialization";
 export * from "./state/zones";

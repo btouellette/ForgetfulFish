@@ -477,7 +477,7 @@ Acceptance: Generators are ready for Phase 7 property testing.
 
 ## Phase 1 — Turn loop + priority + basic commands
 
-### P1.1 — PriorityState type and priority engine
+### [x] P1.1 — PriorityState type and priority engine
 
 **Files**: `state/priorityState.ts`, `engine/kernel.ts` (start)
 

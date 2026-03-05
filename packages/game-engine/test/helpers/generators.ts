@@ -139,9 +139,11 @@ function getRequiredZone(state: GameState, zoneRef: ZoneRef): ObjectId[] {
 function applyStateModel(state: GameState, model: StateModel): void {
   state.version = model.version;
   state.turnState.activePlayerId = model.activePlayerId;
+  const isActivePriorityHolder = model.priorityHolder === model.activePlayerId;
   state.turnState.priorityState = {
-    holder: model.priorityHolder,
-    passedBy: []
+    activePlayerPassed: false,
+    nonActivePlayerPassed: false,
+    playerWithPriority: isActivePriorityHolder ? model.activePlayerId : model.priorityHolder
   };
 
   state.players[0].life = model.playerOne.life;

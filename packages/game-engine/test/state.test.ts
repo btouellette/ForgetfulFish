@@ -15,7 +15,7 @@ describe("createInitialGameState", () => {
         life: 20,
         manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
         hand: [],
-        priority: false
+        priority: true
       },
       {
         id: "player-2",
