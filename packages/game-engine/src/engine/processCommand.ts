@@ -7,6 +7,7 @@ import { Rng } from "../rng/rng";
 import type { GameState, PendingChoice } from "../state/gameState";
 import { createInitialPriorityState } from "../state/priorityState";
 import { bumpZcc, zoneKey } from "../state/zones";
+import { runSBALoop } from "./sba";
 import { resolveTopOfStack } from "../stack/resolve";
 import type { StackItem } from "../stack/stackItem";
 
@@ -458,11 +459,13 @@ export function processCommand(
   })();
 
   const baselineSeed = normalizeRngSeed(state.rngSeed);
-  const nextState = applyRngSeedIfChanged(handlerResult.state, baselineSeed, rng.getSeed());
+  const seededState = applyRngSeedIfChanged(handlerResult.state, baselineSeed, rng.getSeed());
+  const sbaResult = runSBALoop(seededState);
+  const nextState = sbaResult.state;
 
   return {
     nextState,
-    newEvents: handlerResult.events,
+    newEvents: [...handlerResult.events, ...sbaResult.events],
     pendingChoice:
       handlerResult.pendingChoice !== undefined
         ? handlerResult.pendingChoice

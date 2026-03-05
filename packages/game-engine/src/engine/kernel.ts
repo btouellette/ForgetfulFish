@@ -114,8 +114,25 @@ export function drawCard(state: Readonly<GameState>, playerId: PlayerId, _rng: R
 
   const library = state.zones.get(libraryKey) ?? [];
   if (library.length === 0) {
+    const nextPlayers: GameState["players"] = [
+      {
+        ...state.players[0],
+        attemptedDrawFromEmptyLibrary:
+          state.players[0].id === playerId ? true : state.players[0].attemptedDrawFromEmptyLibrary
+      },
+      {
+        ...state.players[1],
+        attemptedDrawFromEmptyLibrary:
+          state.players[1].id === playerId ? true : state.players[1].attemptedDrawFromEmptyLibrary
+      }
+    ];
+
     return {
-      state: { ...state },
+      state: {
+        ...state,
+        version: state.version + 1,
+        players: nextPlayers
+      },
       events: []
     };
   }

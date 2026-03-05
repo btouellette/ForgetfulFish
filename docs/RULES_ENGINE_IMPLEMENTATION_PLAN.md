@@ -656,7 +656,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` holds for all states checked.
 Acceptance: Legal commands accurately reflect game state.
 
-### P1.8 — Minimal SBA loop
+### [x] P1.8 — Minimal SBA loop
 
 **Files**: `engine/sba.ts`
 

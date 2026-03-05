@@ -66,14 +66,18 @@ describe("state/gameState", () => {
         life: 20,
         manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
         hand: [],
-        priority: true
+        priority: true,
+        hasLost: false,
+        attemptedDrawFromEmptyLibrary: false
       },
       {
         id: "player-2",
         life: 20,
         manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
         hand: [],
-        priority: false
+        priority: false,
+        hasLost: false,
+        attemptedDrawFromEmptyLibrary: false
       }
     ]);
   });
