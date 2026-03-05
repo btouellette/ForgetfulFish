@@ -16,8 +16,11 @@ function isLiveObjectRef(
   return currentObject !== undefined && currentObject.zcc === object.zcc;
 }
 
-function rewriteStage(_state: Readonly<GameState>, actions: readonly GameAction[]): GameAction[] {
-  return [...actions];
+function rewriteStage(
+  _state: Readonly<GameState>,
+  actions: readonly GameAction[]
+): readonly GameAction[] {
+  return actions;
 }
 
 function isLegalTargetedAction(state: Readonly<GameState>, action: GameAction): boolean {
@@ -40,12 +43,12 @@ function filterStage(state: Readonly<GameState>, actions: readonly GameAction[])
   return actions.filter((action) => isLegalTargetedAction(state, action));
 }
 
-function redirectStage(_state: Readonly<GameState>, actions: readonly GameAction[]): GameAction[] {
-  return [...actions];
+function redirectStage(_state: Readonly<GameState>, actions: GameAction[]): GameAction[] {
+  return actions;
 }
 
-function augmentStage(_state: Readonly<GameState>, actions: readonly GameAction[]): GameAction[] {
-  return [...actions];
+function augmentStage(_state: Readonly<GameState>, actions: GameAction[]): GameAction[] {
+  return actions;
 }
 
 export function runPipeline(
