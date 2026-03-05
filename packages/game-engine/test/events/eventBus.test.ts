@@ -138,16 +138,33 @@ describe("events/eventBus", () => {
     );
   });
 
-  it("updates GameState id and version after event emission", () => {
+  it("updates GameState id and version to highest emitted event sequence", () => {
     cardRegistry.set(vanillaDefinition.id, vanillaDefinition);
     const state = createInitialGameState("p1", "p2", { id: "event-bus-4", rngSeed: "seed-4" });
     putOnBattlefield(state, "obj-a", vanillaDefinition.id);
     const [zoneChangeEvent] = makeEvents(state);
+    const customSeqEvent = {
+      ...zoneChangeEvent,
+      seq: state.version + 7
+    };
 
-    const nextState = emitEvents(state, [zoneChangeEvent]);
+    const nextState = emitEvents(state, [customSeqEvent]);
 
     expect(nextState.id).not.toBe(state.id);
-    expect(nextState.version).toBe(state.version + 1);
+    expect(nextState.version).toBe(customSeqEvent.seq);
+  });
+
+  it("uses max event seq when multiple events are emitted", () => {
+    cardRegistry.set(vanillaDefinition.id, vanillaDefinition);
+    const state = createInitialGameState("p1", "p2", { id: "event-bus-4b", rngSeed: "seed-4b" });
+    putOnBattlefield(state, "obj-a", vanillaDefinition.id);
+    const [zoneChangeEvent, priorityEvent] = makeEvents(state);
+    const eventWithLowerSeq = { ...zoneChangeEvent, seq: state.version + 2 };
+    const eventWithHigherSeq = { ...priorityEvent, seq: state.version + 9 };
+
+    const nextState = emitEvents(state, [eventWithLowerSeq, eventWithHigherSeq]);
+
+    expect(nextState.version).toBe(eventWithHigherSeq.seq);
   });
 
   it("preserves game state invariants after event emission", () => {

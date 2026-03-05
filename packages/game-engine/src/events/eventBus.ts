@@ -45,12 +45,15 @@ export function emitEvents(state: Readonly<GameState>, events: readonly GameEven
   }
 
   const queued = collectTriggeredAbilities(state, events);
-  const version = state.version + events.length;
+  const maxEventSeq = events.reduce(
+    (highest, event) => (event.seq > highest ? event.seq : highest),
+    state.version
+  );
 
   return {
     ...state,
-    id: nextVersionedId(state.id, version),
-    version,
+    id: nextVersionedId(state.id, maxEventSeq),
+    version: maxEventSeq,
     triggerQueue: [...state.triggerQueue, ...queued]
   };
 }
