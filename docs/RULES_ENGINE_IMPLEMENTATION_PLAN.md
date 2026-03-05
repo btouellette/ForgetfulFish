@@ -93,6 +93,8 @@ Harness categories:
 
 ## Phase 0 — Foundations (determinism + identity + mode)
 
+- [ ] Phase 0 scan marker
+
 ### [x] P0.1 — Core type definitions: ObjectRef, ObjectId, ZoneRef
 
 **Files**: `state/objectRef.ts`, `state/zones.ts`
@@ -477,6 +479,8 @@ Acceptance: Generators are ready for Phase 7 property testing.
 
 ## Phase 1 — Turn loop + priority + basic commands
 
+- [ ] Phase 1 scan marker
+
 ### [x] P1.1 — PriorityState type and priority engine
 
 **Files**: `state/priorityState.ts`, `engine/kernel.ts` (start)
@@ -727,6 +731,8 @@ Acceptance: A full two-turn game cycle with only Islands works correctly end-to-
 ---
 
 ## Phase 2 — Stack resolution + whiteboard + choices + action pipeline
+
+- [ ] Phase 2 scan marker
 
 ### [x] P2.1 — EffectContext, Whiteboard, and ResolutionCursor
 
@@ -1021,6 +1027,8 @@ Acceptance: Conditional draw works correctly based on named card match.
 ---
 
 ## Phase 3 — Continuous effects + layers
+
+- [ ] Phase 3 scan marker
 
 ### P3.1 — ContinuousEffect type and registry
 
@@ -1367,6 +1375,8 @@ Acceptance: All layer interactions produce correct derived views.
 
 ## Phase 4 — Combat + triggers + trigger ordering
 
+- [ ] Phase 4 scan marker
+
 ### P4.1 — Declare attackers
 
 **Files**: `engine/combat.ts`
@@ -1636,6 +1646,8 @@ Acceptance: Complex combat + trigger interactions work correctly.
 ---
 
 ## Phase 5 — Full deck completion + complex cards
+
+- [ ] Phase 5 scan marker
 
 ### P5.1 — Card: Diminishing Returns
 
@@ -1945,6 +1957,8 @@ Acceptance: Deck-driven smoke tests validate real initialization path and comman
 
 ## Phase 6 — View projection + networking + replay
 
+- [ ] Phase 6 scan marker
+
 ### P6.1 — projectView implementation
 
 **Files**: `view/projection.ts`
@@ -2073,6 +2087,8 @@ Acceptance: No hidden information leaks found.
 ---
 
 ## Phase 7 — Testing hardening + polish
+
+- [ ] Phase 7 scan marker
 
 ### P7.1 — Determinism test suite
 
