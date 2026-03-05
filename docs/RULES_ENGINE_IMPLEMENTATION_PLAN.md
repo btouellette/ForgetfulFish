@@ -499,7 +499,7 @@ Test: **Write tests FIRST**, then implement.
 6. Passing priority resets the `passed` flag for that player.
 Acceptance: Priority transitions are correct per §4 rules.
 
-### P1.2 — Phase/step sequencing
+### [x] P1.2 — Phase/step sequencing
 
 **Files**: `engine/kernel.ts` (extend)
 
