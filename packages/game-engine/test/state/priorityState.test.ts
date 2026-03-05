@@ -40,21 +40,15 @@ describe("state/priorityState", () => {
     expect(secondPass).toBe("both_passed");
   });
 
-  it("returns both_passed when non-active then active pass", () => {
+  it("rejects passing priority when player does not currently hold priority", () => {
     const state = createInitialGameState("p1", "p2", {
       id: "game-priority-3",
       rngSeed: "seed-priority-3"
     });
 
-    const afterNonActivePass = handlePassPriority(state, "p2");
-
-    if (afterNonActivePass === "both_passed") {
-      throw new Error("expected updated game state after first pass");
-    }
-
-    const secondPass = handlePassPriority(afterNonActivePass, "p1");
-
-    expect(secondPass).toBe("both_passed");
+    expect(() => handlePassPriority(state, "p2")).toThrow(
+      "Cannot pass priority without holding priority"
+    );
   });
 
   it("initializes priority holder to active player", () => {
@@ -77,6 +71,17 @@ describe("state/priorityState", () => {
     const nextState = givePriority(state, "p2");
 
     expect(nextState.turnState.priorityState.playerWithPriority).toBe("p2");
+    expect(nextState.players[0].priority).toBe(false);
+    expect(nextState.players[1].priority).toBe(true);
+  });
+
+  it("throws when giving priority to an unknown player", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "game-priority-5b",
+      rngSeed: "seed-priority-5b"
+    });
+
+    expect(() => givePriority(state, "p3")).toThrow("Unknown playerId 'p3'");
   });
 
   it("passing priority resets the passed flag for the player receiving priority", () => {

@@ -1,8 +1,24 @@
 import type { GameState } from "../state/gameState";
 import type { PlayerId } from "../state/objectRef";
 
+function assertKnownPlayerId(state: Readonly<GameState>, playerId: PlayerId): void {
+  if (state.players[0].id === playerId || state.players[1].id === playerId) {
+    return;
+  }
+
+  throw new Error(`Unknown playerId '${playerId}'`);
+}
+
 function getOtherPlayerId(state: Readonly<GameState>, playerId: PlayerId): PlayerId {
-  return state.players[0].id === playerId ? state.players[1].id : state.players[0].id;
+  if (state.players[0].id === playerId) {
+    return state.players[1].id;
+  }
+
+  if (state.players[1].id === playerId) {
+    return state.players[0].id;
+  }
+
+  throw new Error(`Unknown playerId '${playerId}' in getOtherPlayerId`);
 }
 
 function updatePlayerPriority(
@@ -24,6 +40,8 @@ function updatePlayerPriority(
 }
 
 export function givePriority(state: Readonly<GameState>, to: PlayerId): GameState {
+  assertKnownPlayerId(state, to);
+
   const isActivePlayer = to === state.turnState.activePlayerId;
 
   return {
@@ -49,6 +67,12 @@ export function handlePassPriority(
   state: Readonly<GameState>,
   player: PlayerId
 ): GameState | "both_passed" {
+  assertKnownPlayerId(state, player);
+
+  if (state.turnState.priorityState.playerWithPriority !== player) {
+    throw new Error("Cannot pass priority without holding priority");
+  }
+
   const isActivePlayer = player === state.turnState.activePlayerId;
   const updatedState: GameState = {
     ...state,

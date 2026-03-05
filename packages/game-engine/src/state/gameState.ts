@@ -89,13 +89,13 @@ export type CreateInitialGameStateOptions = {
   mode?: GameMode;
 };
 
-function createPlayer(id: PlayerId): PlayerInfo {
+function createPlayer(id: PlayerId, hasPriority: boolean): PlayerInfo {
   return {
     id,
     life: 20,
     manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
     hand: [],
-    priority: false
+    priority: hasPriority
   };
 }
 
@@ -113,7 +113,7 @@ export function createInitialGameState(
     engineVersion: "0.1.0",
     rngSeed: options.rngSeed,
     mode,
-    players: [createPlayer(playerOneId), createPlayer(playerTwoId)],
+    players: [createPlayer(playerOneId, true), createPlayer(playerTwoId, false)],
     zones,
     zoneCatalog,
     objectPool: new Map(),

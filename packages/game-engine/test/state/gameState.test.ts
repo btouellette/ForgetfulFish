@@ -66,7 +66,7 @@ describe("state/gameState", () => {
         life: 20,
         manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
         hand: [],
-        priority: false
+        priority: true
       },
       {
         id: "player-2",
@@ -84,6 +84,7 @@ describe("state/gameState", () => {
     expect(state.turnState.activePlayerId).toBe("player-1");
     expect(state.turnState.phase).toBe("UNTAP");
     expect(state.turnState.step).toBe("UNTAP");
+    expect(state.turnState.priorityState.playerWithPriority).toBe("player-1");
     expect(state.turnState.landPlayedThisTurn).toBe(false);
   });
 
