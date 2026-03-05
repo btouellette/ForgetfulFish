@@ -551,7 +551,7 @@ Test: **Write tests FIRST**, then implement.
 8. `assertStateInvariants` passes after draw.
 Acceptance: Draw is invoked via the turn structure and produces the behavior described in tests when run in an end-to-end game flow, including a split-zone mode conformance test that requires no kernel changes.
 
-### P1.4 — Play land command
+### [x] P1.4 — Play land command
 
 **Files**: `engine/processCommand.ts` (extend), `commands/validate.ts`
 

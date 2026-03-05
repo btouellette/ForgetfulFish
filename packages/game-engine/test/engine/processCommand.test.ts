@@ -4,6 +4,9 @@ import { createInitialGameState, type GameState } from "../../src/state/gameStat
 import { type Command } from "../../src/commands/command";
 import { Rng } from "../../src/rng/rng";
 import { serializeGameState } from "../../src/state/serialization";
+import type { GameObject } from "../../src/state/gameObject";
+import { createInitialPriorityState } from "../../src/state/priorityState";
+import { zoneKey } from "../../src/state/zones";
 import {
   processCommand,
   type CommandResult,
@@ -109,7 +112,33 @@ describe("engine/processCommand", () => {
     const state = createInitialGameState("p1", "p2", { id: "game-6", rngSeed: "seed-6" });
     const rng = new Rng(state.rngSeed);
 
-    const outputs = [
+    const playLandState = createInitialGameState("p1", "p2", { id: "game-6b", rngSeed: "seed-6b" });
+    playLandState.turnState.phase = "MAIN_1";
+    playLandState.turnState.step = "MAIN_1";
+    playLandState.turnState.priorityState = createInitialPriorityState("p1");
+    playLandState.players[0].priority = true;
+    playLandState.players[1].priority = false;
+    const land: GameObject = {
+      id: "obj-1",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: true,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "hand", scope: "player", playerId: "p1" }
+    };
+    playLandState.objectPool.set(land.id, land);
+    playLandState.players[0].hand.push(land.id);
+    playLandState.zones
+      .get(zoneKey({ kind: "hand", scope: "player", playerId: "p1" }))
+      ?.push(land.id);
+
+    const commands = [
       sampleCommand("CAST_SPELL"),
       sampleCommand("ACTIVATE_ABILITY"),
       sampleCommand("PASS_PRIORITY"),
@@ -118,7 +147,14 @@ describe("engine/processCommand", () => {
       sampleCommand("DECLARE_BLOCKERS"),
       sampleCommand("PLAY_LAND"),
       sampleCommand("CONCEDE")
-    ].map((command): CommandHandlerResult => processCommand(state, command, rng));
+    ];
+
+    const outputs = commands.map(
+      (command): CommandHandlerResult =>
+        command.type === "PLAY_LAND"
+          ? processCommand(playLandState, command, new Rng(playLandState.rngSeed))
+          : processCommand(state, command, rng)
+    );
 
     expect(outputs).toHaveLength(8);
   });
