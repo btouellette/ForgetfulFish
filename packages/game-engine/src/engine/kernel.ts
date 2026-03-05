@@ -470,15 +470,21 @@ export function tapForMana(
           (ability) => ability.isManaAbility && ability.effect.kind === "add_mana"
         )
       : definition?.activatedAbilities[abilityIndex];
+
   if (manaAbility === undefined) {
+    if (abilityIndex !== undefined) {
+      throw new Error("ability index is out of range for the source permanent");
+    }
     throw new Error("land has no mana ability");
   }
-  if (!manaAbility.isManaAbility) {
-    throw new Error("land has no mana ability");
+
+  if (!manaAbility.isManaAbility || manaAbility.effect.kind !== "add_mana") {
+    throw new Error("only mana abilities are supported");
   }
+
   const manaEffect = manaAbility.effect;
-  if (manaEffect.kind !== "add_mana" || !("mana" in manaEffect)) {
-    throw new Error("land has no mana ability");
+  if (!("mana" in manaEffect)) {
+    throw new Error("only mana abilities are supported");
   }
 
   const nextObjectPool = new Map(state.objectPool);

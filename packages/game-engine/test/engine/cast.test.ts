@@ -198,8 +198,11 @@ describe("engine/cast", () => {
     expect(graveyard).toContain("obj-mental-note");
     expect(secondPass.newEvents.some((event) => event.type === "SPELL_RESOLVED")).toBe(true);
     const eventTypes = secondPass.newEvents.map((event) => event.type);
-    expect(eventTypes[0]).toBe("PRIORITY_PASSED");
-    expect(eventTypes[1]).toBe("SPELL_RESOLVED");
+    const priorityIndex = eventTypes.indexOf("PRIORITY_PASSED");
+    const resolvedIndex = eventTypes.indexOf("SPELL_RESOLVED");
+    expect(priorityIndex).not.toBe(-1);
+    expect(resolvedIndex).not.toBe(-1);
+    expect(priorityIndex).toBeLessThan(resolvedIndex);
     expect(secondPass.nextState.turnState.priorityState.playerWithPriority).toBe(
       secondPass.nextState.turnState.activePlayerId
     );

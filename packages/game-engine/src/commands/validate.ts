@@ -62,7 +62,6 @@ export type ValidatedCastSpell = {
 
 export type ValidatedActivateAbility = {
   playerId: string;
-  cardDefinition: CardDefinition;
 };
 
 function hasSufficientMana(
@@ -166,8 +165,7 @@ export function validateActivateAbility(
   }
 
   return {
-    playerId,
-    cardDefinition
+    playerId
   };
 }
 

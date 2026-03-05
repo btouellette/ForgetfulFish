@@ -334,42 +334,52 @@ describe("engine/processCommand", () => {
   });
 
   it("uses ACTIVATE_ABILITY abilityIndex to choose mana output", () => {
-    cardRegistry.set(testDualManaLandDefinition.id, testDualManaLandDefinition);
+    const previousCardDef = cardRegistry.get(testDualManaLandDefinition.id);
 
-    const state = createInitialGameState("p1", "p2", {
-      id: "game-9",
-      rngSeed: "seed-9"
-    });
-    const dualLand: GameObject = {
-      id: "obj-dual-land",
-      zcc: 0,
-      cardDefId: testDualManaLandDefinition.id,
-      owner: "p1",
-      controller: "p1",
-      counters: new Map(),
-      damage: 0,
-      tapped: false,
-      summoningSick: false,
-      attachments: [],
-      abilities: [],
-      zone: { kind: "battlefield", scope: "shared" }
-    };
-    state.objectPool.set(dualLand.id, dualLand);
-    state.zones.get(zoneKey({ kind: "battlefield", scope: "shared" }))?.push(dualLand.id);
+    try {
+      cardRegistry.set(testDualManaLandDefinition.id, testDualManaLandDefinition);
 
-    const result = processCommand(
-      state,
-      {
-        type: "ACTIVATE_ABILITY",
-        sourceId: dualLand.id,
-        abilityIndex: 1,
-        targets: []
-      },
-      new Rng(state.rngSeed)
-    );
+      const state = createInitialGameState("p1", "p2", {
+        id: "game-9",
+        rngSeed: "seed-9"
+      });
+      const dualLand: GameObject = {
+        id: "obj-dual-land",
+        zcc: 0,
+        cardDefId: testDualManaLandDefinition.id,
+        owner: "p1",
+        controller: "p1",
+        counters: new Map(),
+        damage: 0,
+        tapped: false,
+        summoningSick: false,
+        attachments: [],
+        abilities: [],
+        zone: { kind: "battlefield", scope: "shared" }
+      };
+      state.objectPool.set(dualLand.id, dualLand);
+      state.zones.get(zoneKey({ kind: "battlefield", scope: "shared" }))?.push(dualLand.id);
 
-    expect(result.nextState.players[0].manaPool.red).toBe(1);
-    expect(result.nextState.players[0].manaPool.blue).toBe(0);
+      const result = processCommand(
+        state,
+        {
+          type: "ACTIVATE_ABILITY",
+          sourceId: dualLand.id,
+          abilityIndex: 1,
+          targets: []
+        },
+        new Rng(state.rngSeed)
+      );
+
+      expect(result.nextState.players[0].manaPool.red).toBe(1);
+      expect(result.nextState.players[0].manaPool.blue).toBe(0);
+    } finally {
+      if (previousCardDef === undefined) {
+        cardRegistry.delete(testDualManaLandDefinition.id);
+      } else {
+        cardRegistry.set(testDualManaLandDefinition.id, previousCardDef);
+      }
+    }
   });
 
   it("resets pass flags after ACTIVATE_ABILITY so both-passed does not carry over", () => {
