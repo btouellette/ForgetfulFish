@@ -779,7 +779,7 @@ Test: **Write tests FIRST**, then implement.
 6. `ORDER_CARDS` constraints contain the required card IDs.
 Acceptance: Types compile, all 8 choice types have defined constraints.
 
-### [ ] P2.3 — MAKE_CHOICE command handling and choice resumption
+### [x] P2.3 — MAKE_CHOICE command handling and choice resumption
 
 **Files**: `choices/resume.ts`, `engine/processCommand.ts` (extend)
 
