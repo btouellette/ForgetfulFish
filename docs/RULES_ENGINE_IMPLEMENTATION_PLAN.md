@@ -805,7 +805,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` holds after choice resumption.
 Acceptance: Multi-step resolution with choices works without double-application.
 
-### [ ] P2.4 — Action Modifier Pipeline
+### [x] P2.4 — Action Modifier Pipeline
 
 **Files**: `actions/pipeline.ts`
 
