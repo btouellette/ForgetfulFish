@@ -630,7 +630,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` passes after cast and after resolution.
 Acceptance: Spell lifecycle (hand → stack → resolve → destination) works end-to-end and passes the same assertions under SharedDeckMode and split-zone test mode.
 
-### P1.7 — Legal command generation
+### [x] P1.7 — Legal command generation
 
 **Files**: `commands/validate.ts` (extend)
 
