@@ -600,7 +600,7 @@ Test: **Write tests FIRST**, then implement.
 6. Tapping non-land for mana → rejected.
 Acceptance: Mana generation and payment work for Island.
 
-### P1.6 — Cast spell basics (put on stack + basic resolve)
+### [x] P1.6 — Cast spell basics (put on stack + basic resolve)
 
 **Files**: `engine/processCommand.ts` (extend), `stack/stackItem.ts`, `stack/resolve.ts`
 

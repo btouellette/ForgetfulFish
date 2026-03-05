@@ -1,11 +1,14 @@
 import type { Command, PlayLandCommand } from "../commands/command";
-import { validatePlayLand } from "../commands/validate";
+import { validateCastSpell, validatePlayLand } from "../commands/validate";
 import { advanceStepWithEvents, passPriority } from "../engine/kernel";
 import { createEvent } from "../events/event";
 import type { GameEvent } from "../events/event";
 import { Rng } from "../rng/rng";
 import type { GameState, PendingChoice } from "../state/gameState";
+import { createInitialPriorityState } from "../state/priorityState";
 import { bumpZcc, zoneKey } from "../state/zones";
+import { resolveTopOfStack } from "../stack/resolve";
+import type { StackItem } from "../stack/stackItem";
 
 export type CommandResult = {
   nextState: GameState;
@@ -37,6 +40,31 @@ function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): Handle
   const priorityResult = passPriority(state, playerWithPriority);
 
   if (priorityResult.bothPassed) {
+    if (priorityResult.state.stack.length > 0) {
+      const resolved = resolveTopOfStack(priorityResult.state);
+      const activePlayerId = resolved.state.turnState.activePlayerId;
+      return {
+        state: {
+          ...resolved.state,
+          players: [
+            {
+              ...resolved.state.players[0],
+              priority: resolved.state.players[0].id === activePlayerId
+            },
+            {
+              ...resolved.state.players[1],
+              priority: resolved.state.players[1].id === activePlayerId
+            }
+          ],
+          turnState: {
+            ...resolved.state.turnState,
+            priorityState: createInitialPriorityState(activePlayerId)
+          }
+        },
+        events: resolved.events
+      };
+    }
+
     const stepped = advanceStepWithEvents(priorityResult.state, rng);
     return {
       state: stepped.state,
@@ -47,6 +75,166 @@ function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): Handle
   return {
     state: priorityResult.state,
     events: []
+  };
+}
+
+function deductManaPool(
+  state: Readonly<GameState>,
+  playerId: string,
+  cost: {
+    white?: number;
+    blue?: number;
+    black?: number;
+    red?: number;
+    green?: number;
+    colorless?: number;
+  }
+): GameState["players"] {
+  const required = {
+    white: cost.white ?? 0,
+    blue: cost.blue ?? 0,
+    black: cost.black ?? 0,
+    red: cost.red ?? 0,
+    green: cost.green ?? 0,
+    colorless: cost.colorless ?? 0
+  };
+
+  return [
+    {
+      ...state.players[0],
+      manaPool:
+        state.players[0].id === playerId
+          ? {
+              white: state.players[0].manaPool.white - required.white,
+              blue: state.players[0].manaPool.blue - required.blue,
+              black: state.players[0].manaPool.black - required.black,
+              red: state.players[0].manaPool.red - required.red,
+              green: state.players[0].manaPool.green - required.green,
+              colorless: state.players[0].manaPool.colorless - required.colorless
+            }
+          : state.players[0].manaPool
+    },
+    {
+      ...state.players[1],
+      manaPool:
+        state.players[1].id === playerId
+          ? {
+              white: state.players[1].manaPool.white - required.white,
+              blue: state.players[1].manaPool.blue - required.blue,
+              black: state.players[1].manaPool.black - required.black,
+              red: state.players[1].manaPool.red - required.red,
+              green: state.players[1].manaPool.green - required.green,
+              colorless: state.players[1].manaPool.colorless - required.colorless
+            }
+          : state.players[1].manaPool
+    }
+  ];
+}
+
+function handleCastSpellCommand(state: Readonly<GameState>, command: Command): HandlerResult {
+  if (command.type !== "CAST_SPELL") {
+    throw new Error("invalid cast spell command");
+  }
+
+  const { playerId, cardDefinition } = validateCastSpell(state, command);
+  const handZone = state.mode.resolveZone(state, "hand", playerId);
+  const stackZone = state.mode.resolveZone(state, "stack", playerId);
+  const handKey = zoneKey(handZone);
+  const stackKey = zoneKey(stackZone);
+
+  const object = state.objectPool.get(command.cardId);
+  if (object === undefined) {
+    throw new Error(`Cannot cast missing object '${command.cardId}'`);
+  }
+
+  const hand = state.zones.get(handKey) ?? [];
+  if (!hand.includes(command.cardId)) {
+    throw new Error("card must be in the hand of the player with priority");
+  }
+
+  const nextHand = hand.filter((id) => id !== command.cardId);
+  const nextStackZone = [...(state.zones.get(stackKey) ?? []), command.cardId];
+
+  const movedObject = bumpZcc({
+    ...object,
+    zone: stackZone,
+    controller: playerId
+  });
+
+  const nextObjectPool = new Map(state.objectPool);
+  nextObjectPool.set(command.cardId, movedObject);
+
+  const nextZones = new Map(state.zones);
+  nextZones.set(handKey, nextHand);
+  nextZones.set(stackKey, nextStackZone);
+
+  const paidPlayers = deductManaPool(state, playerId, cardDefinition.manaCost);
+
+  const stackItem: StackItem = {
+    id: `${state.id}:stack:${command.cardId}:${state.version + 1}`,
+    object: { id: movedObject.id, zcc: movedObject.zcc },
+    controller: playerId,
+    targets: command.targets ?? [],
+    effectContext: {
+      stackItemId: `${state.id}:stack:${command.cardId}:${state.version + 1}`,
+      source: { id: movedObject.id, zcc: movedObject.zcc },
+      controller: playerId,
+      targets: command.targets ?? [],
+      cursor: { kind: "start" },
+      whiteboard: {
+        actions: [],
+        scratch: {}
+      }
+    }
+  };
+
+  const castState: GameState = {
+    ...state,
+    version: state.version + 1,
+    players: [
+      {
+        ...paidPlayers[0],
+        hand:
+          paidPlayers[0].id === playerId
+            ? paidPlayers[0].hand.filter((id) => id !== command.cardId)
+            : paidPlayers[0].hand,
+        priority: paidPlayers[0].id === playerId
+      },
+      {
+        ...paidPlayers[1],
+        hand:
+          paidPlayers[1].id === playerId
+            ? paidPlayers[1].hand.filter((id) => id !== command.cardId)
+            : paidPlayers[1].hand,
+        priority: paidPlayers[1].id === playerId
+      }
+    ],
+    zones: nextZones,
+    objectPool: nextObjectPool,
+    stack: [...state.stack, stackItem],
+    turnState: {
+      ...state.turnState,
+      priorityState: createInitialPriorityState(playerId)
+    }
+  };
+
+  const spellCastEvent = createEvent(
+    {
+      engineVersion: state.engineVersion,
+      schemaVersion: 1,
+      gameId: state.id
+    },
+    castState.version,
+    {
+      type: "SPELL_CAST",
+      object: { id: movedObject.id, zcc: movedObject.zcc },
+      controller: playerId
+    }
+  );
+
+  return {
+    state: castState,
+    events: [spellCastEvent]
   };
 }
 
@@ -168,6 +356,7 @@ export function processCommand(
   const handlerResult = (() => {
     switch (command.type) {
       case "CAST_SPELL":
+        return handleCastSpellCommand(state, command);
       case "ACTIVATE_ABILITY":
       case "MAKE_CHOICE":
       case "DECLARE_ATTACKERS":

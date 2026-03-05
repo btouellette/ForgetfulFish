@@ -32,3 +32,5 @@ export * from "./state/objectRef";
 export * from "./state/priorityState";
 export * from "./state/serialization";
 export * from "./state/zones";
+export * from "./stack/resolve";
+export * from "./stack/stackItem";

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { cardRegistry } from "../../src/cards";
+import type { CardDefinition } from "../../src/cards/cardDefinition";
 import { createInitialGameState, type GameState } from "../../src/state/gameState";
 import { type Command } from "../../src/commands/command";
 import { Rng } from "../../src/rng/rng";
@@ -12,6 +14,25 @@ import {
   type CommandResult,
   type CommandHandlerResult
 } from "../../src/engine/processCommand";
+
+const testInstantDefinition: CardDefinition = {
+  id: "process-command-test-instant",
+  name: "Process Command Test Instant",
+  manaCost: { blue: 1 },
+  typeLine: ["Instant"],
+  subtypes: [],
+  color: ["blue"],
+  supertypes: [],
+  power: null,
+  toughness: null,
+  keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [],
+  onResolve: [],
+  continuousEffects: [],
+  replacementEffects: []
+};
 
 function sampleCommand(type: Command["type"]): Command {
   switch (type) {
@@ -153,7 +174,43 @@ describe("engine/processCommand", () => {
       (command): CommandHandlerResult =>
         command.type === "PLAY_LAND"
           ? processCommand(playLandState, command, new Rng(playLandState.rngSeed))
-          : processCommand(state, command, rng)
+          : command.type === "CAST_SPELL"
+            ? (() => {
+                const castState = createInitialGameState("p1", "p2", {
+                  id: "game-6c",
+                  rngSeed: "seed-6c"
+                });
+                castState.turnState.phase = "MAIN_1";
+                castState.turnState.step = "MAIN_1";
+                castState.turnState.priorityState = createInitialPriorityState("p1");
+                castState.players[0].priority = true;
+                castState.players[1].priority = false;
+                castState.players[0].manaPool.blue = 1;
+                cardRegistry.set(testInstantDefinition.id, testInstantDefinition);
+
+                const spellObject: GameObject = {
+                  id: "obj-1",
+                  zcc: 0,
+                  cardDefId: testInstantDefinition.id,
+                  owner: "p1",
+                  controller: "p1",
+                  counters: new Map(),
+                  damage: 0,
+                  tapped: false,
+                  summoningSick: false,
+                  attachments: [],
+                  abilities: [],
+                  zone: { kind: "hand", scope: "player", playerId: "p1" }
+                };
+                castState.objectPool.set(spellObject.id, spellObject);
+                castState.players[0].hand.push(spellObject.id);
+                castState.zones
+                  .get(zoneKey({ kind: "hand", scope: "player", playerId: "p1" }))
+                  ?.push(spellObject.id);
+
+                return processCommand(castState, command, new Rng(castState.rngSeed));
+              })()
+            : processCommand(state, command, rng)
     );
 
     expect(outputs).toHaveLength(8);

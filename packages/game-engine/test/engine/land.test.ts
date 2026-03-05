@@ -146,7 +146,20 @@ describe("engine/land", () => {
     const state = createInitialGameState("p1", "p2", { id: "land-5", rngSeed: "seed-land-5" });
     setMainPhaseWithPriority(state, "p1");
     setupLandInHand(state, "p1", "obj-island");
-    state.stack.push({ id: "spell-on-stack" });
+    state.stack.push({
+      id: "spell-on-stack",
+      object: { id: "obj-island", zcc: 0 },
+      controller: "p1",
+      targets: [],
+      effectContext: {
+        stackItemId: "spell-on-stack",
+        source: { id: "obj-island", zcc: 0 },
+        controller: "p1",
+        targets: [],
+        cursor: { kind: "start" },
+        whiteboard: { actions: [], scratch: {} }
+      }
+    });
 
     expect(() =>
       processCommand(state, { type: "PLAY_LAND", cardId: "obj-island" }, new Rng(state.rngSeed))
