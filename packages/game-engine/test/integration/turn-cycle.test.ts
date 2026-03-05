@@ -81,7 +81,11 @@ function playMainPhaseLand(
   state.players[1].priority = state.players[1].id === playerId;
 
   const handKey = zoneKey({ kind: "hand", scope: "player", playerId });
-  const hand = state.zones.get(handKey) ?? [];
+  const hand = state.zones.get(handKey);
+  if (hand === undefined) {
+    throw new Error(`missing hand zone for ${playerId}`);
+  }
+
   const cardId = hand[0];
   if (cardId === undefined) {
     throw new Error(`expected at least one card in ${playerId} hand`);
@@ -270,10 +274,16 @@ describe("integration/turn-cycle", () => {
     expect(state.players[1].manaPool.blue).toBe(1);
     expect(() => assertStateInvariants(state)).not.toThrow();
 
+    let iterations = 0;
+    const maxIterations = 24;
     while (!(state.turnState.activePlayerId === "p1" && state.turnState.step === "MAIN_1")) {
+      if (iterations >= maxIterations) {
+        throw new Error("failed to reach p1 MAIN_1 within the expected number of transitions");
+      }
       const advanced = passBothPlayers(state);
       state = advanced.nextState;
       eventTypes.push(...advanced.eventTypes);
+      iterations += 1;
     }
 
     const p1Land = playMainPhaseLand(state, "p1");
