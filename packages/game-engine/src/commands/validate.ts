@@ -15,6 +15,10 @@ function isMainPhase(state: Readonly<GameState>): boolean {
   return state.turnState.phase === "MAIN_1" || state.turnState.phase === "MAIN_2";
 }
 
+function assertNeverChoiceType(_choiceType: never): never {
+  throw new Error("Unhandled pending choice type");
+}
+
 function playerHandContains(state: Readonly<GameState>, playerId: string, cardId: string): boolean {
   const handZone = state.mode.resolveZone(state, "hand", playerId);
   const hand = state.zones.get(zoneKey(handZone)) ?? [];
@@ -285,7 +289,7 @@ function defaultPayloadForPendingChoice(choiceType: ChoiceType): ChoicePayload {
     case "ORDER_TRIGGERS":
       return { type: "ORDER_TRIGGERS", triggerIds: [] };
     default:
-      return { type: "CHOOSE_YES_NO", accepted: true };
+      return assertNeverChoiceType(choiceType);
   }
 }
 
