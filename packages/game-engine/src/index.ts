@@ -1,4 +1,5 @@
 export * from "./actions/action";
+export * from "./actions/pipeline";
 export * from "./actions/whiteboard";
 export * from "./cards/abilityAst";
 export * from "./cards/index";
