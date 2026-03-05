@@ -351,15 +351,35 @@ export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): Ste
   }
 
   if (state.turnState.step === "CLEANUP") {
+    const turnedState = advanceTurn(removeUntilEndOfTurnEffects(processedState));
+    const nextState: GameState = {
+      ...turnedState,
+      version: turnedState.version + 1
+    };
+    const phaseChangedEvent = createEvent(
+      {
+        engineVersion: state.engineVersion,
+        schemaVersion: 1,
+        gameId: state.id
+      },
+      nextState.version,
+      {
+        type: "PHASE_CHANGED",
+        phase: nextState.turnState.phase,
+        step: nextState.turnState.step
+      }
+    );
+
     return {
-      state: advanceTurn(removeUntilEndOfTurnEffects(processedState)),
-      events
+      state: nextState,
+      events: [...events, phaseChangedEvent]
     };
   }
 
   const followingStep = nextStep(state.turnState.step);
   const steppedState: GameState = {
     ...processedState,
+    version: processedState.version + 1,
     turnState: {
       ...processedState.turnState,
       phase: followingStep,
@@ -367,10 +387,25 @@ export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): Ste
     }
   };
 
+  const phaseChangedEvent = createEvent(
+    {
+      engineVersion: state.engineVersion,
+      schemaVersion: 1,
+      gameId: state.id
+    },
+    steppedState.version,
+    {
+      type: "PHASE_CHANGED",
+      phase: followingStep,
+      step: followingStep
+    }
+  );
+  const eventsWithPhase = [...events, phaseChangedEvent];
+
   if (!stepHasPriority(followingStep)) {
     return {
       state: steppedState,
-      events
+      events: eventsWithPhase
     };
   }
 
@@ -383,7 +418,7 @@ export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): Ste
         priorityState: createInitialPriorityState(steppedState.turnState.activePlayerId)
       }
     },
-    events
+    events: eventsWithPhase
   };
 }
 

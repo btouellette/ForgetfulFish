@@ -704,7 +704,7 @@ Test: **Write tests FIRST**, then implement.
 6. No side effects when scanning for non-existent triggers.
 Acceptance: Event emission pipeline exists, ready for triggers.
 
-### P1.10 — Integration test: full turn with Island
+### [x] P1.10 — Integration test: full turn with Island
 
 Wire everything together:
 - Set up game via mode-provided zone initialization: 2 players, active draw zone seeded with 20 Islands
