@@ -197,6 +197,12 @@ describe("engine/cast", () => {
     expect(secondPass.nextState.stack).toHaveLength(0);
     expect(graveyard).toContain("obj-mental-note");
     expect(secondPass.newEvents.some((event) => event.type === "SPELL_RESOLVED")).toBe(true);
+    const eventTypes = secondPass.newEvents.map((event) => event.type);
+    expect(eventTypes[0]).toBe("PRIORITY_PASSED");
+    expect(eventTypes[1]).toBe("SPELL_RESOLVED");
+    expect(secondPass.nextState.turnState.priorityState.playerWithPriority).toBe(
+      secondPass.nextState.turnState.activePlayerId
+    );
   });
 
   it("resolves creature to battlefield", () => {
