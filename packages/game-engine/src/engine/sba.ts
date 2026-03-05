@@ -21,7 +21,11 @@ export function checkSBAs(state: Readonly<GameState>): SBAResult[] {
       continue;
     }
 
-    const toughness = cardDefinition.toughness ?? 0;
+    const toughness = cardDefinition.toughness;
+    if (toughness === null) {
+      continue;
+    }
+
     if (toughness <= 0) {
       results.push({ type: "DESTROY_ZERO_TOUGHNESS", objectId });
     }
@@ -125,16 +129,20 @@ export function applySBAs(
     }
   ];
 
+  const totalSbaEvents = zoneChanges.length + lossMap.size;
+  const firstSeq = state.version + 1;
+  const lastSeq = totalSbaEvents === 0 ? firstSeq : state.version + totalSbaEvents;
+
   const nextState: GameState = {
     ...state,
-    version: state.version + 1,
+    version: lastSeq,
     players: nextPlayers,
     zones: nextZones,
     objectPool: nextObjectPool
   };
 
   const events: GameEvent[] = [];
-  let seq = nextState.version;
+  let seq = firstSeq;
 
   for (const zoneChange of zoneChanges) {
     events.push(

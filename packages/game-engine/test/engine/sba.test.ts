@@ -46,6 +46,25 @@ const grizzlyDefinition: CardDefinition = {
   replacementEffects: []
 };
 
+const nullToughnessCreatureDefinition: CardDefinition = {
+  id: "null-toughness-creature",
+  name: "Null Toughness Creature",
+  manaCost: {},
+  typeLine: ["Creature"],
+  subtypes: [{ kind: "creature_type", value: "Shapeshifter" }],
+  color: [],
+  supertypes: [],
+  power: null,
+  toughness: null,
+  keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [],
+  onResolve: [],
+  continuousEffects: [],
+  replacementEffects: []
+};
+
 function putOnBattlefield(
   state: GameState,
   objectId: string,
@@ -126,6 +145,16 @@ describe("engine/sba", () => {
     expect(applied.state.players[1].hasLost).toBe(true);
     expect(applied.events.some((event) => event.type === "ZONE_CHANGE")).toBe(true);
     expect(applied.events.some((event) => event.type === "PLAYER_LOST")).toBe(true);
+    expect(applied.state.version).toBe(Math.max(...applied.events.map((event) => event.seq)));
+  });
+
+  it("does not apply zero-toughness SBA to creatures with null toughness", () => {
+    cardRegistry.set(nullToughnessCreatureDefinition.id, nullToughnessCreatureDefinition);
+
+    const state = createInitialGameState("p1", "p2", { id: "sba-4b", rngSeed: "seed-sba-4b" });
+    putOnBattlefield(state, "obj-null-toughness", nullToughnessCreatureDefinition.id, "p1");
+
+    expect(checkSBAs(state)).toEqual([]);
   });
 
   it("preserves state invariants before and after SBA cycle", () => {
