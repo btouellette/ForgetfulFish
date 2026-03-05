@@ -63,6 +63,9 @@ export const safeCollectorNumber = (collectorNumber) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "") || "unknown";
 
+export const shouldSkipImageLibrarySync = (env = process.env) =>
+  env.CI === "true" || env.GITHUB_ACTIONS === "true";
+
 const compareValues = (a, b) => {
   if (a < b) {
     return -1;
@@ -300,6 +303,11 @@ const loadPreviousManifest = async () => {
 };
 
 const run = async () => {
+  if (shouldSkipImageLibrarySync()) {
+    console.log("CI environment detected; skipping card image download.");
+    return;
+  }
+
   await mkdir(OUTPUT_ROOT, { recursive: true });
 
   const previousManifest = await loadPreviousManifest();

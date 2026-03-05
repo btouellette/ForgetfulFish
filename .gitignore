@@ -10,3 +10,4 @@ coverage/
 __pycache__/
 playwright-report/
 test-results/
+assets/card-images/library/**/*.jpg
