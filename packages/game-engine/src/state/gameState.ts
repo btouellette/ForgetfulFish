@@ -55,6 +55,7 @@ export type StackItem = {
 
 export type ContinuousEffect = {
   id: string;
+  duration?: "until_end_of_turn";
 };
 
 export type PendingChoice = {
