@@ -682,7 +682,7 @@ Test: **Write tests FIRST**, then implement.
 6. SBAs do not trigger if no conditions are met.
 Acceptance: SBA loop is deterministic and reaches a fixed point.
 
-### P1.9 — EventBus (trigger scanning infrastructure)
+### [x] P1.9 — EventBus (trigger scanning infrastructure)
 
 **Files**: `events/eventBus.ts`
 

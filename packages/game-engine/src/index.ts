@@ -23,6 +23,7 @@ export * from "./engine/kernel";
 export * from "./engine/processCommand";
 export * from "./engine/sba";
 export * from "./events/event";
+export * from "./events/eventBus";
 export * from "./mode/gameMode";
 export * from "./mode/sharedDeck";
 export * from "./rng/rng";
