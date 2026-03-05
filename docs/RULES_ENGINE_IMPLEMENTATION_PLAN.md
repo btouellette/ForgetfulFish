@@ -91,7 +91,7 @@ Harness categories:
 
 ---
 
-## [ ] Phase 0 — Foundations (determinism + identity + mode)
+## Phase 0 — Foundations (determinism + identity + mode)
 
 ### [x] P0.1 — Core type definitions: ObjectRef, ObjectId, ZoneRef
 
@@ -475,7 +475,7 @@ Acceptance: Generators are ready for Phase 7 property testing.
 
 ---
 
-## [ ] Phase 1 — Turn loop + priority + basic commands
+## Phase 1 — Turn loop + priority + basic commands
 
 ### [x] P1.1 — PriorityState type and priority engine
 
@@ -726,7 +726,7 @@ Acceptance: A full two-turn game cycle with only Islands works correctly end-to-
 
 ---
 
-## [ ] Phase 2 — Stack resolution + whiteboard + choices + action pipeline
+## Phase 2 — Stack resolution + whiteboard + choices + action pipeline
 
 ### [x] P2.1 — EffectContext, Whiteboard, and ResolutionCursor
 
@@ -749,7 +749,7 @@ Test: **Write tests FIRST**, then implement.
 6. Multiple different data types are handled by `scratch` Record.
 Acceptance: Context persists across simulated choice interruptions.
 
-### P2.2 — PendingChoice system
+### [ ] P2.2 — PendingChoice system
 
 **Files**: `choices/pendingChoice.ts`
 
@@ -779,7 +779,7 @@ Test: **Write tests FIRST**, then implement.
 6. `ORDER_CARDS` constraints contain the required card IDs.
 Acceptance: Types compile, all 8 choice types have defined constraints.
 
-### P2.3 — MAKE_CHOICE command handling and choice resumption
+### [ ] P2.3 — MAKE_CHOICE command handling and choice resumption
 
 **Files**: `choices/resume.ts`, `engine/processCommand.ts` (extend)
 
@@ -805,7 +805,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` holds after choice resumption.
 Acceptance: Multi-step resolution with choices works without double-application.
 
-### P2.4 — Action Modifier Pipeline
+### [ ] P2.4 — Action Modifier Pipeline
 
 **Files**: `actions/pipeline.ts`
 
@@ -831,7 +831,7 @@ Test: **Write tests FIRST**, then implement.
 6. Target legality check handles both ObjectRefs and PlayerIds.
 Acceptance: Pipeline infrastructure works, ready for replacement effects.
 
-### P2.5 — Replacement effect registry and apply-once tracking
+### [ ] P2.5 — Replacement effect registry and apply-once tracking
 
 **Files**: `effects/replacement/registry.ts`, `effects/replacement/applyOnce.ts`
 
@@ -856,7 +856,7 @@ Test: **Write tests FIRST**, then implement.
 6. Actions not matching any criteria pass through unchanged.
 Acceptance: Replacement pipeline is sound with apply-once semantics.
 
-### P2.6 — Target validation with ObjectRef staleness
+### [ ] P2.6 — Target validation with ObjectRef staleness
 
 **Files**: `commands/validate.ts` (extend), `stack/resolve.ts` (extend)
 
@@ -880,7 +880,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` holds after a spell fizzles.
 Acceptance: Fizzle rules match MTG CR 608.2b.
 
-### P2.7 — Card: Memory Lapse
+### [ ] P2.7 — Card: Memory Lapse
 
 **Files**: `cards/memory-lapse.ts`
 
@@ -908,7 +908,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after resolution.
 Acceptance: Memory Lapse works per Oracle text with shared-deck semantics.
 
-### P2.8 — Card: Accumulated Knowledge
+### [ ] P2.8 — Card: Accumulated Knowledge
 
 **Files**: `cards/accumulated-knowledge.ts`
 
@@ -935,7 +935,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after all draws completed.
 Acceptance: Count is correct and uses shared graveyard.
 
-### P2.9 — Card: Brainstorm
+### [ ] P2.9 — Card: Brainstorm
 
 **Files**: `cards/brainstorm.ts`
 
@@ -965,7 +965,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after each step and choice resumption.
 Acceptance: Multi-choice resolution works end-to-end, persisted context survives interruption.
 
-### P2.10 — Card: Mystical Tutor
+### [ ] P2.10 — Card: Mystical Tutor
 
 **Files**: `cards/mystical-tutor.ts`
 
@@ -992,7 +992,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after shuffle and placement.
 Acceptance: Full search-shuffle-put-on-top sequence works.
 
-### P2.11 — Card: Predict
+### [ ] P2.11 — Card: Predict
 
 **Files**: `cards/predict.ts`
 
@@ -1020,9 +1020,9 @@ Acceptance: Conditional draw works correctly based on named card match.
 
 ---
 
-## [ ] Phase 3 — Continuous effects + layers
+## Phase 3 — Continuous effects + layers
 
-### P3.1 — ContinuousEffect type and registry
+### [ ] P3.1 — ContinuousEffect type and registry
 
 **Files**: `effects/continuous/layers.ts`
 
@@ -1043,7 +1043,7 @@ Test: **Write tests FIRST**, then implement.
 6. `addContinuousEffect` does not mutate the original `GameState`.
 Acceptance: CRUD for continuous effects works.
 
-### P3.2 — computeGameObject (layer application engine)
+### [ ] P3.2 — computeGameObject (layer application engine)
 
 **Files**: `effects/continuous/layers.ts` (extend)
 
@@ -1068,7 +1068,7 @@ Test: **Write tests FIRST**, then implement.
 6. Dependency ordering (if any) overrides timestamp ordering within a layer.
 Acceptance: Layer system produces correct derived views.
 
-### P3.3 — Duration tracking and cleanup
+### [ ] P3.3 — Duration tracking and cleanup
 
 **Files**: `effects/continuous/duration.ts`
 
@@ -1092,7 +1092,7 @@ Test: **Write tests FIRST**, then implement.
 6. `cleanupExpiredEffects` generates a `CONTINUOUS_EFFECT_REMOVED` event for each removal.
 Acceptance: Effects expire at correct times.
 
-### P3.4 — Layer 2: control-changing effects
+### [ ] P3.4 — Layer 2: control-changing effects
 
 **Files**: `effects/continuous/controlChange.ts`
 
@@ -1116,7 +1116,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` passes after control modification.
 Acceptance: Control changes work through the layer system.
 
-### P3.5 — Layer 3: text-changing effects with dependency ordering
+### [ ] P3.5 — Layer 3: text-changing effects with dependency ordering
 
 **Files**: `effects/continuous/textChange.ts`, `effects/continuous/dependency.ts`
 
@@ -1143,7 +1143,7 @@ Test: **Write tests FIRST**, then implement.
 6. Circular dependencies are broken using effect timestamps.
 Acceptance: Layer 3 with dependency ordering works for Mind Bend + Crystal Spray interaction.
 
-### P3.6 — Layer 4: type-changing effects
+### [ ] P3.6 — Layer 4: type-changing effects
 
 **Files**: `effects/continuous/typeChange.ts`
 
@@ -1166,7 +1166,7 @@ Test: **Write tests FIRST**, then implement.
 6. `computeGameObject` reflects the new types in the derived view.
 Acceptance: Type changing works, combined with P/T setting for Dance.
 
-### P3.7 — Layer 6: ability adding/removing
+### [ ] P3.7 — Layer 6: ability adding/removing
 
 **Files**: `effects/continuous/abilityChange.ts`
 
@@ -1190,7 +1190,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` holds during ability computation.
 Acceptance: Keyword abilities appear/disappear correctly in derived views.
 
-### P3.8 — Layer 7: P/T modifications
+### [ ] P3.8 — Layer 7: P/T modifications
 
 **Files**: `effects/continuous/ptChange.ts`
 
@@ -1210,7 +1210,7 @@ Test: **Write tests FIRST**, then implement.
 6. Negative power or toughness is handled correctly according to MTG rules.
 Acceptance: P/T math is correct through all sublayers.
 
-### P3.9 — Card: Dandan (full implementation)
+### [ ] P3.9 — Card: Dandan (full implementation)
 
 **Files**: `cards/dandan.ts`
 
@@ -1239,7 +1239,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes on all Dandan operations.
 Acceptance: Dandan's full ability structure is Layer-3-rewritable.
 
-### P3.10 — Card: Ray of Command
+### [ ] P3.10 — Card: Ray of Command
 
 **Files**: `cards/ray-of-command.ts`
 
@@ -1265,7 +1265,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` holds throughout control duration.
 Acceptance: Control change + untap resolve correctly, duration tracked.
 
-### P3.11 — Card: Mind Bend
+### [ ] P3.11 — Card: Mind Bend
 
 **Files**: `cards/mind-bend.ts`
 
@@ -1289,7 +1289,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after permanent effect creation.
 Acceptance: Permanent text change works on all instances.
 
-### P3.12 — Card: Crystal Spray
+### [ ] P3.12 — Card: Crystal Spray
 
 **Files**: `cards/crystal-spray.ts`
 
@@ -1316,7 +1316,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after cantrip draw.
 Acceptance: Single-instance text change works, cantrip draws.
 
-### P3.13 — Card: Dance of the Skywise
+### [ ] P3.13 — Card: Dance of the Skywise
 
 **Files**: `cards/dance-of-the-skywise.ts`
 
@@ -1343,7 +1343,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes before and after effect application.
 Acceptance: Multi-layer effects (4 + 6 + 7a) all apply and expire together.
 
-### P3.14 — Integration test: layer interactions
+### [ ] P3.14 — Integration test: layer interactions
 
 Wire together:
 - Mind Bend on Dandan (Layer 3 rewriting all tokens)
@@ -1365,9 +1365,9 @@ Acceptance: All layer interactions produce correct derived views.
 
 ---
 
-## [ ] Phase 4 — Combat + triggers + trigger ordering
+## Phase 4 — Combat + triggers + trigger ordering
 
-### P4.1 — Declare attackers
+### [ ] P4.1 — Declare attackers
 
 **Files**: `engine/combat.ts`
 
@@ -1391,7 +1391,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` passes after attackers are declared.
 Acceptance: Attacker legality is correct including Dandan restrictions.
 
-### P4.2 — Declare blockers
+### [ ] P4.2 — Declare blockers
 
 **Files**: `engine/combat.ts` (extend)
 
@@ -1413,7 +1413,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` holds after blocking is finalized.
 Acceptance: Evasion checks use computed (layer-derived) abilities.
 
-### P4.3 — Combat damage assignment and resolution
+### [ ] P4.3 — Combat damage assignment and resolution
 
 **Files**: `engine/combat.ts` (extend)
 
@@ -1436,7 +1436,7 @@ Test: **Write tests FIRST**, then implement.
 7. `assertStateInvariants` passes after damage and SBA processing.
 Acceptance: Combat damage math is correct, SBAs fire after damage.
 
-### P4.4 — "Must attack if able" enforcement
+### [ ] P4.4 — "Must attack if able" enforcement
 
 **Files**: `engine/combat.ts` (extend)
 
@@ -1459,7 +1459,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` passes after enforcing requirements.
 Acceptance: "Must attack" enforcement accounts for impossibility exceptions.
 
-### P4.5 — Trigger batching with APNAP ordering
+### [ ] P4.5 — Trigger batching with APNAP ordering
 
 **Files**: `triggers/trigger.ts`, `triggers/batch.ts`
 
@@ -1485,7 +1485,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` passes after the trigger batching cycle finishes.
 Acceptance: APNAP ordering with player choice for simultaneous triggers.
 
-### P4.6 — State-triggered abilities
+### [ ] P4.6 — State-triggered abilities
 
 **Files**: `triggers/trigger.ts` (extend), `engine/sba.ts` (extend)
 
@@ -1508,7 +1508,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` passes after state-trigger resolution.
 Acceptance: State-triggered ability with Layer 3-rewritable token works.
 
-### P4.7 — Card: Mystic Sanctuary (ETB trigger)
+### [ ] P4.7 — Card: Mystic Sanctuary (ETB trigger)
 
 **Files**: `cards/mystic-sanctuary.ts`
 
@@ -1535,7 +1535,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after graveyard-to-library move.
 Acceptance: ETB trigger fires conditionally, graveyard search works.
 
-### P4.8 — Card: Halimar Depths (ETB trigger)
+### [ ] P4.8 — Card: Halimar Depths (ETB trigger)
 
 **Files**: `cards/halimar-depths.ts`
 
@@ -1561,7 +1561,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after reordering.
 Acceptance: ETB trigger with ordering choice works.
 
-### P4.9 — Card: Temple of Epiphany (ETB trigger)
+### [ ] P4.9 — Card: Temple of Epiphany (ETB trigger)
 
 **Files**: `cards/temple-of-epiphany.ts`
 
@@ -1588,7 +1588,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after scry completion.
 Acceptance: Scry works with shared library.
 
-### P4.10 — Card: Izzet Boilerworks (ETB trigger)
+### [ ] P4.10 — Card: Izzet Boilerworks (ETB trigger)
 
 **Files**: `cards/izzet-boilerworks.ts`
 
@@ -1614,7 +1614,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after bounce.
 Acceptance: ETB bounce + dual mana ability works.
 
-### P4.11 — Integration test: combat with triggers
+### [ ] P4.11 — Integration test: combat with triggers
 
 Wire together:
 - Dandan attacks Dandan scenario (both must attack, combat damage kills both, sacrifice triggers)
@@ -1635,9 +1635,9 @@ Acceptance: Complex combat + trigger interactions work correctly.
 
 ---
 
-## [ ] Phase 5 — Full deck completion + complex cards
+## Phase 5 — Full deck completion + complex cards
 
-### P5.1 — Card: Diminishing Returns
+### [ ] P5.1 — Card: Diminishing Returns
 
 **Files**: `cards/diminishing-returns.ts`
 
@@ -1664,7 +1664,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after the massive multi-zone state change.
 Acceptance: Complex multi-zone card works with shared-deck hooks.
 
-### P5.2 — Card: Supplant Form
+### [ ] P5.2 — Card: Supplant Form
 
 **Files**: `cards/supplant-form.ts`
 
@@ -1692,7 +1692,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after token creation.
 Acceptance: Bounce + token copy works, Layer 1 correctly applies.
 
-### P5.3 — Layer 1: copy effects
+### [ ] P5.3 — Layer 1: copy effects
 
 **Files**: `effects/continuous/layers.ts` (extend)
 
@@ -1713,7 +1713,7 @@ Test: **Write tests FIRST**, then implement.
 6. `computeGameObject` correctly starts with the Layer 1 result.
 Acceptance: Layer 1 copy is correctly ordered before other layers.
 
-### P5.4 — Card: Metamorphose
+### [ ] P5.4 — Card: Metamorphose
 
 **Files**: `cards/metamorphose.ts`
 
@@ -1732,7 +1732,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after complex cascade resolution.
 Acceptance: Matches Oracle text behavior with shared-deck semantics.
 
-### P5.5 — Card: Unsubstantiate
+### [ ] P5.5 — Card: Unsubstantiate
 
 **Files**: `cards/unsubstantiate.ts`
 
@@ -1756,7 +1756,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after hand-return.
 Acceptance: Dual-mode bounce works for both battlefield creatures and stack spells.
 
-### P5.6 — Card: Vision Charm
+### [ ] P5.6 — Card: Vision Charm
 
 **Files**: `cards/vision-charm.ts`
 
@@ -1782,7 +1782,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after each mode's resolution.
 Acceptance: All three modes work.
 
-### P5.7 — Card: Mystic Retrieval
+### [ ] P5.7 — Card: Mystic Retrieval
 
 **Files**: `cards/mystic-retrieval.ts`
 
@@ -1809,7 +1809,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` holds after graveyard retrieval.
 Acceptance: Both normal cast and flashback work with shared-deck graveyard.
 
-### P5.8 — Cards: Cycling lands (Lonely Sandbar, Remote Isle)
+### [ ] P5.8 — Cards: Cycling lands (Lonely Sandbar, Remote Isle)
 
 **Files**: `cards/lonely-sandbar.ts`, `cards/remote-isle.ts`
 
@@ -1834,7 +1834,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after cycling resolution.
 Acceptance: Both cycling modes work (play as land, cycle from hand).
 
-### P5.9 — Card: Svyelunite Temple
+### [ ] P5.9 — Card: Svyelunite Temple
 
 **Files**: `cards/svyelunite-temple.ts`
 
@@ -1858,7 +1858,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after mana generation.
 Acceptance: Both mana abilities work, sacrifice is a mana ability (doesn't use stack).
 
-### P5.10 — ETB lookahead (if needed)
+### [ ] P5.10 — ETB lookahead (if needed)
 
 **Files**: `effects/replacement/etbLookahead.ts`
 
@@ -1876,7 +1876,7 @@ Test: **Write tests FIRST**, then implement.
 4. `previewEnterBattlefield` does not mutate the current game state.
 Acceptance: Stub exists at minimum; full implementation only if deck requires it.
 
-### P5.11 — Full dependency resolution expansion
+### [ ] P5.11 — Full dependency resolution expansion
 
 **Files**: `effects/continuous/dependency.ts` (extend if needed)
 
@@ -1894,7 +1894,7 @@ Test: **Write tests FIRST**, then implement.
 4. Circular dependency detection and resolution (timestamp fallback).
 Acceptance: All deck interactions with dependency are covered.
 
-### P5.12 — Integration test: remaining cards
+### [ ] P5.12 — Integration test: remaining cards
 
 Test all remaining cards not covered by prior integration tests:
 - Diminishing Returns with shared graveyard (full scenario)
@@ -1915,7 +1915,7 @@ Test: **Write tests FIRST**, then implement.
 7. Every one of the 23 unique cards loads, casts, resolves, and behaves correctly.
 Acceptance: Every one of the 23 unique cards loads, casts, resolves, and behaves correctly.
 
-### P5.13 — Deck bootstrap API + deck-driven smoke tests
+### [ ] P5.13 — Deck bootstrap API + deck-driven smoke tests
 
 Add explicit deck bootstrap support so integration tests can initialize game state from deck definitions instead of manual zone seeding.
 
@@ -1943,9 +1943,9 @@ Acceptance: Deck-driven smoke tests validate real initialization path and comman
 
 ---
 
-## [ ] Phase 6 — View projection + networking + replay
+## Phase 6 — View projection + networking + replay
 
-### P6.1 — projectView implementation
+### [ ] P6.1 — projectView implementation
 
 **Files**: `view/projection.ts`
 
@@ -1972,7 +1972,7 @@ Test: **Write tests FIRST**, then implement.
 6. Shared graveyard is fully visible to both players.
 Acceptance: No hidden information leaks in projected view.
 
-### P6.2 — projectEvent implementation
+### [ ] P6.2 — projectEvent implementation
 
 **Files**: `view/projection.ts` (extend), `view/redaction.ts`
 
@@ -1995,7 +1995,7 @@ Test: **Write tests FIRST**, then implement.
 6. Public events (e.g., `LIFE_CHANGED`) are sent unredacted to both players.
 Acceptance: Event redaction is correct per player perspective.
 
-### P6.3 — Event-stream replication protocol
+### [ ] P6.3 — Event-stream replication protocol
 
 **Files**: `view/projection.ts` (extend or new file)
 
@@ -2016,7 +2016,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` holds on the client-side reconstructed state.
 Acceptance: Event stream can be consumed to rebuild projected state.
 
-### P6.4 — Reconnect snapshot protocol
+### [ ] P6.4 — Reconnect snapshot protocol
 
 Implement per §13:
 - On reconnect: server sends `projectView(currentState, playerId)` as full snapshot
@@ -2034,7 +2034,7 @@ Test: **Write tests FIRST**, then implement.
 6. Multiple reconnects in a row are handled gracefully.
 Acceptance: Snapshot alone is sufficient to rebuild full client state.
 
-### P6.5 — Replay tooling
+### [ ] P6.5 — Replay tooling
 
 Implement:
 - Replay: given initial state + event stream, rebuild state at any point
@@ -2052,7 +2052,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` passes at every step of the replay.
 Acceptance: Replay produces identical state.
 
-### P6.6 — Hidden information audit
+### [ ] P6.6 — Hidden information audit
 
 Run a comprehensive audit:
 - For every event type, verify `projectEvent` never leaks hidden info
@@ -2072,9 +2072,9 @@ Acceptance: No hidden information leaks found.
 
 ---
 
-## [ ] Phase 7 — Testing hardening + polish
+## Phase 7 — Testing hardening + polish
 
-### P7.1 — Determinism test suite
+### [ ] P7.1 — Determinism test suite
 
 Per test strategy:
 - Same seed + same command sequence → identical event stream and state hash
@@ -2091,7 +2091,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` holds for every replayed state.
 Acceptance: 100% determinism over 1000 randomized games.
 
-### P7.2 — Per-card sanity tests
+### [ ] P7.2 — Per-card sanity tests
 
 Per test strategy (adapted from SabberStone):
 - For each of 23 unique cards: load definition, create game state, cast in harness, resolve
@@ -2108,7 +2108,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` passes for every card's execution.
 Acceptance: All 23 cards pass full harness sanity checks.
 
-### P7.3 — Scenario tests for complex interactions
+### [ ] P7.3 — Scenario tests for complex interactions
 
 Per §Appendix (8 key interactions):
 
@@ -2134,7 +2134,7 @@ Test: **Write tests FIRST**, then implement.
 8. Scenario 8: Assert life loss and alternating draws work correctly in the shared-deck mode.
 Acceptance: All 8 key interactions pass with specific assertions.
 
-### P7.4 — Property-based tests
+### [ ] P7.4 — Property-based tests
 
 Per test strategy:
 - SBA loop termination: no infinite loops
@@ -2152,7 +2152,7 @@ Test: **Write tests FIRST**, then implement.
 6. Verify no property-based run results in a crashed engine.
 Acceptance: No invariant violations found over 1000+ random scenarios.
 
-### P7.5 — Replacement/choice torture tests
+### [ ] P7.5 — Replacement/choice torture tests
 
 Per test strategy:
 - Nested replacement effects: replacement that triggers another replacement
@@ -2170,7 +2170,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` holds during complex replacement cycles.
 Acceptance: No crashes or infinite loops in replacement/choice logic.
 
-### P7.6 — Layer ordering targeted tests
+### [ ] P7.6 — Layer ordering targeted tests
 
 Per test strategy:
 - Mind Bend + Crystal Spray on same permanent (Layer 3 dependency)
@@ -2188,7 +2188,7 @@ Test: **Write tests FIRST**, then implement.
 6. `computeGameObject` output matches expected manual calculations for 10+ layers.
 Acceptance: Layer ordering matches MTG CR 613.
 
-### P7.7 — Regression test infrastructure
+### [ ] P7.7 — Regression test infrastructure
 
 Set up:
 - Convention: every fixed bug gets a test in `test/regression/`
