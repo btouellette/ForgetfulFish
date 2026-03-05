@@ -1,6 +1,6 @@
 import type { Command, PlayLandCommand } from "../commands/command";
-import { validateCastSpell, validatePlayLand } from "../commands/validate";
-import { advanceStepWithEvents, passPriority } from "../engine/kernel";
+import { validateActivateAbility, validateCastSpell, validatePlayLand } from "../commands/validate";
+import { advanceStepWithEvents, passPriority, tapForMana } from "../engine/kernel";
 import { createEvent } from "../events/event";
 import type { GameEvent } from "../events/event";
 import { Rng } from "../rng/rng";
@@ -39,10 +39,26 @@ function passThrough(state: Readonly<GameState>): HandlerResult {
 function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): HandlerResult {
   const playerWithPriority = state.turnState.priorityState.playerWithPriority;
   const priorityResult = passPriority(state, playerWithPriority);
+  const passedState: GameState = {
+    ...priorityResult.state,
+    version: state.version + 1
+  };
+  const priorityPassedEvent = createEvent(
+    {
+      engineVersion: state.engineVersion,
+      schemaVersion: 1,
+      gameId: state.id
+    },
+    passedState.version,
+    {
+      type: "PRIORITY_PASSED",
+      playerId: playerWithPriority
+    }
+  );
 
   if (priorityResult.bothPassed) {
-    if (priorityResult.state.stack.length > 0) {
-      const resolved = resolveTopOfStack(priorityResult.state);
+    if (passedState.stack.length > 0) {
+      const resolved = resolveTopOfStack(passedState);
       const activePlayerId = resolved.state.turnState.activePlayerId;
       return {
         state: {
@@ -62,20 +78,20 @@ function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): Handle
             priorityState: createInitialPriorityState(activePlayerId)
           }
         },
-        events: resolved.events
+        events: [priorityPassedEvent, ...resolved.events]
       };
     }
 
-    const stepped = advanceStepWithEvents(priorityResult.state, rng);
+    const stepped = advanceStepWithEvents(passedState, rng);
     return {
       state: stepped.state,
-      events: stepped.events
+      events: [priorityPassedEvent, ...stepped.events]
     };
   }
 
   return {
-    state: priorityResult.state,
-    events: []
+    state: passedState,
+    events: [priorityPassedEvent]
   };
 }
 
@@ -157,6 +173,56 @@ function handleDeclareBlockersCommand(state: Readonly<GameState>, command: Comma
       }
     },
     events: []
+  };
+}
+
+function handleActivateAbilityCommand(state: Readonly<GameState>, command: Command): HandlerResult {
+  if (command.type !== "ACTIVATE_ABILITY") {
+    throw new Error("invalid activate ability command");
+  }
+
+  const { playerId } = validateActivateAbility(state, command);
+  const activated = tapForMana(state, command.sourceId, command.abilityIndex);
+  const stateWithPriorityReset: GameState = {
+    ...activated.state,
+    players: [
+      {
+        ...activated.state.players[0],
+        priority: activated.state.players[0].id === playerId
+      },
+      {
+        ...activated.state.players[1],
+        priority: activated.state.players[1].id === playerId
+      }
+    ],
+    turnState: {
+      ...activated.state.turnState,
+      priorityState: createInitialPriorityState(playerId)
+    }
+  };
+
+  const source = stateWithPriorityReset.objectPool.get(command.sourceId);
+  if (source === undefined) {
+    throw new Error(`Cannot activate ability from missing source '${command.sourceId}'`);
+  }
+
+  const activatedEvent = createEvent(
+    {
+      engineVersion: state.engineVersion,
+      schemaVersion: 1,
+      gameId: state.id
+    },
+    stateWithPriorityReset.version,
+    {
+      type: "ABILITY_ACTIVATED",
+      source: { id: source.id, zcc: source.zcc },
+      controller: playerId
+    }
+  );
+
+  return {
+    state: stateWithPriorityReset,
+    events: [activatedEvent, ...activated.events]
   };
 }
 
@@ -440,6 +506,7 @@ export function processCommand(
       case "CAST_SPELL":
         return handleCastSpellCommand(state, command);
       case "ACTIVATE_ABILITY":
+        return handleActivateAbilityCommand(state, command);
       case "CONCEDE":
         return passThrough(state);
       case "MAKE_CHOICE":

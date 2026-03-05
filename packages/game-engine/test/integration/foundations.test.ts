@@ -32,7 +32,8 @@ describe("integration/foundations", () => {
     const rng = new Rng(state.rngSeed);
     const result = processCommand(state, { type: "PASS_PRIORITY" }, rng);
 
-    expect(result.newEvents).toEqual([]);
+    expect(result.newEvents).toHaveLength(1);
+    expect(result.newEvents[0]).toMatchObject({ type: "PRIORITY_PASSED", playerId: "p1" });
     expect(zoneKey({ kind: "library", scope: "shared" })).toBe("shared:library");
     expect(
       createEvent({ engineVersion: "0.1.0", schemaVersion: 1, gameId: "g" }, 1, {

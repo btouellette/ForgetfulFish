@@ -442,7 +442,8 @@ function findPlayerIndex(state: Readonly<GameState>, playerId: PlayerId): 0 | 1 
 
 export function tapForMana(
   state: Readonly<GameState>,
-  objectId: ObjectId
+  objectId: ObjectId,
+  abilityIndex?: number
 ): { state: GameState; events: GameEvent[] } {
   const object = state.objectPool.get(objectId);
   if (object === undefined) {
@@ -463,10 +464,16 @@ export function tapForMana(
     throw new Error("only lands can be tapped for mana");
   }
 
-  const manaAbility = definition?.activatedAbilities.find(
-    (ability) => ability.isManaAbility && ability.effect.kind === "add_mana"
-  );
+  const manaAbility =
+    abilityIndex === undefined
+      ? definition?.activatedAbilities.find(
+          (ability) => ability.isManaAbility && ability.effect.kind === "add_mana"
+        )
+      : definition?.activatedAbilities[abilityIndex];
   if (manaAbility === undefined) {
+    throw new Error("land has no mana ability");
+  }
+  if (!manaAbility.isManaAbility) {
     throw new Error("land has no mana ability");
   }
   const manaEffect = manaAbility.effect;
