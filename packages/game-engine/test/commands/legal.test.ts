@@ -59,6 +59,30 @@ function putCardInHand(
   state.zones.get(zoneKey({ kind: "hand", scope: "player", playerId }))?.push(object.id);
 }
 
+function putOnBattlefield(
+  state: GameState,
+  playerId: "p1" | "p2",
+  card: { id: string; cardDefId: string }
+): void {
+  const object: GameObject = {
+    id: card.id,
+    zcc: 0,
+    cardDefId: card.cardDefId,
+    owner: playerId,
+    controller: playerId,
+    counters: new Map(),
+    damage: 0,
+    tapped: false,
+    summoningSick: false,
+    attachments: [],
+    abilities: [],
+    zone: { kind: "battlefield", scope: "shared" }
+  };
+
+  state.objectPool.set(object.id, object);
+  state.zones.get(zoneKey({ kind: "battlefield", scope: "shared" }))?.push(object.id);
+}
+
 describe("commands/legal", () => {
   it("main phase with Island in hand includes PLAY_LAND and PASS_PRIORITY", () => {
     const state = createInitialGameState("p1", "p2", { id: "legal-1", rngSeed: "seed-legal-1" });
@@ -155,5 +179,25 @@ describe("commands/legal", () => {
 
     expect(commands.some((command) => command.type === "CAST_SPELL")).toBe(true);
     expect(() => assertStateInvariants(state)).not.toThrow();
+  });
+
+  it("includes ACTIVATE_ABILITY for untapped Island with priority", () => {
+    const state = createInitialGameState("p1", "p2", { id: "legal-7", rngSeed: "seed-legal-7" });
+    state.turnState.phase = "MAIN_1";
+    state.turnState.step = "MAIN_1";
+    state.turnState.activePlayerId = "p1";
+    setPriority(state, "p1");
+    putOnBattlefield(state, "p1", { id: "obj-activate-island", cardDefId: "island" });
+
+    const commands = getLegalCommands(state);
+
+    expect(
+      commands.some(
+        (command) =>
+          command.type === "ACTIVATE_ABILITY" &&
+          command.sourceId === "obj-activate-island" &&
+          command.abilityIndex === 0
+      )
+    ).toBe(true);
   });
 });

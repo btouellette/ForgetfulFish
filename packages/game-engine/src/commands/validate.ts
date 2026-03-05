@@ -1,5 +1,11 @@
 import { cardRegistry } from "../cards";
-import type { CastSpellCommand, ChoicePayload, Command, PlayLandCommand } from "./command";
+import type {
+  ActivateAbilityCommand,
+  CastSpellCommand,
+  ChoicePayload,
+  Command,
+  PlayLandCommand
+} from "./command";
 import type { CardDefinition } from "../cards/cardDefinition";
 import type { GameState } from "../state/gameState";
 import { zoneKey } from "../state/zones";
@@ -50,6 +56,11 @@ export function validatePlayLand(state: Readonly<GameState>, command: PlayLandCo
 }
 
 export type ValidatedCastSpell = {
+  playerId: string;
+  cardDefinition: CardDefinition;
+};
+
+export type ValidatedActivateAbility = {
   playerId: string;
   cardDefinition: CardDefinition;
 };
@@ -108,6 +119,58 @@ export function validateCastSpell(
   };
 }
 
+export function validateActivateAbility(
+  state: Readonly<GameState>,
+  command: ActivateAbilityCommand
+): ValidatedActivateAbility {
+  const playerId = state.turnState.priorityState.playerWithPriority;
+
+  const sourceObject = state.objectPool.get(command.sourceId);
+  if (sourceObject === undefined) {
+    throw new Error("ability source must exist in the game state");
+  }
+
+  if (sourceObject.controller !== playerId) {
+    throw new Error("can only activate abilities of permanents you control");
+  }
+
+  if (sourceObject.zone.kind !== "battlefield") {
+    throw new Error("can only activate abilities of permanents on the battlefield");
+  }
+
+  const cardDefinition = cardRegistry.get(sourceObject.cardDefId);
+  if (cardDefinition === undefined) {
+    throw new Error(`missing card definition '${sourceObject.cardDefId}'`);
+  }
+
+  const ability = cardDefinition.activatedAbilities[command.abilityIndex];
+  if (ability === undefined) {
+    throw new Error("ability index is out of range for the source permanent");
+  }
+
+  if (!ability.isManaAbility || ability.effect.kind !== "add_mana") {
+    throw new Error("only mana abilities are supported");
+  }
+
+  if (!cardDefinition.typeLine.includes("Land")) {
+    throw new Error("only land mana abilities are supported");
+  }
+
+  const hasTapCost = ability.cost.some((costEntry) => costEntry.kind === "tap");
+  if (!hasTapCost || ability.cost.length !== 1) {
+    throw new Error("only single tap-cost mana abilities are supported");
+  }
+
+  if (sourceObject.tapped) {
+    throw new Error("permanent is already tapped");
+  }
+
+  return {
+    playerId,
+    cardDefinition
+  };
+}
+
 function canPlayLand(state: Readonly<GameState>, command: PlayLandCommand): boolean {
   try {
     validatePlayLand(state, command);
@@ -132,6 +195,18 @@ function canCastSpell(state: Readonly<GameState>, command: CastSpellCommand): bo
   }
 }
 
+function canActivateAbility(state: Readonly<GameState>, command: ActivateAbilityCommand): boolean {
+  try {
+    validateActivateAbility(state, command);
+    return true;
+  } catch (error) {
+    if (error instanceof Error && EXPECTED_ACTIVATE_ABILITY_ERRORS.has(error.message)) {
+      return false;
+    }
+    throw error;
+  }
+}
+
 const EXPECTED_PLAY_LAND_ERRORS = new Set([
   "card must be in the hand of the player with priority",
   "card must exist in the game state",
@@ -147,6 +222,17 @@ const EXPECTED_CAST_SPELL_ERRORS = new Set([
   "card must exist in the game state",
   "lands cannot be cast as spells",
   "insufficient mana to cast spell"
+]);
+
+const EXPECTED_ACTIVATE_ABILITY_ERRORS = new Set([
+  "ability source must exist in the game state",
+  "can only activate abilities of permanents you control",
+  "can only activate abilities of permanents on the battlefield",
+  "ability index is out of range for the source permanent",
+  "only mana abilities are supported",
+  "only land mana abilities are supported",
+  "only single tap-cost mana abilities are supported",
+  "permanent is already tapped"
 ]);
 
 function defaultPayloadForPendingChoice(choiceType: string): ChoicePayload {
@@ -218,6 +304,36 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
     const castSpellCommand: CastSpellCommand = { type: "CAST_SPELL", cardId, targets: [] };
     if (canCastSpell(state, castSpellCommand)) {
       commands.push(castSpellCommand);
+    }
+  }
+
+  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
+  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
+  for (const sourceId of battlefield) {
+    const sourceObject = state.objectPool.get(sourceId);
+    if (sourceObject === undefined || sourceObject.controller !== playerId) {
+      continue;
+    }
+
+    const sourceDefinition = cardRegistry.get(sourceObject.cardDefId);
+    if (sourceDefinition === undefined || sourceDefinition.activatedAbilities.length === 0) {
+      continue;
+    }
+
+    for (
+      let abilityIndex = 0;
+      abilityIndex < sourceDefinition.activatedAbilities.length;
+      abilityIndex += 1
+    ) {
+      const activateAbilityCommand: ActivateAbilityCommand = {
+        type: "ACTIVATE_ABILITY",
+        sourceId,
+        abilityIndex,
+        targets: []
+      };
+      if (canActivateAbility(state, activateAbilityCommand)) {
+        commands.push(activateAbilityCommand);
+      }
     }
   }
 

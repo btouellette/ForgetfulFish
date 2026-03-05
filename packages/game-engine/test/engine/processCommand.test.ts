@@ -34,6 +34,38 @@ const testInstantDefinition: CardDefinition = {
   replacementEffects: []
 };
 
+const testDualManaLandDefinition: CardDefinition = {
+  id: "process-command-test-dual-mana-land",
+  name: "Process Command Test Dual Mana Land",
+  manaCost: {},
+  typeLine: ["Land"],
+  subtypes: [],
+  color: [],
+  supertypes: [],
+  power: null,
+  toughness: null,
+  keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [
+    {
+      kind: "activated",
+      cost: [{ kind: "tap" }],
+      effect: { kind: "add_mana", mana: { blue: 1 } },
+      isManaAbility: true
+    },
+    {
+      kind: "activated",
+      cost: [{ kind: "tap" }],
+      effect: { kind: "add_mana", mana: { red: 1 } },
+      isManaAbility: true
+    }
+  ],
+  onResolve: [],
+  continuousEffects: [],
+  replacementEffects: []
+};
+
 function sampleCommand(type: Command["type"]): Command {
   switch (type) {
     case "CAST_SPELL":
@@ -70,7 +102,13 @@ describe("engine/processCommand", () => {
     const result = processCommand(state, { type: "PASS_PRIORITY" }, rng);
 
     expect(result.nextState).toBeDefined();
-    expect(result.newEvents).toEqual([]);
+    expect(result.newEvents).toHaveLength(1);
+    expect(result.newEvents[0]).toMatchObject({
+      type: "PRIORITY_PASSED",
+      playerId: "p1",
+      seq: state.version + 1
+    });
+    expect(result.nextState.version).toBe(state.version + 1);
     expect("pendingChoice" in result).toBe(true);
   });
 
@@ -210,19 +248,185 @@ describe("engine/processCommand", () => {
 
                 return processCommand(castState, command, new Rng(castState.rngSeed));
               })()
-            : command.type === "MAKE_CHOICE"
-              ? processCommand(
-                  {
-                    ...state,
-                    pendingChoice: { type: "CHOOSE_YES_NO" }
-                  },
-                  command,
-                  rng
-                )
-              : processCommand(state, command, rng)
+            : command.type === "ACTIVATE_ABILITY"
+              ? (() => {
+                  const activateState = createInitialGameState("p1", "p2", {
+                    id: "game-6d",
+                    rngSeed: "seed-6d"
+                  });
+                  const island: GameObject = {
+                    id: "obj-1",
+                    zcc: 0,
+                    cardDefId: "island",
+                    owner: "p1",
+                    controller: "p1",
+                    counters: new Map(),
+                    damage: 0,
+                    tapped: false,
+                    summoningSick: false,
+                    attachments: [],
+                    abilities: [],
+                    zone: { kind: "battlefield", scope: "shared" }
+                  };
+                  activateState.objectPool.set(island.id, island);
+                  activateState.zones
+                    .get(zoneKey({ kind: "battlefield", scope: "shared" }))
+                    ?.push(island.id);
+
+                  return processCommand(activateState, command, new Rng(activateState.rngSeed));
+                })()
+              : command.type === "MAKE_CHOICE"
+                ? processCommand(
+                    {
+                      ...state,
+                      pendingChoice: { type: "CHOOSE_YES_NO" }
+                    },
+                    command,
+                    rng
+                  )
+                : processCommand(state, command, rng)
     );
 
     expect(outputs).toHaveLength(8);
+  });
+
+  it("activates Island mana ability via ACTIVATE_ABILITY command", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "game-8",
+      rngSeed: "seed-8"
+    });
+    const island: GameObject = {
+      id: "obj-activate-island",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "battlefield", scope: "shared" }
+    };
+    state.objectPool.set(island.id, island);
+    state.zones.get(zoneKey({ kind: "battlefield", scope: "shared" }))?.push(island.id);
+
+    const result = processCommand(
+      state,
+      {
+        type: "ACTIVATE_ABILITY",
+        sourceId: island.id,
+        abilityIndex: 0,
+        targets: []
+      },
+      new Rng(state.rngSeed)
+    );
+
+    expect(result.nextState.objectPool.get(island.id)?.tapped).toBe(true);
+    expect(result.nextState.players[0].manaPool.blue).toBe(1);
+    expect(result.newEvents[0]).toMatchObject({
+      type: "ABILITY_ACTIVATED",
+      controller: "p1"
+    });
+    expect(result.nextState.turnState.priorityState.activePlayerPassed).toBe(false);
+    expect(result.nextState.turnState.priorityState.nonActivePlayerPassed).toBe(false);
+  });
+
+  it("uses ACTIVATE_ABILITY abilityIndex to choose mana output", () => {
+    cardRegistry.set(testDualManaLandDefinition.id, testDualManaLandDefinition);
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "game-9",
+      rngSeed: "seed-9"
+    });
+    const dualLand: GameObject = {
+      id: "obj-dual-land",
+      zcc: 0,
+      cardDefId: testDualManaLandDefinition.id,
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "battlefield", scope: "shared" }
+    };
+    state.objectPool.set(dualLand.id, dualLand);
+    state.zones.get(zoneKey({ kind: "battlefield", scope: "shared" }))?.push(dualLand.id);
+
+    const result = processCommand(
+      state,
+      {
+        type: "ACTIVATE_ABILITY",
+        sourceId: dualLand.id,
+        abilityIndex: 1,
+        targets: []
+      },
+      new Rng(state.rngSeed)
+    );
+
+    expect(result.nextState.players[0].manaPool.red).toBe(1);
+    expect(result.nextState.players[0].manaPool.blue).toBe(0);
+  });
+
+  it("resets pass flags after ACTIVATE_ABILITY so both-passed does not carry over", () => {
+    const base = createInitialGameState("p1", "p2", { id: "game-10", rngSeed: "seed-10" });
+    const state: GameState = {
+      ...base,
+      turnState: {
+        ...base.turnState,
+        phase: "MAIN_1",
+        step: "MAIN_1",
+        activePlayerId: "p1",
+        priorityState: {
+          playerWithPriority: "p2",
+          activePlayerPassed: true,
+          nonActivePlayerPassed: false
+        }
+      },
+      players: [
+        { ...base.players[0], priority: false },
+        { ...base.players[1], priority: true }
+      ]
+    };
+    const island: GameObject = {
+      id: "obj-p2-island",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p2",
+      controller: "p2",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "battlefield", scope: "shared" }
+    };
+    state.objectPool.set(island.id, island);
+    state.zones.get(zoneKey({ kind: "battlefield", scope: "shared" }))?.push(island.id);
+
+    const activated = processCommand(
+      state,
+      {
+        type: "ACTIVATE_ABILITY",
+        sourceId: island.id,
+        abilityIndex: 0,
+        targets: []
+      },
+      new Rng(state.rngSeed)
+    );
+    const passed = processCommand(
+      activated.nextState,
+      { type: "PASS_PRIORITY" },
+      new Rng(activated.nextState.rngSeed)
+    );
+
+    expect(passed.nextState.turnState.step).toBe("MAIN_1");
+    expect(passed.nextState.turnState.priorityState.playerWithPriority).toBe("p1");
   });
 
   it("advances from the fully-passed state snapshot, not stale priority flags", () => {
