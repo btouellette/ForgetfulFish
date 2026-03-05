@@ -4,7 +4,10 @@ import type { ObjectId, PlayerId } from "./objectRef";
 import { createInitialPriorityState, type PriorityState } from "./priorityState";
 import type { GameMode } from "../mode/gameMode";
 import { SharedDeckMode } from "../mode/sharedDeck";
+import type { StackItem } from "../stack/stackItem";
 import type { ZoneKey, ZoneRef } from "./zones";
+
+export type { StackItem } from "../stack/stackItem";
 
 export type ManaPool = {
   white: number;
@@ -47,10 +50,6 @@ export type TurnState = {
   attackers: ObjectId[];
   blockers: Array<{ attackerId: ObjectId; blockerId: ObjectId }>;
   landPlayedThisTurn: boolean;
-};
-
-export type StackItem = {
-  id: string;
 };
 
 export type ContinuousEffect = {

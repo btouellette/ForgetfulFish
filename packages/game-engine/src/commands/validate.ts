@@ -1,5 +1,6 @@
 import { cardRegistry } from "../cards";
-import type { PlayLandCommand } from "./command";
+import type { CastSpellCommand, PlayLandCommand } from "./command";
+import type { CardDefinition } from "../cards/cardDefinition";
 import type { GameState } from "../state/gameState";
 import { zoneKey } from "../state/zones";
 
@@ -46,4 +47,63 @@ export function validatePlayLand(state: Readonly<GameState>, command: PlayLandCo
   if (state.stack.length > 0) {
     throw new Error("cannot play a land while stack is not empty");
   }
+}
+
+export type ValidatedCastSpell = {
+  playerId: string;
+  cardDefinition: CardDefinition;
+};
+
+function hasSufficientMana(
+  state: Readonly<GameState>,
+  playerId: string,
+  cost: CardDefinition["manaCost"]
+): boolean {
+  const player = state.players.find((candidate) => candidate.id === playerId);
+  if (player === undefined) {
+    throw new Error(`unknown player '${playerId}'`);
+  }
+
+  return (
+    player.manaPool.white >= (cost.white ?? 0) &&
+    player.manaPool.blue >= (cost.blue ?? 0) &&
+    player.manaPool.black >= (cost.black ?? 0) &&
+    player.manaPool.red >= (cost.red ?? 0) &&
+    player.manaPool.green >= (cost.green ?? 0) &&
+    player.manaPool.colorless >= (cost.colorless ?? 0)
+  );
+}
+
+export function validateCastSpell(
+  state: Readonly<GameState>,
+  command: CastSpellCommand
+): ValidatedCastSpell {
+  const playerId = state.turnState.priorityState.playerWithPriority;
+
+  if (!playerHandContains(state, playerId, command.cardId)) {
+    throw new Error("card must be in the hand of the player with priority");
+  }
+
+  const cardObject = state.objectPool.get(command.cardId);
+  if (cardObject === undefined) {
+    throw new Error("card must exist in the game state");
+  }
+
+  const cardDefinition = cardRegistry.get(cardObject.cardDefId);
+  if (cardDefinition === undefined) {
+    throw new Error(`missing card definition '${cardObject.cardDefId}'`);
+  }
+
+  if (cardDefinition.typeLine.includes("Land")) {
+    throw new Error("lands cannot be cast as spells");
+  }
+
+  if (!hasSufficientMana(state, playerId, cardDefinition.manaCost)) {
+    throw new Error("insufficient mana to cast spell");
+  }
+
+  return {
+    playerId,
+    cardDefinition
+  };
 }
