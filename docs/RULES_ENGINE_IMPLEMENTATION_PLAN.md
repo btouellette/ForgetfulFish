@@ -749,7 +749,7 @@ Test: **Write tests FIRST**, then implement.
 6. Multiple different data types are handled by `scratch` Record.
 Acceptance: Context persists across simulated choice interruptions.
 
-### [ ] P2.2 — PendingChoice system
+### [x] P2.2 — PendingChoice system
 
 **Files**: `choices/pendingChoice.ts`
 
