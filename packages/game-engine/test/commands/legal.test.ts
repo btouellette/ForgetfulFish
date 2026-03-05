@@ -93,8 +93,11 @@ describe("commands/legal", () => {
 
     const commands = getLegalCommands(state);
 
-    expect(commands).toHaveLength(1);
-    expect(commands[0]?.type).toBe("MAKE_CHOICE");
+    expect(commands).toHaveLength(2);
+    expect(commands).toEqual([
+      { type: "MAKE_CHOICE", payload: { type: "CHOOSE_YES_NO", accepted: true } },
+      { type: "MAKE_CHOICE", payload: { type: "CHOOSE_YES_NO", accepted: false } }
+    ]);
   });
 
   it("does not expose p1 card actions when p2 has priority", () => {

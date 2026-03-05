@@ -1,5 +1,5 @@
 import { cardRegistry } from "../cards";
-import type { CastSpellCommand, Command, PlayLandCommand } from "./command";
+import type { CastSpellCommand, ChoicePayload, Command, PlayLandCommand } from "./command";
 import type { CardDefinition } from "../cards/cardDefinition";
 import type { GameState } from "../state/gameState";
 import { zoneKey } from "../state/zones";
@@ -112,8 +112,11 @@ function canPlayLand(state: Readonly<GameState>, command: PlayLandCommand): bool
   try {
     validatePlayLand(state, command);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (error instanceof Error && EXPECTED_PLAY_LAND_ERRORS.has(error.message)) {
+      return false;
+    }
+    throw error;
   }
 }
 
@@ -121,19 +124,83 @@ function canCastSpell(state: Readonly<GameState>, command: CastSpellCommand): bo
   try {
     validateCastSpell(state, command);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    if (error instanceof Error && EXPECTED_CAST_SPELL_ERRORS.has(error.message)) {
+      return false;
+    }
+    throw error;
   }
 }
 
-export function getLegalCommands(state: Readonly<GameState>): Command[] {
-  if (state.pendingChoice !== null) {
+const EXPECTED_PLAY_LAND_ERRORS = new Set([
+  "card must be in the hand of the player with priority",
+  "card must exist in the game state",
+  "card must be a land to be played as a land",
+  "already played a land this turn",
+  "can only play a land during a main phase",
+  "can only play a land during your own turn",
+  "cannot play a land while stack is not empty"
+]);
+
+const EXPECTED_CAST_SPELL_ERRORS = new Set([
+  "card must be in the hand of the player with priority",
+  "card must exist in the game state",
+  "lands cannot be cast as spells",
+  "insufficient mana to cast spell"
+]);
+
+function defaultPayloadForPendingChoice(choiceType: string): ChoicePayload {
+  switch (choiceType) {
+    case "CHOOSE_YES_NO":
+      return { type: "CHOOSE_YES_NO", accepted: true };
+    case "CHOOSE_CARDS":
+      return { type: "CHOOSE_CARDS", selected: [], min: 0, max: 0 };
+    case "ORDER_CARDS":
+      return { type: "ORDER_CARDS", ordered: [] };
+    case "NAME_CARD":
+      return { type: "NAME_CARD", cardName: "" };
+    case "CHOOSE_REPLACEMENT":
+      return { type: "CHOOSE_REPLACEMENT", replacementId: "" };
+    case "CHOOSE_MODE":
+      return { type: "CHOOSE_MODE", mode: { id: "" } };
+    case "CHOOSE_TARGET":
+      return { type: "CHOOSE_TARGET", target: { kind: "player", playerId: "" } };
+    case "ORDER_TRIGGERS":
+      return { type: "ORDER_TRIGGERS", triggerIds: [] };
+    default:
+      return { type: "CHOOSE_YES_NO", accepted: true };
+  }
+}
+
+function legalChoiceCommands(state: Readonly<GameState>): Command[] {
+  if (state.pendingChoice === null) {
+    return [];
+  }
+
+  if (state.pendingChoice.type === "CHOOSE_YES_NO") {
     return [
       {
         type: "MAKE_CHOICE",
         payload: { type: "CHOOSE_YES_NO", accepted: true }
+      },
+      {
+        type: "MAKE_CHOICE",
+        payload: { type: "CHOOSE_YES_NO", accepted: false }
       }
     ];
+  }
+
+  return [
+    {
+      type: "MAKE_CHOICE",
+      payload: defaultPayloadForPendingChoice(state.pendingChoice.type)
+    }
+  ];
+}
+
+export function getLegalCommands(state: Readonly<GameState>): Command[] {
+  if (state.pendingChoice !== null) {
+    return legalChoiceCommands(state);
   }
 
   const playerId = state.turnState.priorityState.playerWithPriority;
