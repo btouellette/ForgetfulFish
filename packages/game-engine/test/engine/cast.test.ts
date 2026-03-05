@@ -259,8 +259,13 @@ describe("engine/cast", () => {
       { type: "CAST_SPELL", cardId: "obj-p1-note", targets: [] },
       new Rng(state.rngSeed)
     );
-    const p2Cast = processCommand(
+    const p1PassAfterCast = processCommand(
       p1Cast.nextState,
+      { type: "PASS_PRIORITY" },
+      new Rng(state.rngSeed)
+    );
+    const p2Cast = processCommand(
+      p1PassAfterCast.nextState,
       { type: "CAST_SPELL", cardId: "obj-p2-note", targets: [] },
       new Rng(state.rngSeed)
     );
