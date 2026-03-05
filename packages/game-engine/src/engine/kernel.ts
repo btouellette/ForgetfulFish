@@ -1,8 +1,9 @@
+import { cardRegistry } from "../cards";
 import { createEvent, type GameEvent } from "../events/event";
 import { Rng } from "../rng/rng";
 import { captureSnapshot, lkiKey } from "../state/lki";
-import type { GameState } from "../state/gameState";
-import type { PlayerId } from "../state/objectRef";
+import type { GameState, ManaPool } from "../state/gameState";
+import type { ObjectId, PlayerId } from "../state/objectRef";
 import { createInitialPriorityState } from "../state/priorityState";
 import { bumpZcc, zoneKey } from "../state/zones";
 
@@ -371,4 +372,138 @@ export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): Ste
 
 export function advanceStep(state: Readonly<GameState>): GameState {
   return advanceStepWithEvents(state, new Rng(state.rngSeed)).state;
+}
+
+export type ManaCost = Partial<ManaPool>;
+
+function findPlayerIndex(state: Readonly<GameState>, playerId: PlayerId): 0 | 1 {
+  if (state.players[0].id === playerId) {
+    return 0;
+  }
+
+  if (state.players[1].id === playerId) {
+    return 1;
+  }
+
+  throw new Error(`Unknown playerId '${playerId}'`);
+}
+
+export function tapForMana(
+  state: Readonly<GameState>,
+  objectId: ObjectId
+): { state: GameState; events: GameEvent[] } {
+  const object = state.objectPool.get(objectId);
+  if (object === undefined) {
+    throw new Error(`Cannot tap missing object '${objectId}'`);
+  }
+
+  if (object.tapped) {
+    throw new Error("permanent is already tapped");
+  }
+
+  if (object.zone.kind !== "battlefield") {
+    throw new Error("only permanents on the battlefield can be tapped for mana");
+  }
+
+  const definition = cardRegistry.get(object.cardDefId);
+  const isLand = definition?.typeLine.includes("Land") ?? false;
+  if (!isLand) {
+    throw new Error("only lands can be tapped for mana");
+  }
+
+  const manaAbility = definition?.activatedAbilities.find(
+    (ability) => ability.isManaAbility && ability.effect.kind === "add_mana"
+  );
+  if (manaAbility === undefined) {
+    throw new Error("land has no mana ability");
+  }
+  const manaEffect = manaAbility.effect;
+  if (manaEffect.kind !== "add_mana" || !("mana" in manaEffect)) {
+    throw new Error("land has no mana ability");
+  }
+
+  const nextObjectPool = new Map(state.objectPool);
+  nextObjectPool.set(objectId, {
+    ...object,
+    tapped: true
+  });
+
+  const playerIndex = findPlayerIndex(state, object.controller);
+  const manaDelta = manaEffect.mana;
+  const player = state.players[playerIndex];
+  const nextPlayer = {
+    ...player,
+    manaPool: {
+      ...player.manaPool,
+      white: player.manaPool.white + (manaDelta.white ?? 0),
+      blue: player.manaPool.blue + (manaDelta.blue ?? 0),
+      black: player.manaPool.black + (manaDelta.black ?? 0),
+      red: player.manaPool.red + (manaDelta.red ?? 0),
+      green: player.manaPool.green + (manaDelta.green ?? 0),
+      colorless: player.manaPool.colorless + (manaDelta.colorless ?? 0)
+    }
+  };
+
+  const nextPlayers: GameState["players"] =
+    playerIndex === 0 ? [nextPlayer, state.players[1]] : [state.players[0], nextPlayer];
+
+  return {
+    state: {
+      ...state,
+      version: state.version + 1,
+      objectPool: nextObjectPool,
+      players: nextPlayers
+    },
+    events: []
+  };
+}
+
+export function payManaCost(
+  state: Readonly<GameState>,
+  playerId: PlayerId,
+  cost: ManaCost
+): GameState | "insufficient" {
+  const playerIndex = findPlayerIndex(state, playerId);
+  const player = state.players[playerIndex];
+
+  const required = {
+    white: cost.white ?? 0,
+    blue: cost.blue ?? 0,
+    black: cost.black ?? 0,
+    red: cost.red ?? 0,
+    green: cost.green ?? 0,
+    colorless: cost.colorless ?? 0
+  };
+
+  if (
+    player.manaPool.white < required.white ||
+    player.manaPool.blue < required.blue ||
+    player.manaPool.black < required.black ||
+    player.manaPool.red < required.red ||
+    player.manaPool.green < required.green ||
+    player.manaPool.colorless < required.colorless
+  ) {
+    return "insufficient";
+  }
+
+  const nextPlayer = {
+    ...player,
+    manaPool: {
+      white: player.manaPool.white - required.white,
+      blue: player.manaPool.blue - required.blue,
+      black: player.manaPool.black - required.black,
+      red: player.manaPool.red - required.red,
+      green: player.manaPool.green - required.green,
+      colorless: player.manaPool.colorless - required.colorless
+    }
+  };
+
+  const nextPlayers: GameState["players"] =
+    playerIndex === 0 ? [nextPlayer, state.players[1]] : [state.players[0], nextPlayer];
+
+  return {
+    ...state,
+    version: state.version + 1,
+    players: nextPlayers
+  };
 }
