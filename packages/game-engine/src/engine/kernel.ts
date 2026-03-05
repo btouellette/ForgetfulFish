@@ -401,6 +401,10 @@ export function tapForMana(
     throw new Error("permanent is already tapped");
   }
 
+  if (object.zone.kind !== "battlefield") {
+    throw new Error("only permanents on the battlefield can be tapped for mana");
+  }
+
   const definition = cardRegistry.get(object.cardDefId);
   const isLand = definition?.typeLine.includes("Land") ?? false;
   if (!isLand) {

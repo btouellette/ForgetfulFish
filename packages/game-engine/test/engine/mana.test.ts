@@ -105,4 +105,17 @@ describe("engine/mana", () => {
 
     expect(() => tapForMana(state, "obj-creature")).toThrow("only lands can be tapped for mana");
   });
+
+  it("tapForMana rejects lands that are not on battlefield", () => {
+    const state = createInitialGameState("p1", "p2", { id: "mana-7", rngSeed: "seed-mana-7" });
+    const inHand: GameObject = {
+      ...createPermanent("obj-hand-land", "island", "p1"),
+      zone: { kind: "hand", scope: "player", playerId: "p1" }
+    };
+    state.objectPool.set(inHand.id, inHand);
+
+    expect(() => tapForMana(state, inHand.id)).toThrow(
+      "only permanents on the battlefield can be tapped for mana"
+    );
+  });
 });
