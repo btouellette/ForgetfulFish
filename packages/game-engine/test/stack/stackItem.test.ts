@@ -35,7 +35,7 @@ describe("stack/stackItem", () => {
     const context = makeContext({ kind: "start" }, makeWhiteboard());
     const withValue = writeToScratch(context, "namedCard", "Island");
 
-    expect(readFromScratch(withValue, "namedCard")).toBe("Island");
+    expect(readFromScratch<string>(withValue, "namedCard")).toBe("Island");
   });
 
   it("preserves whiteboard state while waiting for choice", () => {
@@ -56,9 +56,10 @@ describe("stack/stackItem", () => {
 
     const next = advanceCursor(withScratch);
 
+    expect(next).not.toBe(withScratch);
     expect(next.cursor).toEqual({ kind: "waiting_choice", choiceId: "choice-1" });
     expect(next.whiteboard.actions).toHaveLength(1);
-    expect(readFromScratch(next, "selected")).toEqual(["obj-2", "obj-3"]);
+    expect(readFromScratch<string[]>(next, "selected")).toEqual(["obj-2", "obj-3"]);
   });
 
   it("increments step index by one", () => {
@@ -93,11 +94,20 @@ describe("stack/stackItem", () => {
       cards: ["obj-7"]
     });
 
-    expect(readFromScratch(withObject, "accepted")).toBe(true);
-    expect(readFromScratch(withObject, "index")).toBe(7);
-    expect(readFromScratch(withObject, "payload")).toEqual({
+    expect(readFromScratch<boolean>(withObject, "accepted")).toBe(true);
+    expect(readFromScratch<number>(withObject, "index")).toBe(7);
+    expect(readFromScratch<{ id: string; cards: string[] }>(withObject, "payload")).toEqual({
       id: "choice-2",
       cards: ["obj-7"]
     });
+  });
+
+  it("returns a new context object when cursor is done", () => {
+    const context = makeContext({ kind: "done" }, makeWhiteboard());
+
+    const next = advanceCursor(context);
+
+    expect(next).not.toBe(context);
+    expect(next.cursor).toEqual({ kind: "done" });
   });
 });
