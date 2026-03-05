@@ -183,12 +183,34 @@ function canPlayLand(state: Readonly<GameState>, command: PlayLandCommand): bool
   }
 }
 
+function isExpectedValidationError(
+  error: unknown,
+  expectedMessages: ReadonlySet<string>,
+  expectedPrefixes: readonly string[] = []
+): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  if (expectedMessages.has(error.message)) {
+    return true;
+  }
+
+  return expectedPrefixes.some((prefix) => error.message.startsWith(prefix));
+}
+
 function canCastSpell(state: Readonly<GameState>, command: CastSpellCommand): boolean {
   try {
     validateCastSpell(state, command);
     return true;
   } catch (error) {
-    if (error instanceof Error && EXPECTED_CAST_SPELL_ERRORS.has(error.message)) {
+    if (
+      isExpectedValidationError(
+        error,
+        EXPECTED_CAST_SPELL_ERRORS,
+        EXPECTED_CAST_SPELL_ERROR_PREFIXES
+      )
+    ) {
       return false;
     }
     throw error;
@@ -200,7 +222,13 @@ function canActivateAbility(state: Readonly<GameState>, command: ActivateAbility
     validateActivateAbility(state, command);
     return true;
   } catch (error) {
-    if (error instanceof Error && EXPECTED_ACTIVATE_ABILITY_ERRORS.has(error.message)) {
+    if (
+      isExpectedValidationError(
+        error,
+        EXPECTED_ACTIVATE_ABILITY_ERRORS,
+        EXPECTED_ACTIVATE_ABILITY_ERROR_PREFIXES
+      )
+    ) {
       return false;
     }
     throw error;
@@ -224,6 +252,8 @@ const EXPECTED_CAST_SPELL_ERRORS = new Set([
   "insufficient mana to cast spell"
 ]);
 
+const EXPECTED_CAST_SPELL_ERROR_PREFIXES = ["missing card definition '"];
+
 const EXPECTED_ACTIVATE_ABILITY_ERRORS = new Set([
   "ability source must exist in the game state",
   "can only activate abilities of permanents you control",
@@ -234,6 +264,8 @@ const EXPECTED_ACTIVATE_ABILITY_ERRORS = new Set([
   "only single tap-cost mana abilities are supported",
   "permanent is already tapped"
 ]);
+
+const EXPECTED_ACTIVATE_ABILITY_ERROR_PREFIXES = ["missing card definition '"];
 
 function defaultPayloadForPendingChoice(choiceType: string): ChoicePayload {
   switch (choiceType) {

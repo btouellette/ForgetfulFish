@@ -200,4 +200,38 @@ describe("commands/legal", () => {
       )
     ).toBe(true);
   });
+
+  it("ignores cards with missing definitions in hand without throwing", () => {
+    const state = createInitialGameState("p1", "p2", { id: "legal-8", rngSeed: "seed-legal-8" });
+    state.turnState.phase = "MAIN_1";
+    state.turnState.step = "MAIN_1";
+    state.turnState.activePlayerId = "p1";
+    setPriority(state, "p1");
+    putCardInHand(state, "p1", { id: "obj-missing-def-hand", cardDefId: "missing-def-id" });
+
+    const commands = getLegalCommands(state);
+
+    expect(commands.some((command) => command.type === "CAST_SPELL")).toBe(false);
+    expect(commands.some((command) => command.type === "PLAY_LAND")).toBe(false);
+    expect(commands).toContainEqual({ type: "PASS_PRIORITY" });
+    expect(commands).toContainEqual({ type: "CONCEDE" });
+  });
+
+  it("ignores permanents with missing definitions for ACTIVATE_ABILITY generation", () => {
+    const state = createInitialGameState("p1", "p2", { id: "legal-9", rngSeed: "seed-legal-9" });
+    state.turnState.phase = "MAIN_1";
+    state.turnState.step = "MAIN_1";
+    state.turnState.activePlayerId = "p1";
+    setPriority(state, "p1");
+    putOnBattlefield(state, "p1", {
+      id: "obj-missing-def-battlefield",
+      cardDefId: "missing-def-id"
+    });
+
+    const commands = getLegalCommands(state);
+
+    expect(commands.some((command) => command.type === "ACTIVATE_ABILITY")).toBe(false);
+    expect(commands).toContainEqual({ type: "PASS_PRIORITY" });
+    expect(commands).toContainEqual({ type: "CONCEDE" });
+  });
 });
