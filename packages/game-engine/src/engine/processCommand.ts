@@ -1,5 +1,6 @@
-import type { Command, PlayLandCommand } from "../commands/command";
+import type { Command, MakeChoiceCommand, PlayLandCommand } from "../commands/command";
 import { validateActivateAbility, validateCastSpell, validatePlayLand } from "../commands/validate";
+import { resumeChoiceResolution } from "../choices/resume";
 import { advanceStepWithEvents, passPriority, tapForMana } from "../engine/kernel";
 import { createEvent } from "../events/event";
 import type { GameEvent } from "../events/event";
@@ -95,20 +96,16 @@ function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): Handle
   };
 }
 
-function handleMakeChoiceCommand(state: Readonly<GameState>, command: Command): HandlerResult {
-  if (command.type !== "MAKE_CHOICE") {
-    throw new Error("invalid make choice command");
-  }
-
+function handleMakeChoiceCommand(
+  state: Readonly<GameState>,
+  command: MakeChoiceCommand
+): HandlerResult {
   if (state.pendingChoice === null) {
     throw new Error("no pending choice to resolve");
   }
 
-  const nextState: GameState = {
-    ...state,
-    version: state.version + 1,
-    pendingChoice: null
-  };
+  const resumed = resumeChoiceResolution(state, command);
+  const nextState = resumed.state;
 
   const choiceEvent = createEvent(
     {
@@ -128,7 +125,7 @@ function handleMakeChoiceCommand(state: Readonly<GameState>, command: Command): 
   return {
     state: nextState,
     events: [choiceEvent],
-    pendingChoice: null
+    pendingChoice: resumed.pendingChoice
   };
 }
 

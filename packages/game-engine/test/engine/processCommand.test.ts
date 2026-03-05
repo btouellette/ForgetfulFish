@@ -290,14 +290,51 @@ describe("engine/processCommand", () => {
                   return processCommand(activateState, command, new Rng(activateState.rngSeed));
                 })()
               : command.type === "MAKE_CHOICE"
-                ? processCommand(
-                    {
-                      ...state,
-                      pendingChoice: yesNoPendingChoice("p1")
-                    },
-                    command,
-                    rng
-                  )
+                ? (() => {
+                    const choiceState = createInitialGameState("p1", "p2", {
+                      id: "game-6e",
+                      rngSeed: "seed-6e"
+                    });
+                    const stackZone = choiceState.mode.resolveZone(choiceState, "stack", "p1");
+                    const stackObject: GameObject = {
+                      id: "obj-choice-stack",
+                      zcc: 0,
+                      cardDefId: "island",
+                      owner: "p1",
+                      controller: "p1",
+                      counters: new Map(),
+                      damage: 0,
+                      tapped: false,
+                      summoningSick: false,
+                      attachments: [],
+                      abilities: [],
+                      zone: stackZone
+                    };
+                    const pendingChoice = yesNoPendingChoice("p1");
+                    choiceState.objectPool.set(stackObject.id, stackObject);
+                    choiceState.zones.set(zoneKey(stackZone), [stackObject.id]);
+                    choiceState.stack = [
+                      {
+                        id: "stack-item-choice",
+                        object: { id: stackObject.id, zcc: stackObject.zcc },
+                        controller: "p1",
+                        targets: [],
+                        effectContext: {
+                          stackItemId: "stack-item-choice",
+                          source: { id: stackObject.id, zcc: stackObject.zcc },
+                          controller: "p1",
+                          targets: [],
+                          cursor: { kind: "waiting_choice", choiceId: pendingChoice.id },
+                          whiteboard: {
+                            actions: [],
+                            scratch: { resumeStepIndex: 0 }
+                          }
+                        }
+                      }
+                    ];
+                    choiceState.pendingChoice = pendingChoice;
+                    return processCommand(choiceState, command, new Rng(choiceState.rngSeed));
+                  })()
                 : processCommand(state, command, rng)
     );
 
