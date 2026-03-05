@@ -1,12 +1,17 @@
 import type { Target } from "../commands/command";
+import type { GameAction } from "../actions/action";
 import type { ObjectRef, PlayerId } from "../state/objectRef";
 
 export type StackItemId = string;
 
-export type ResolutionCursor = { kind: "start" };
+export type ResolutionCursor =
+  | { kind: "start" }
+  | { kind: "step"; index: number }
+  | { kind: "waiting_choice"; choiceId: string }
+  | { kind: "done" };
 
 export type Whiteboard = {
-  actions: string[];
+  actions: GameAction[];
   scratch: Record<string, unknown>;
 };
 
