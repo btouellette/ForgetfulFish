@@ -1,7 +1,10 @@
+import { createEvent, type GameEvent } from "../events/event";
+import { Rng } from "../rng/rng";
+import { captureSnapshot, lkiKey } from "../state/lki";
 import type { GameState } from "../state/gameState";
 import type { PlayerId } from "../state/objectRef";
 import { createInitialPriorityState } from "../state/priorityState";
-import { zoneKey } from "../state/zones";
+import { bumpZcc, zoneKey } from "../state/zones";
 
 function assertKnownPlayerId(state: Readonly<GameState>, playerId: PlayerId): void {
   if (state.players[0].id === playerId || state.players[1].id === playerId) {
@@ -87,7 +90,17 @@ function isStartingPlayerFirstTurnDraw(state: Readonly<GameState>): boolean {
   );
 }
 
-function drawOne(state: Readonly<GameState>, playerId: PlayerId): GameState {
+export type DrawResult = {
+  state: GameState;
+  events: GameEvent[];
+};
+
+export type StepAdvanceResult = {
+  state: GameState;
+  events: GameEvent[];
+};
+
+export function drawCard(state: Readonly<GameState>, playerId: PlayerId, _rng: Rng): DrawResult {
   const libraryZone = state.mode.resolveZone(state, "library", playerId);
   const handZone = state.mode.resolveZone(state, "hand", playerId);
   const libraryKey = zoneKey(libraryZone);
@@ -95,12 +108,18 @@ function drawOne(state: Readonly<GameState>, playerId: PlayerId): GameState {
 
   const library = state.zones.get(libraryKey) ?? [];
   if (library.length === 0) {
-    return { ...state };
+    return {
+      state: { ...state },
+      events: []
+    };
   }
 
   const drawnCardId = library[0];
   if (drawnCardId === undefined) {
-    return { ...state };
+    return {
+      state: { ...state },
+      events: []
+    };
   }
 
   const remainingLibrary = library.slice(1);
@@ -112,12 +131,22 @@ function drawOne(state: Readonly<GameState>, playerId: PlayerId): GameState {
 
   const nextObjectPool = new Map(state.objectPool);
   const drawnObject = nextObjectPool.get(drawnCardId);
-  if (drawnObject !== undefined) {
-    nextObjectPool.set(drawnCardId, {
-      ...drawnObject,
-      zone: handZone
-    });
+  if (drawnObject === undefined) {
+    throw new Error(`Cannot draw missing object '${drawnCardId}' from objectPool`);
   }
+
+  const bumpedObject = bumpZcc({
+    ...drawnObject,
+    owner: state.mode.determineOwner(playerId, "draw"),
+    zone: handZone
+  });
+  nextObjectPool.set(drawnCardId, bumpedObject);
+
+  const nextLkiStore = new Map(state.lkiStore);
+  nextLkiStore.set(
+    lkiKey(drawnObject.id, drawnObject.zcc),
+    captureSnapshot(drawnObject, drawnObject, libraryZone)
+  );
 
   const nextPlayers: GameState["players"] = [
     {
@@ -136,11 +165,31 @@ function drawOne(state: Readonly<GameState>, playerId: PlayerId): GameState {
     }
   ];
 
-  return {
+  const nextState: GameState = {
     ...state,
     players: nextPlayers,
     zones: nextZones,
-    objectPool: nextObjectPool
+    objectPool: nextObjectPool,
+    lkiStore: nextLkiStore
+  };
+
+  const nextEvent = createEvent(
+    {
+      engineVersion: state.engineVersion,
+      schemaVersion: 1,
+      gameId: state.id
+    },
+    state.version,
+    {
+      type: "CARD_DRAWN",
+      playerId,
+      cardId: drawnCardId
+    }
+  );
+
+  return {
+    state: nextState,
+    events: [nextEvent]
   };
 }
 
@@ -232,8 +281,9 @@ export function advanceTurn(state: Readonly<GameState>): GameState {
   };
 }
 
-export function advanceStep(state: Readonly<GameState>): GameState {
+export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): StepAdvanceResult {
   let processedState: GameState = { ...state };
+  let events: GameEvent[] = [];
 
   if (state.turnState.step === "UNTAP") {
     const nextObjectPool = new Map(state.objectPool);
@@ -258,11 +308,16 @@ export function advanceStep(state: Readonly<GameState>): GameState {
   }
 
   if (state.turnState.step === "DRAW" && !isStartingPlayerFirstTurnDraw(state)) {
-    processedState = drawOne(processedState, state.turnState.activePlayerId);
+    const drawResult = drawCard(processedState, state.turnState.activePlayerId, rng);
+    processedState = drawResult.state;
+    events = drawResult.events;
   }
 
   if (state.turnState.step === "CLEANUP") {
-    return advanceTurn(removeUntilEndOfTurnEffects(processedState));
+    return {
+      state: advanceTurn(removeUntilEndOfTurnEffects(processedState)),
+      events
+    };
   }
 
   const followingStep = nextStep(state.turnState.step);
@@ -276,15 +331,25 @@ export function advanceStep(state: Readonly<GameState>): GameState {
   };
 
   if (!stepHasPriority(followingStep)) {
-    return steppedState;
+    return {
+      state: steppedState,
+      events
+    };
   }
 
   return {
-    ...steppedState,
-    players: updatePlayerPriority(steppedState, steppedState.turnState.activePlayerId),
-    turnState: {
-      ...steppedState.turnState,
-      priorityState: createInitialPriorityState(steppedState.turnState.activePlayerId)
-    }
+    state: {
+      ...steppedState,
+      players: updatePlayerPriority(steppedState, steppedState.turnState.activePlayerId),
+      turnState: {
+        ...steppedState.turnState,
+        priorityState: createInitialPriorityState(steppedState.turnState.activePlayerId)
+      }
+    },
+    events
   };
+}
+
+export function advanceStep(state: Readonly<GameState>): GameState {
+  return advanceStepWithEvents(state, new Rng(state.rngSeed)).state;
 }

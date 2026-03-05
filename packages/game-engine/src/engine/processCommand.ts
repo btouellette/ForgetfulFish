@@ -1,4 +1,5 @@
 import type { Command } from "../commands/command";
+import { advanceStepWithEvents, handlePassPriority } from "../engine/kernel";
 import type { GameEvent } from "../events/event";
 import { Rng } from "../rng/rng";
 import type { GameState, PendingChoice } from "../state/gameState";
@@ -24,6 +25,24 @@ function assertNeverCommand(_command: never): never {
 function passThrough(state: Readonly<GameState>): HandlerResult {
   return {
     state: { ...state },
+    events: []
+  };
+}
+
+function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): HandlerResult {
+  const playerWithPriority = state.turnState.priorityState.playerWithPriority;
+  const priorityResult = handlePassPriority(state, playerWithPriority);
+
+  if (priorityResult === "both_passed") {
+    const stepped = advanceStepWithEvents(state, rng);
+    return {
+      state: stepped.state,
+      events: stepped.events
+    };
+  }
+
+  return {
+    state: priorityResult,
     events: []
   };
 }
@@ -54,13 +73,14 @@ export function processCommand(
     switch (command.type) {
       case "CAST_SPELL":
       case "ACTIVATE_ABILITY":
-      case "PASS_PRIORITY":
       case "MAKE_CHOICE":
       case "DECLARE_ATTACKERS":
       case "DECLARE_BLOCKERS":
       case "PLAY_LAND":
       case "CONCEDE":
         return passThrough(state);
+      case "PASS_PRIORITY":
+        return handlePassPriorityCommand(state, rng);
       default: {
         return assertNeverCommand(command);
       }
