@@ -78,6 +78,87 @@ function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): Handle
   };
 }
 
+function handleMakeChoiceCommand(state: Readonly<GameState>, command: Command): HandlerResult {
+  if (command.type !== "MAKE_CHOICE") {
+    throw new Error("invalid make choice command");
+  }
+
+  if (state.pendingChoice === null) {
+    throw new Error("no pending choice to resolve");
+  }
+
+  const nextState: GameState = {
+    ...state,
+    version: state.version + 1,
+    pendingChoice: null
+  };
+
+  const choiceEvent = createEvent(
+    {
+      engineVersion: state.engineVersion,
+      schemaVersion: 1,
+      gameId: state.id
+    },
+    nextState.version,
+    {
+      type: "CHOICE_MADE",
+      choiceId: state.pendingChoice.type,
+      playerId: state.turnState.priorityState.playerWithPriority,
+      selection: command.payload
+    }
+  );
+
+  return {
+    state: nextState,
+    events: [choiceEvent],
+    pendingChoice: null
+  };
+}
+
+function handleDeclareAttackersCommand(
+  state: Readonly<GameState>,
+  command: Command
+): HandlerResult {
+  if (command.type !== "DECLARE_ATTACKERS") {
+    throw new Error("invalid declare attackers command");
+  }
+
+  return {
+    state: {
+      ...state,
+      version: state.version + 1,
+      turnState: {
+        ...state.turnState,
+        attackers: command.attackers
+      }
+    },
+    events: []
+  };
+}
+
+function handleDeclareBlockersCommand(state: Readonly<GameState>, command: Command): HandlerResult {
+  if (command.type !== "DECLARE_BLOCKERS") {
+    throw new Error("invalid declare blockers command");
+  }
+
+  return {
+    state: {
+      ...state,
+      version: state.version + 1,
+      turnState: {
+        ...state.turnState,
+        blockers: command.assignments.flatMap((assignment) =>
+          assignment.blockerIds.map((blockerId) => ({
+            attackerId: assignment.attackerId,
+            blockerId
+          }))
+        )
+      }
+    },
+    events: []
+  };
+}
+
 function deductManaPool(
   state: Readonly<GameState>,
   playerId: string,
@@ -358,11 +439,14 @@ export function processCommand(
       case "CAST_SPELL":
         return handleCastSpellCommand(state, command);
       case "ACTIVATE_ABILITY":
-      case "MAKE_CHOICE":
-      case "DECLARE_ATTACKERS":
-      case "DECLARE_BLOCKERS":
       case "CONCEDE":
         return passThrough(state);
+      case "MAKE_CHOICE":
+        return handleMakeChoiceCommand(state, command);
+      case "DECLARE_ATTACKERS":
+        return handleDeclareAttackersCommand(state, command);
+      case "DECLARE_BLOCKERS":
+        return handleDeclareBlockersCommand(state, command);
       case "PASS_PRIORITY":
         return handlePassPriorityCommand(state, rng);
       case "PLAY_LAND":

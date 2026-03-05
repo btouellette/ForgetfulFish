@@ -210,7 +210,16 @@ describe("engine/processCommand", () => {
 
                 return processCommand(castState, command, new Rng(castState.rngSeed));
               })()
-            : processCommand(state, command, rng)
+            : command.type === "MAKE_CHOICE"
+              ? processCommand(
+                  {
+                    ...state,
+                    pendingChoice: { type: "CHOOSE_YES_NO" }
+                  },
+                  command,
+                  rng
+                )
+              : processCommand(state, command, rng)
     );
 
     expect(outputs).toHaveLength(8);
