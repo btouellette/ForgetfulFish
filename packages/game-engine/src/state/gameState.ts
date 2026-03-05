@@ -24,6 +24,8 @@ export type PlayerInfo = {
   manaPool: ManaPool;
   hand: ObjectId[];
   priority: boolean;
+  hasLost: boolean;
+  attemptedDrawFromEmptyLibrary: boolean;
 };
 
 export type TurnPhase =
@@ -95,7 +97,9 @@ function createPlayer(id: PlayerId, hasPriority: boolean): PlayerInfo {
     life: 20,
     manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
     hand: [],
-    priority: hasPriority
+    priority: hasPriority,
+    hasLost: false,
+    attemptedDrawFromEmptyLibrary: false
   };
 }
 
