@@ -575,7 +575,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` passes after land play.
 Acceptance: Land plays work, validation catches all illegal attempts.
 
-### P1.5 — Mana payment (basic lands + special lands)
+### [x] P1.5 — Mana payment (basic lands + special lands)
 
 **Files**: `engine/kernel.ts` (extend), `actions/action.ts` (extend if needed)
 
