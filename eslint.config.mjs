@@ -40,6 +40,23 @@ export default defineConfig([
     }
   },
   {
+    files: ["apps/**/*.{ts,tsx,js,jsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@forgetful-fish/game-engine/*", "**/packages/game-engine/src/**"],
+              message:
+                "Import from @forgetful-fish/game-engine package root only; app code must not depend on game-engine internals."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
     files: ["apps/server/src/**/*.ts"],
     rules: {
       "max-lines": [
