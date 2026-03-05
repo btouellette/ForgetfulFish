@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { cardRegistry } from "../../src/cards";
 import type { CardDefinition } from "../../src/cards/cardDefinition";
-import { createInitialGameState, type GameState } from "../../src/state/gameState";
+import {
+  createInitialGameState,
+  type GameState,
+  type PendingChoice
+} from "../../src/state/gameState";
 import { type Command } from "../../src/commands/command";
 import { Rng } from "../../src/rng/rng";
 import { serializeGameState } from "../../src/state/serialization";
@@ -94,6 +98,16 @@ function sampleCommand(type: Command["type"]): Command {
   }
 }
 
+function yesNoPendingChoice(forPlayer: "p1" | "p2"): PendingChoice {
+  return {
+    id: `choice-${forPlayer}-yes-no`,
+    type: "CHOOSE_YES_NO",
+    forPlayer,
+    prompt: "Choose yes or no",
+    constraints: { prompt: "Choose yes or no" }
+  };
+}
+
 describe("engine/processCommand", () => {
   it("returns a valid CommandResult shape for PASS_PRIORITY", () => {
     const state = createInitialGameState("p1", "p2", { id: "game-1", rngSeed: "seed-1" });
@@ -147,7 +161,7 @@ describe("engine/processCommand", () => {
     const state = createInitialGameState("p1", "p2", { id: "game-4b", rngSeed: "seed-4b" });
     const stateWithChoice = {
       ...state,
-      pendingChoice: { type: "CHOOSE_YES_NO" }
+      pendingChoice: yesNoPendingChoice("p1")
     };
     const rng = new Rng(stateWithChoice.rngSeed);
 
@@ -279,7 +293,7 @@ describe("engine/processCommand", () => {
                 ? processCommand(
                     {
                       ...state,
-                      pendingChoice: { type: "CHOOSE_YES_NO" }
+                      pendingChoice: yesNoPendingChoice("p1")
                     },
                     command,
                     rng

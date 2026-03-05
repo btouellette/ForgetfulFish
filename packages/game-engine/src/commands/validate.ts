@@ -7,6 +7,7 @@ import type {
   PlayLandCommand
 } from "./command";
 import type { CardDefinition } from "../cards/cardDefinition";
+import type { ChoiceType } from "../choices/pendingChoice";
 import type { GameState } from "../state/gameState";
 import { zoneKey } from "../state/zones";
 
@@ -265,7 +266,7 @@ const EXPECTED_ACTIVATE_ABILITY_ERRORS = new Set([
 
 const EXPECTED_ACTIVATE_ABILITY_ERROR_PREFIXES = ["missing card definition '"];
 
-function defaultPayloadForPendingChoice(choiceType: string): ChoicePayload {
+function defaultPayloadForPendingChoice(choiceType: ChoiceType): ChoicePayload {
   switch (choiceType) {
     case "CHOOSE_YES_NO":
       return { type: "CHOOSE_YES_NO", accepted: true };

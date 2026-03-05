@@ -119,8 +119,8 @@ function handleMakeChoiceCommand(state: Readonly<GameState>, command: Command): 
     nextState.version,
     {
       type: "CHOICE_MADE",
-      choiceId: state.pendingChoice.type,
-      playerId: state.turnState.priorityState.playerWithPriority,
+      choiceId: state.pendingChoice.id,
+      playerId: state.pendingChoice.forPlayer,
       selection: command.payload
     }
   );
