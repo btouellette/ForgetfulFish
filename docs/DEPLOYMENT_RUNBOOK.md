@@ -32,12 +32,15 @@ This runbook covers Forgetful Fish production deploy on the existing `nginx-prox
 
 ## Deploy
 
-1. Build image:
+1. Sync card image library (downloads missing Scryfall images):
+   - `pnpm cards:download`
+   - Note: the sync script skips downloads when `CI=true` or `GITHUB_ACTIONS=true`.
+2. Build image:
    - `docker build --build-arg SERVER_API_BASE_URL=http://forgetful-fish-server:4000 -f Dockerfile.web -t forgetful-fish-web:latest .`
    - `docker build -f Dockerfile.server -t forgetful-fish-server:latest .`
-2. Start/update services:
+3. Start/update services:
    - `docker compose -f docker-compose.production.yml up -d`
-3. Apply schema migrations:
+4. Apply schema migrations:
    - `docker exec forgetful-fish-web sh -lc 'cd /app && pnpm --filter @forgetful-fish/database run db:migrate:deploy'`
 
 ## Validate
