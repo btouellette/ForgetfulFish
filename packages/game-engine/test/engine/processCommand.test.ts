@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createInitialGameState } from "../../src/state/gameState";
+import { createInitialGameState, type GameState } from "../../src/state/gameState";
 import { type Command } from "../../src/commands/command";
 import { Rng } from "../../src/rng/rng";
 import { serializeGameState } from "../../src/state/serialization";
@@ -121,5 +121,33 @@ describe("engine/processCommand", () => {
     ].map((command): CommandHandlerResult => processCommand(state, command, rng));
 
     expect(outputs).toHaveLength(8);
+  });
+
+  it("advances from the fully-passed state snapshot, not stale priority flags", () => {
+    const base = createInitialGameState("p1", "p2", { id: "game-7", rngSeed: "seed-7" });
+    const state: GameState = {
+      ...base,
+      turnState: {
+        ...base.turnState,
+        phase: "END" as const,
+        step: "END" as const,
+        priorityState: {
+          playerWithPriority: "p1",
+          activePlayerPassed: false,
+          nonActivePlayerPassed: true
+        }
+      },
+      players: [
+        { ...base.players[0], priority: true },
+        { ...base.players[1], priority: false }
+      ]
+    };
+    const rng = new Rng(state.rngSeed);
+
+    const result = processCommand(state, { type: "PASS_PRIORITY" }, rng);
+
+    expect(result.nextState.turnState.step).toBe("CLEANUP");
+    expect(result.nextState.turnState.priorityState.activePlayerPassed).toBe(true);
+    expect(result.nextState.turnState.priorityState.nonActivePlayerPassed).toBe(true);
   });
 });

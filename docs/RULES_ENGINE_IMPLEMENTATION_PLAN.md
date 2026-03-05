@@ -526,7 +526,7 @@ Test: **Write tests FIRST**, then implement.
 6. Cleanup step removes expired "until end of turn" effects.
 Acceptance: Full turn cycle works with trivial (pass-only) game flow.
 
-### P1.3 — Draw command implementation
+### [x] P1.3 — Draw command implementation
 
 **Files**: `engine/processCommand.ts` (extend), `engine/kernel.ts` (extend)
 
