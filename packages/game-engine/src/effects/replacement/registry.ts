@@ -6,6 +6,7 @@ export type ActionMatcher = (action: GameAction, state: Readonly<GameState>) => 
 
 export type ReplacementEffectDefinition = {
   id: ReplacementId;
+  priority?: number;
   appliesTo: ActionMatcher;
   rewrite: (action: GameAction, state: Readonly<GameState>) => GameAction;
   condition?: ConditionAst;
@@ -34,8 +35,21 @@ export class ReplacementRegistry {
     state: Readonly<GameState>,
     excludedIds: ReadonlySet<ReplacementId>
   ): ReplacementEffectDefinition[] {
-    return this.getForType(action.type).filter(
-      (effect) => !excludedIds.has(effect.id) && effect.appliesTo(action, state)
-    );
+    return this.getForType(action.type)
+      .filter((effect) => !excludedIds.has(effect.id) && effect.appliesTo(action, state))
+      .sort((left, right) => {
+        const priorityDelta = (right.priority ?? 0) - (left.priority ?? 0);
+        if (priorityDelta !== 0) {
+          return priorityDelta;
+        }
+
+        if (left.id < right.id) {
+          return -1;
+        }
+        if (left.id > right.id) {
+          return 1;
+        }
+        return 0;
+      });
   }
 }
