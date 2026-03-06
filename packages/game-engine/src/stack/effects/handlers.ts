@@ -211,6 +211,12 @@ function resolveSearchLibraryShuffleTop(
   spec: SearchLibraryShuffleTopSpec,
   context: ResolveEffectHandlerContext
 ): ResolveEffectResult {
+  if (spec.max > 1) {
+    throw new Error(
+      `SEARCH_LIBRARY_SHUFFLE_TOP does not support max > 1 (got ${spec.max}): placing multiple cards on top in order is not implemented`
+    );
+  }
+
   const { stackItem, state, mutable, rng, emit } = context;
   const stepIndex = getStepIndex(stackItem);
   const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
@@ -233,12 +239,18 @@ function resolveSearchLibraryShuffleTop(
         return spec.typeFilter.some((type) => definition.typeLine.includes(type));
       });
 
-      const chooseChoiceId = `${stackItem.id}:mystical-tutor:choose-card`;
+      const typeLabel = spec.typeFilter.join(" or ");
+      const prompt =
+        spec.min === 0
+          ? `Choose up to one ${typeLabel} card`
+          : `Choose a ${typeLabel} card`;
+
+      const chooseChoiceId = `${stackItem.id}:search-library-shuffle-top:choose-card`;
       const choice: NonNullable<GameState["pendingChoice"]> = {
         id: chooseChoiceId,
         type: "CHOOSE_CARDS",
         forPlayer: stackItem.controller,
-        prompt: "Choose up to one instant or sorcery card",
+        prompt,
         constraints: {
           candidates,
           min: spec.min,
@@ -247,7 +259,7 @@ function resolveSearchLibraryShuffleTop(
       };
 
       return pauseWithChoiceAndScratch(context, choice, {
-        mysticalTutorChoiceId: chooseChoiceId,
+        searchLibraryChoiceId: chooseChoiceId,
         [`resumeStepIndex:${chooseChoiceId}`]: 0
       });
     }
@@ -257,16 +269,16 @@ function resolveSearchLibraryShuffleTop(
   if (stepIndex >= 1) {
     const payload = requireChoicePayload(
       stackItem,
-      "mysticalTutorChoiceId",
+      "searchLibraryChoiceId",
       isChooseCardsPayload,
-      "missing Mystical Tutor CHOOSE_CARDS choice id in scratch state",
-      "missing Mystical Tutor CHOOSE_CARDS payload in scratch state"
+      `missing SEARCH_LIBRARY_SHUFFLE_TOP CHOOSE_CARDS choice id in scratch state`,
+      `missing SEARCH_LIBRARY_SHUFFLE_TOP CHOOSE_CARDS payload in scratch state`
     );
     const selected = [...payload.selected];
-    requireUniqueIds(selected, "Mystical Tutor CHOOSE_CARDS payload must contain unique cards");
+    requireUniqueIds(selected, "SEARCH_LIBRARY_SHUFFLE_TOP CHOOSE_CARDS payload must contain unique cards");
     if (selected.length > spec.max) {
       throw new Error(
-        `Mystical Tutor can only select up to ${spec.max} card${spec.max === 1 ? "" : "s"}`
+        `SEARCH_LIBRARY_SHUFFLE_TOP selected ${selected.length} cards but max is ${spec.max}`
       );
     }
 
@@ -275,7 +287,9 @@ function resolveSearchLibraryShuffleTop(
 
   const currentLibrary = mutable.nextZones.get(libraryKey) ?? [];
   if (selectedCardId !== null && !currentLibrary.includes(selectedCardId)) {
-    throw new Error(`Mystical Tutor selected card '${selectedCardId}' is not in library`);
+    throw new Error(
+      `SEARCH_LIBRARY_SHUFFLE_TOP selected card '${selectedCardId}' is not in library`
+    );
   }
 
   const shuffledLibrary = rng.shuffle(currentLibrary);
