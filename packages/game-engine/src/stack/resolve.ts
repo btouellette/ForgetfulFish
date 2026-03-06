@@ -49,6 +49,17 @@ function isOrderCardsPayload(
   );
 }
 
+function isNameCardPayload(
+  payload: unknown
+): payload is Extract<ChoicePayload, { type: "NAME_CARD" }> {
+  if (typeof payload !== "object" || payload === null) {
+    return false;
+  }
+
+  const candidate = payload as Record<string, unknown>;
+  return candidate.type === "NAME_CARD" && typeof candidate.cardName === "string";
+}
+
 export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): ResolveStackResult {
   if (state.stack.length === 0) {
     return { state: { ...state }, events: [], pendingChoice: state.pendingChoice ?? null };
@@ -478,6 +489,102 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
       zone: libraryZone,
       resultOrder: finalLibrary
     });
+  }
+
+  if (!allTargetsIllegal && cardDefinition.onResolve.includes("PREDICT")) {
+    const cursor = stackItem.effectContext.cursor;
+    const stepIndex = cursor.kind === "start" ? 0 : cursor.kind === "step" ? cursor.index : -1;
+
+    if (stepIndex === 0) {
+      const nameChoiceId = `${stackItem.id}:predict:name-card`;
+      const choice: NonNullable<GameState["pendingChoice"]> = {
+        id: nameChoiceId,
+        type: "NAME_CARD",
+        forPlayer: stackItem.controller,
+        prompt: "Name a card",
+        constraints: {}
+      };
+
+      const updatedTopItem = {
+        ...stackItem,
+        effectContext: {
+          ...stackItem.effectContext,
+          cursor: { kind: "waiting_choice", choiceId: nameChoiceId } as const,
+          whiteboard: {
+            ...stackItem.effectContext.whiteboard,
+            scratch: {
+              ...stackItem.effectContext.whiteboard.scratch,
+              predictNameChoiceId: nameChoiceId,
+              [`resumeStepIndex:${nameChoiceId}`]: 0
+            }
+          }
+        }
+      };
+
+      return pauseWithChoice(choice, updatedTopItem);
+    }
+
+    if (stepIndex >= 1) {
+      const choiceId = stackItem.effectContext.whiteboard.scratch.predictNameChoiceId;
+      if (typeof choiceId !== "string") {
+        throw new Error("missing Predict NAME_CARD choice id in scratch state");
+      }
+
+      const rawPayload = stackItem.effectContext.whiteboard.scratch[`choice:${choiceId}`];
+      if (!isNameCardPayload(rawPayload)) {
+        throw new Error("missing Predict NAME_CARD payload in scratch state");
+      }
+
+      const namedCard = rawPayload.cardName.trim();
+      const namedCardLower = namedCard.toLowerCase();
+
+      const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
+      const graveyardZone = state.mode.resolveZone(state, "graveyard", stackItem.controller);
+      const libraryKey = zoneKey(libraryZone);
+      const graveyardKey = zoneKey(graveyardZone);
+
+      const currentLibrary = nextZones.get(libraryKey) ?? [];
+      const milledCards = currentLibrary.slice(0, 2);
+      const remainingLibrary = currentLibrary.slice(milledCards.length);
+      const currentGraveyard = nextZones.get(graveyardKey) ?? [];
+
+      nextZones.set(libraryKey, remainingLibrary);
+      nextZones.set(graveyardKey, [...currentGraveyard, ...milledCards]);
+
+      for (const milledCardId of milledCards) {
+        const milledObject = nextObjectPool.get(milledCardId);
+        if (milledObject === undefined) {
+          throw new Error(`Cannot mill missing object '${milledCardId}' while resolving Predict`);
+        }
+
+        nextLkiStore.set(
+          lkiKey(milledObject.id, milledObject.zcc),
+          captureSnapshot(milledObject, milledObject, libraryZone)
+        );
+        nextObjectPool.set(
+          milledCardId,
+          bumpZcc({
+            ...milledObject,
+            zone: graveyardZone
+          })
+        );
+      }
+
+      const namedCardWasMilled = milledCards.some((milledCardId) => {
+        const milledObject = nextObjectPool.get(milledCardId);
+        if (milledObject === undefined) {
+          return false;
+        }
+
+        const milledDefinition = cardRegistry.get(milledObject.cardDefId);
+        return milledDefinition?.name.toLowerCase() === namedCardLower;
+      });
+
+      if (namedCardWasMilled) {
+        drawOneCard(stackItem.controller);
+        drawOneCard(stackItem.controller);
+      }
+    }
   }
 
   if (
