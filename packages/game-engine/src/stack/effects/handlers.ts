@@ -265,7 +265,9 @@ function resolveSearchLibraryShuffleTop(
     const selected = [...payload.selected];
     requireUniqueIds(selected, "Mystical Tutor CHOOSE_CARDS payload must contain unique cards");
     if (selected.length > spec.max) {
-      throw new Error(`Mystical Tutor can only select up to ${spec.max} card${spec.max === 1 ? "" : "s"}`);
+      throw new Error(
+        `Mystical Tutor can only select up to ${spec.max} card${spec.max === 1 ? "" : "s"}`
+      );
     }
 
     selectedCardId = selected[0] ?? null;
@@ -399,9 +401,7 @@ function resolveCounterSpell(
     return { kind: "continue" };
   }
 
-  mutable.nextStack = mutable.nextStack.filter(
-    (item) => item.object.id !== objectTarget.object.id
-  );
+  mutable.nextStack = mutable.nextStack.filter((item) => item.object.id !== objectTarget.object.id);
   mutable.nextStackZone = mutable.nextStackZone.filter((id) => id !== objectTarget.object.id);
 
   const stackZone = state.mode.resolveZone(state, "stack", stackItem.controller);
