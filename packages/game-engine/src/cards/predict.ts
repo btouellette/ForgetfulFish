@@ -14,7 +14,7 @@ export const predictCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: ["PREDICT"],
+  onResolve: [{ id: "PREDICT" }],
   continuousEffects: [],
   replacementEffects: []
 };

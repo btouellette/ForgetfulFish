@@ -14,7 +14,7 @@ export const accumulatedKnowledgeCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: ["DRAW_ACCUMULATED_KNOWLEDGE"],
+  onResolve: [{ id: "DRAW_ACCUMULATED_KNOWLEDGE" }],
   continuousEffects: [],
   replacementEffects: []
 };
