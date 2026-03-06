@@ -14,7 +14,7 @@ export const brainstormCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: ["BRAINSTORM"],
+  onResolve: [{ id: "BRAINSTORM" }],
   continuousEffects: [],
   replacementEffects: []
 };

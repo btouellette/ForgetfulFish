@@ -14,7 +14,7 @@ export const mysticalTutorCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: ["MYSTICAL_TUTOR"],
+  onResolve: [{ id: "MYSTICAL_TUTOR" }],
   continuousEffects: [],
   replacementEffects: []
 };

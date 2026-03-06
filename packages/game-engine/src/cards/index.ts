@@ -22,3 +22,4 @@ export { memoryLapseCardDefinition };
 export { mysticalTutorCardDefinition };
 export { predictCardDefinition };
 export type { CardDefinition } from "./cardDefinition";
+export type { ResolveEffectId, ResolveEffectSpec } from "./resolveEffect";

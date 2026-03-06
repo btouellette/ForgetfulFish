@@ -1,4 +1,5 @@
 import { cardRegistry } from "../cards";
+import { hasResolveEffect } from "../cards/resolveEffect";
 import type { ChoicePayload } from "../commands/command";
 import { partitionResolvedTargets } from "../commands/validate";
 import { createEvent, type GameEvent, type GameEventPayload } from "../events/event";
@@ -238,7 +239,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     };
   };
 
-  if (!allTargetsIllegal && cardDefinition.onResolve.includes("BRAINSTORM")) {
+  if (!allTargetsIllegal && hasResolveEffect(cardDefinition.onResolve, "BRAINSTORM")) {
     const cursor = stackItem.effectContext.cursor;
     const stepIndex = cursor.kind === "start" ? 0 : cursor.kind === "step" ? cursor.index : -1;
 
@@ -396,7 +397,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     }
   }
 
-  if (!allTargetsIllegal && cardDefinition.onResolve.includes("MYSTICAL_TUTOR")) {
+  if (!allTargetsIllegal && hasResolveEffect(cardDefinition.onResolve, "MYSTICAL_TUTOR")) {
     const cursor = stackItem.effectContext.cursor;
     const stepIndex = cursor.kind === "start" ? 0 : cursor.kind === "step" ? cursor.index : -1;
     const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
@@ -491,7 +492,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     });
   }
 
-  if (!allTargetsIllegal && cardDefinition.onResolve.includes("PREDICT")) {
+  if (!allTargetsIllegal && hasResolveEffect(cardDefinition.onResolve, "PREDICT")) {
     const cursor = stackItem.effectContext.cursor;
     const stepIndex = cursor.kind === "start" ? 0 : cursor.kind === "step" ? cursor.index : -1;
 
@@ -589,8 +590,8 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
 
   if (
     !allTargetsIllegal &&
-    cardDefinition.onResolve.includes("COUNTER") &&
-    cardDefinition.onResolve.includes("MOVE_ZONE")
+    hasResolveEffect(cardDefinition.onResolve, "COUNTER") &&
+    hasResolveEffect(cardDefinition.onResolve, "MOVE_ZONE")
   ) {
     const objectTarget = stackItem.targets.find((target) => target.kind === "object");
     if (objectTarget !== undefined) {
@@ -618,7 +619,10 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     }
   }
 
-  if (!allTargetsIllegal && cardDefinition.onResolve.includes("DRAW_ACCUMULATED_KNOWLEDGE")) {
+  if (
+    !allTargetsIllegal &&
+    hasResolveEffect(cardDefinition.onResolve, "DRAW_ACCUMULATED_KNOWLEDGE")
+  ) {
     const graveyardZone = state.mode.resolveZone(state, "graveyard", stackItem.controller);
     const graveyardCards = nextZones.get(zoneKey(graveyardZone)) ?? [];
     const accumulatedKnowledgeCount = graveyardCards.reduce((count, objectId) => {
