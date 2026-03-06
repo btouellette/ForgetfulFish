@@ -3,7 +3,7 @@ import type { CardDefinition } from "./cardDefinition";
 export const memoryLapseCardDefinition: CardDefinition = {
   id: "memory-lapse",
   name: "Memory Lapse",
-  manaCost: { blue: 1, colorless: 1 },
+  manaCost: { blue: 1, generic: 1 },
   typeLine: ["Instant"],
   subtypes: [],
   color: ["blue"],

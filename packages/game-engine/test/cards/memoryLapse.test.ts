@@ -8,7 +8,7 @@ import { Rng } from "../../src/rng/rng";
 import type { GameObject } from "../../src/state/gameObject";
 import { createInitialGameState, type GameState } from "../../src/state/gameState";
 import { createInitialPriorityState } from "../../src/state/priorityState";
-import { zoneKey } from "../../src/state/zones";
+import { bumpZcc, zoneKey } from "../../src/state/zones";
 import { assertStateInvariants } from "../helpers/invariants";
 
 const mentalNoteDefinition: CardDefinition = {
@@ -78,7 +78,7 @@ function castAndResolveMemoryLapseScenario(initialSharedLibrary: string[] = []) 
   }
   setMainPhasePriority(state, "p1");
   setMana(state, "p1", 1);
-  setMana(state, "p2", 1, 1);
+  setMana(state, "p2", 2);
 
   putInHand(state, "p1", makeSpell("obj-p1-spell", mentalNoteDefinition.id, "p1"));
   putInHand(state, "p2", makeSpell("obj-ml", memoryLapseCardDefinition.id, "p2"));
@@ -130,7 +130,7 @@ function castAndResolveMemoryLapseScenario(initialSharedLibrary: string[] = []) 
 describe("cards/memory-lapse", () => {
   it("loads Memory Lapse with expected definition fields", () => {
     expect(memoryLapseCardDefinition.id).toBe("memory-lapse");
-    expect(memoryLapseCardDefinition.manaCost).toEqual({ blue: 1, colorless: 1 });
+    expect(memoryLapseCardDefinition.manaCost).toEqual({ blue: 1, generic: 1 });
     expect(memoryLapseCardDefinition.typeLine).toEqual(["Instant"]);
   });
 
@@ -167,15 +167,56 @@ describe("cards/memory-lapse", () => {
   });
 
   it("works when targeting a spell controlled by the same player", () => {
-    const { castTarget, castMemoryLapse } = castAndResolveMemoryLapseScenario();
+    cardRegistry.set(memoryLapseCardDefinition.id, memoryLapseCardDefinition);
+    cardRegistry.set(mentalNoteDefinition.id, mentalNoteDefinition);
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "memory-lapse-own",
+      rngSeed: "seed-own"
+    });
+    setMainPhasePriority(state, "p2");
+    setMana(state, "p2", 3);
+    putInHand(state, "p2", makeSpell("obj-own-spell", mentalNoteDefinition.id, "p2"));
+    putInHand(state, "p2", makeSpell("obj-own-ml", memoryLapseCardDefinition.id, "p2"));
+
+    const castTarget = processCommand(
+      state,
+      { type: "CAST_SPELL", cardId: "obj-own-spell", targets: [] },
+      new Rng(state.rngSeed)
+    );
     const targetRef = castTarget.nextState.stack[0]?.object;
     if (targetRef === undefined) {
       throw new Error("expected target reference");
     }
 
+    const castMemoryLapse = processCommand(
+      castTarget.nextState,
+      {
+        type: "CAST_SPELL",
+        cardId: "obj-own-ml",
+        targets: [{ kind: "object", object: targetRef }]
+      },
+      new Rng(state.rngSeed)
+    );
+
+    const passP2 = processCommand(
+      castMemoryLapse.nextState,
+      { type: "PASS_PRIORITY" },
+      new Rng(state.rngSeed)
+    );
+    const resolve = processCommand(
+      passP2.nextState,
+      { type: "PASS_PRIORITY" },
+      new Rng(state.rngSeed)
+    );
+
     const castState = castMemoryLapse.nextState;
-    const memoryLapseItem = castState.stack.find((item) => item.object.id === "obj-ml");
+    const memoryLapseItem = castState.stack.find((item) => item.object.id === "obj-own-ml");
     expect(memoryLapseItem?.targets[0]).toEqual({ kind: "object", object: targetRef });
+
+    const sharedLibrary =
+      resolve.nextState.zones.get(zoneKey({ kind: "library", scope: "shared" })) ?? [];
+    expect(sharedLibrary[0]).toBe("obj-own-spell");
   });
 
   it("fizzles when the target spell leaves the stack before resolution", () => {
@@ -188,6 +229,13 @@ describe("cards/memory-lapse", () => {
       stackKey,
       (state.zones.get(stackKey) ?? []).filter((id) => id !== "obj-p1-spell")
     );
+    const targetObject = state.objectPool.get("obj-p1-spell");
+    if (targetObject !== undefined) {
+      const graveyardZone = state.mode.resolveZone(state, "graveyard", targetObject.owner);
+      const graveyardKey = zoneKey(graveyardZone);
+      state.objectPool.set(targetObject.id, bumpZcc({ ...targetObject, zone: graveyardZone }));
+      state.zones.set(graveyardKey, [...(state.zones.get(graveyardKey) ?? []), targetObject.id]);
+    }
 
     const pass1 = processCommand(state, { type: "PASS_PRIORITY" }, new Rng(state.rngSeed));
     const pass2 = processCommand(

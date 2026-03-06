@@ -233,6 +233,7 @@ function deductManaPool(
     red?: number;
     green?: number;
     colorless?: number;
+    generic?: number;
   }
 ): GameState["players"] {
   const required = {
@@ -241,36 +242,70 @@ function deductManaPool(
     black: cost.black ?? 0,
     red: cost.red ?? 0,
     green: cost.green ?? 0,
-    colorless: cost.colorless ?? 0
+    colorless: cost.colorless ?? 0,
+    generic: cost.generic ?? 0
   };
+
+  function spendGenericMana(
+    manaPool: GameState["players"][number]["manaPool"],
+    generic: number
+  ): GameState["players"][number]["manaPool"] {
+    let remaining = generic;
+    const nextPool = { ...manaPool };
+    const order: Array<keyof typeof nextPool> = [
+      "colorless",
+      "white",
+      "blue",
+      "black",
+      "red",
+      "green"
+    ];
+
+    for (const key of order) {
+      if (remaining === 0) {
+        break;
+      }
+
+      const spend = Math.min(nextPool[key], remaining);
+      nextPool[key] -= spend;
+      remaining -= spend;
+    }
+
+    if (remaining > 0) {
+      throw new Error("insufficient mana to cast spell");
+    }
+
+    return nextPool;
+  }
+
+  function deductForPlayer(
+    player: GameState["players"][number]
+  ): GameState["players"][number]["manaPool"] {
+    const poolAfterSpecific = {
+      white: player.manaPool.white - required.white,
+      blue: player.manaPool.blue - required.blue,
+      black: player.manaPool.black - required.black,
+      red: player.manaPool.red - required.red,
+      green: player.manaPool.green - required.green,
+      colorless: player.manaPool.colorless - required.colorless
+    };
+
+    return spendGenericMana(poolAfterSpecific, required.generic);
+  }
 
   return [
     {
       ...state.players[0],
       manaPool:
         state.players[0].id === playerId
-          ? {
-              white: state.players[0].manaPool.white - required.white,
-              blue: state.players[0].manaPool.blue - required.blue,
-              black: state.players[0].manaPool.black - required.black,
-              red: state.players[0].manaPool.red - required.red,
-              green: state.players[0].manaPool.green - required.green,
-              colorless: state.players[0].manaPool.colorless - required.colorless
-            }
+          ? deductForPlayer(state.players[0])
           : state.players[0].manaPool
     },
     {
       ...state.players[1],
       manaPool:
         state.players[1].id === playerId
-          ? {
-              white: state.players[1].manaPool.white - required.white,
-              blue: state.players[1].manaPool.blue - required.blue,
-              black: state.players[1].manaPool.black - required.black,
-              red: state.players[1].manaPool.red - required.red,
-              green: state.players[1].manaPool.green - required.green,
-              colorless: state.players[1].manaPool.colorless - required.colorless
-            }
+          ? deductForPlayer(state.players[1])
           : state.players[1].manaPool
     }
   ];

@@ -1,6 +1,6 @@
 import { cardRegistry } from "../cards";
 import { partitionResolvedTargets } from "../commands/validate";
-import { createEvent, type GameEvent } from "../events/event";
+import { createEvent, type GameEvent, type GameEventPayload } from "../events/event";
 import type { GameState } from "../state/gameState";
 import { bumpZcc, zoneKey } from "../state/zones";
 
@@ -54,13 +54,17 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
   let nextStack = state.stack.slice(0, -1);
   let nextStackZone = currentStackZone.filter((id) => id !== stackItem.object.id);
 
-  const resolutionEvents: GameEvent[] = [];
+  const resolutionPayloads: GameEventPayload[] = [];
 
   const nextZones = new Map(state.zones);
   nextZones.set(stackKey, nextStackZone);
   const nextObjectPool = new Map(state.objectPool);
 
-  if (!allTargetsIllegal && object.cardDefId === "memory-lapse") {
+  if (
+    !allTargetsIllegal &&
+    cardDefinition.onResolve.includes("COUNTER") &&
+    cardDefinition.onResolve.includes("MOVE_ZONE")
+  ) {
     const objectTarget = stackItem.targets.find((target) => target.kind === "object");
     if (objectTarget !== undefined) {
       const targetObject = nextObjectPool.get(objectTarget.object.id);
@@ -79,17 +83,10 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
           zone: libraryZone
         });
         nextObjectPool.set(movedTarget.id, movedTarget);
-        resolutionEvents.push(
-          createEvent(
-            {
-              engineVersion: state.engineVersion,
-              schemaVersion: 1,
-              gameId: state.id
-            },
-            state.version + 1,
-            { type: "SPELL_COUNTERED", object: { id: movedTarget.id, zcc: movedTarget.zcc } }
-          )
-        );
+        resolutionPayloads.push({
+          type: "SPELL_COUNTERED",
+          object: { id: movedTarget.id, zcc: movedTarget.zcc }
+        });
       }
     }
   }
@@ -105,9 +102,16 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
   const nextDestination = [...currentDestination, stackItem.object.id];
   nextZones.set(destinationKey, nextDestination);
 
+  resolutionPayloads.push(
+    allTargetsIllegal
+      ? { type: "SPELL_COUNTERED", object: { id: movedObject.id, zcc: movedObject.zcc } }
+      : { type: "SPELL_RESOLVED", object: { id: movedObject.id, zcc: movedObject.zcc } }
+  );
+
+  const nextVersion = state.version + resolutionPayloads.length;
   const nextState: GameState = {
     ...state,
-    version: state.version + 1,
+    version: nextVersion,
     stack: nextStack,
     zones: nextZones,
     objectPool: nextObjectPool
@@ -115,19 +119,16 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
 
   return {
     state: nextState,
-    events: [
-      ...resolutionEvents,
+    events: resolutionPayloads.map((payload, index) =>
       createEvent(
         {
           engineVersion: state.engineVersion,
           schemaVersion: 1,
           gameId: state.id
         },
-        nextState.version,
-        allTargetsIllegal
-          ? { type: "SPELL_COUNTERED", object: { id: movedObject.id, zcc: movedObject.zcc } }
-          : { type: "SPELL_RESOLVED", object: { id: movedObject.id, zcc: movedObject.zcc } }
+        state.version + index + 1,
+        payload
       )
-    ]
+    )
   };
 }
