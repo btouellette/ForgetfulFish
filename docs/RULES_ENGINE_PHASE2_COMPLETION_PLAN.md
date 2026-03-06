@@ -23,7 +23,7 @@ This plan is constrained to finishing out Phase 2 from `docs/RULES_ENGINE_IMPLEM
 ## PR Submission Tracker
 
 - [x] PR A - Resolve Effect Type and Registry Foundation ([#61](https://github.com/btouellette/ForgetfulFish/pull/61))
-- [ ] PR B - Resolver Dispatch + Effect Handler Extraction
+- [x] PR B - Resolver Dispatch + Effect Handler Extraction ([#62](https://github.com/btouellette/ForgetfulFish/pull/62))
 - [ ] PR C - Card Migration to Structured Resolve Specs
 - [ ] PR D - Pipeline Replacement Wiring and Choice Surfacing
 - [ ] PR E - Command Validation Hot-Path Tightening
