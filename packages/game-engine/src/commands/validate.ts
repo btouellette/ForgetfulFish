@@ -4,7 +4,8 @@ import type {
   CastSpellCommand,
   ChoicePayload,
   Command,
-  PlayLandCommand
+  PlayLandCommand,
+  Target
 } from "./command";
 import type { CardDefinition } from "../cards/cardDefinition";
 import type { ChoiceType } from "../choices/pendingChoice";
@@ -23,6 +24,46 @@ function playerHandContains(state: Readonly<GameState>, playerId: string, cardId
   const handZone = state.mode.resolveZone(state, "hand", playerId);
   const hand = state.zones.get(zoneKey(handZone)) ?? [];
   return hand.includes(cardId);
+}
+
+function hasPlayer(state: Readonly<GameState>, playerId: string): boolean {
+  return state.players.some((player) => player.id === playerId);
+}
+
+function isLegalTarget(state: Readonly<GameState>, target: Target): boolean {
+  if (target.kind === "player") {
+    return hasPlayer(state, target.playerId);
+  }
+
+  const currentObject = state.objectPool.get(target.object.id);
+  if (currentObject === undefined) {
+    return false;
+  }
+
+  return currentObject.zcc === target.object.zcc;
+}
+
+export type ResolvedTargetValidation = {
+  legalTargets: Target[];
+  illegalTargets: Target[];
+};
+
+export function partitionResolvedTargets(
+  state: Readonly<GameState>,
+  targets: readonly Target[]
+): ResolvedTargetValidation {
+  const legalTargets: Target[] = [];
+  const illegalTargets: Target[] = [];
+
+  for (const target of targets) {
+    if (isLegalTarget(state, target)) {
+      legalTargets.push(target);
+    } else {
+      illegalTargets.push(target);
+    }
+  }
+
+  return { legalTargets, illegalTargets };
 }
 
 export function validatePlayLand(state: Readonly<GameState>, command: PlayLandCommand): void {

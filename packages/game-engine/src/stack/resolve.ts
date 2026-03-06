@@ -1,4 +1,5 @@
 import { cardRegistry } from "../cards";
+import { partitionResolvedTargets } from "../commands/validate";
 import { createEvent, type GameEvent } from "../events/event";
 import type { GameState } from "../state/gameState";
 import { bumpZcc, zoneKey } from "../state/zones";
@@ -34,10 +35,18 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
     throw new Error(`Cannot resolve unknown card definition '${object.cardDefId}'`);
   }
 
+  const validatedTargets = partitionResolvedTargets(state, stackItem.targets);
+  const allTargetsIllegal =
+    stackItem.targets.length > 0 &&
+    validatedTargets.legalTargets.length === 0 &&
+    validatedTargets.illegalTargets.length > 0;
+
   const stackZone = state.mode.resolveZone(state, "stack", stackItem.controller);
-  const destinationZone = isPermanentCard(cardDefinition.typeLine)
-    ? state.mode.resolveZone(state, "battlefield", stackItem.controller)
-    : state.mode.resolveZone(state, "graveyard", object.owner);
+  const destinationZone = allTargetsIllegal
+    ? state.mode.resolveZone(state, "graveyard", object.owner)
+    : isPermanentCard(cardDefinition.typeLine)
+      ? state.mode.resolveZone(state, "battlefield", stackItem.controller)
+      : state.mode.resolveZone(state, "graveyard", object.owner);
 
   const stackKey = zoneKey(stackZone);
   const destinationKey = zoneKey(destinationZone);
@@ -78,7 +87,9 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
           gameId: state.id
         },
         nextState.version,
-        { type: "SPELL_RESOLVED", object: { id: movedObject.id, zcc: movedObject.zcc } }
+        allTargetsIllegal
+          ? { type: "SPELL_COUNTERED", object: { id: movedObject.id, zcc: movedObject.zcc } }
+          : { type: "SPELL_RESOLVED", object: { id: movedObject.id, zcc: movedObject.zcc } }
       )
     ]
   };
