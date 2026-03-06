@@ -536,7 +536,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
       }
 
       const namedCard = rawPayload.cardName.trim();
-      const namedCardLower = namedCard.toLocaleLowerCase();
+      const namedCardLower = namedCard.toLowerCase();
 
       const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
       const graveyardZone = state.mode.resolveZone(state, "graveyard", stackItem.controller);
@@ -577,7 +577,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
         }
 
         const milledDefinition = cardRegistry.get(milledObject.cardDefId);
-        return milledDefinition?.name.toLocaleLowerCase() === namedCardLower;
+        return milledDefinition?.name.toLowerCase() === namedCardLower;
       });
 
       if (namedCardWasMilled) {
