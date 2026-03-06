@@ -831,7 +831,7 @@ Test: **Write tests FIRST**, then implement.
 6. Target legality check handles both ObjectRefs and PlayerIds.
 Acceptance: Pipeline infrastructure works, ready for replacement effects.
 
-### [ ] P2.5 — Replacement effect registry and apply-once tracking
+### [x] P2.5 — Replacement effect registry and apply-once tracking
 
 **Files**: `effects/replacement/registry.ts`, `effects/replacement/applyOnce.ts`
 
