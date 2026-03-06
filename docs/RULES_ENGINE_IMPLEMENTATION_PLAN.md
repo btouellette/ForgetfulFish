@@ -908,7 +908,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after resolution.
 Acceptance: Memory Lapse works per Oracle text with shared-deck semantics.
 
-### [ ] P2.8 — Card: Accumulated Knowledge
+### [x] P2.8 — Card: Accumulated Knowledge
 
 **Files**: `cards/accumulated-knowledge.ts`
 
