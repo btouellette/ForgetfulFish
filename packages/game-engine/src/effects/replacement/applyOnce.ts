@@ -72,7 +72,7 @@ function pendingChoiceFor(
   candidates: ReplacementEffectDefinition[]
 ): PendingChoice {
   return {
-    id: `choice:replacement:${action.id}`,
+    id: `choice:replacement:${action.id}:${action.appliedReplacements.length}`,
     type: "CHOOSE_REPLACEMENT",
     forPlayer: action.controller,
     prompt: "Choose which replacement effect applies first",
@@ -109,10 +109,7 @@ export function applyReplacementEffects(
       };
     }
 
-    const candidate = candidates[0];
-    if (candidate === undefined) {
-      return { kind: "applied", action: currentAction };
-    }
+    const candidate = candidates[0]!;
 
     const rewritten = candidate.rewrite(currentAction, state);
     currentAction = withAppliedReplacement(rewritten, candidate.id);
