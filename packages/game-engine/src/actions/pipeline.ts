@@ -1,6 +1,11 @@
 import type { GameAction } from "./action";
 import type { GameState } from "../state/gameState";
 
+export type PipelineResult = {
+  actions: GameAction[];
+  pendingChoice: GameState["pendingChoice"];
+};
+
 function isExistingPlayerId(state: Readonly<GameState>, playerId: string): boolean {
   return state.players.some((player) => player.id === playerId);
 }
@@ -59,4 +64,14 @@ export function runPipeline(
   const filtered = filterStage(state, rewritten);
   const redirected = redirectStage(state, filtered);
   return augmentStage(state, redirected);
+}
+
+export function runPipelineWithResult(
+  state: Readonly<GameState>,
+  actions: readonly GameAction[]
+): PipelineResult {
+  return {
+    actions: runPipeline(state, actions),
+    pendingChoice: null
+  };
 }
