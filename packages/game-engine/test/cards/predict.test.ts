@@ -128,7 +128,7 @@ describe("cards/predict", () => {
     expect(resolved.pendingChoice?.forPlayer).toBe("p1");
   });
 
-  it("mills top 2 cards from shared library to shared graveyard after naming", () => {
+  it("mills top 1 card from shared library to shared graveyard after naming", () => {
     const state = createPredictState();
     const resolved = castAndResolveToNameChoice(state);
 
@@ -146,7 +146,8 @@ describe("cards/predict", () => {
 
     const graveyard =
       named.nextState.zones.get(zoneKey({ kind: "graveyard", scope: "shared" })) ?? [];
-    expect(graveyard).toEqual(expect.arrayContaining(["obj-lib-memory-lapse", "obj-lib-island"]));
+    expect(graveyard).toContain("obj-lib-memory-lapse");
+    expect(graveyard).not.toContain("obj-lib-island");
   });
 
   it("draws 2 cards when the named card was milled", () => {
@@ -170,7 +171,7 @@ describe("cards/predict", () => {
     ).toHaveLength(2);
   });
 
-  it("does not draw cards when the named card was not milled", () => {
+  it("draws 1 card when the named card was not milled", () => {
     const state = createPredictState();
     const resolved = castAndResolveToNameChoice(state);
 
@@ -186,13 +187,17 @@ describe("cards/predict", () => {
       new Rng(resolved.nextState.rngSeed)
     );
 
-    expect(named.newEvents.some((event) => event.type === "CARD_DRAWN")).toBe(false);
+    expect(
+      named.newEvents.filter((event) => event.type === "CARD_DRAWN" && event.playerId === "p1")
+    ).toHaveLength(1);
   });
 
   it("uses shared deck routing for both milling and conditional draws", () => {
     const state = createPredictState();
     const resolved = castAndResolveToNameChoice(state);
 
+    // Library starts: [memory-lapse, island, third, fourth]
+    // Mill 1 (memory-lapse named → hit), draw 2: island and third go to hand; fourth stays in library
     const named = processCommand(
       resolved.nextState,
       {
@@ -209,8 +214,8 @@ describe("cards/predict", () => {
     const hand =
       named.nextState.zones.get(zoneKey({ kind: "hand", scope: "player", playerId: "p1" })) ?? [];
 
-    expect(library).toEqual([]);
-    expect(hand).toEqual(expect.arrayContaining(["obj-lib-third", "obj-lib-fourth"]));
+    expect(library).toEqual(["obj-lib-fourth"]);
+    expect(hand).toEqual(expect.arrayContaining(["obj-lib-island", "obj-lib-third"]));
   });
 
   it("emits CHOICE_MADE with the provided named card", () => {

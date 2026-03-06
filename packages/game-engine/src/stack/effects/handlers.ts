@@ -390,6 +390,8 @@ function resolveNameMillDrawOnHit(
 
         if (namedCardWasMilled) {
           drawCards(stepContext.drawOneCard, stackItem.controller, spec.drawOnHitAmount);
+        } else {
+          drawCards(stepContext.drawOneCard, stackItem.controller, spec.missDrawAmount);
         }
 
         return { kind: "continue" };
