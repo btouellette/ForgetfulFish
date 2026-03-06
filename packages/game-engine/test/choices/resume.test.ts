@@ -76,7 +76,7 @@ describe("choices/resume", () => {
     const state = buildPausedChoiceState(pendingYesNoChoice());
 
     expect(() => processCommand(state, { type: "PASS_PRIORITY" }, new Rng(state.rngSeed))).toThrow(
-      /only MAKE_CHOICE is allowed/
+      /only MAKE_CHOICE or CONCEDE are allowed/
     );
   });
 

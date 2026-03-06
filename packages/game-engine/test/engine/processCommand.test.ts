@@ -166,7 +166,7 @@ describe("engine/processCommand", () => {
     const rng = new Rng(stateWithChoice.rngSeed);
 
     expect(() => processCommand(stateWithChoice, { type: "PASS_PRIORITY" }, rng)).toThrow(
-      /only MAKE_CHOICE is allowed/
+      /only MAKE_CHOICE or CONCEDE are allowed/
     );
   });
 

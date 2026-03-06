@@ -126,31 +126,17 @@ function handleMakeChoiceCommand(
   const events: GameEvent[] = [choiceEvent];
   let pendingChoice: PendingChoice | null = resumed.pendingChoice;
 
-  for (let iteration = 0; iteration < 20; iteration += 1) {
-    if (pendingChoice !== null) {
-      break;
-    }
-
-    const topItem = nextState.stack[nextState.stack.length - 1];
-    if (topItem === undefined) {
-      break;
-    }
-
-    if (
-      topItem.effectContext.cursor.kind !== "start" &&
-      topItem.effectContext.cursor.kind !== "step"
-    ) {
-      break;
-    }
-
+  const resumedTopItem = nextState.stack[nextState.stack.length - 1];
+  if (
+    pendingChoice === null &&
+    resumedTopItem !== undefined &&
+    (resumedTopItem.effectContext.cursor.kind === "start" ||
+      resumedTopItem.effectContext.cursor.kind === "step")
+  ) {
     const resolved = resolveTopOfStack(nextState);
     nextState = resolved.state;
     pendingChoice = resolved.pendingChoice;
     events.push(...resolved.events);
-
-    if (resolved.pendingChoice !== null) {
-      break;
-    }
   }
 
   const priorityPlayerId = pendingChoice?.forPlayer ?? nextState.turnState.activePlayerId;
@@ -588,7 +574,7 @@ export function processCommand(
     command.type !== "MAKE_CHOICE" &&
     command.type !== "CONCEDE"
   ) {
-    throw new Error("only MAKE_CHOICE is allowed while a pending choice exists");
+    throw new Error("only MAKE_CHOICE or CONCEDE are allowed while a pending choice exists");
   }
 
   const handlerResult = (() => {
