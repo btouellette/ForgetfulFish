@@ -102,10 +102,22 @@ export function applyReplacementEffects(
     }
 
     if (candidates.length > 1) {
+      const highestPriority = candidates[0]?.priority ?? 0;
+      const topPriorityCandidates = candidates.filter(
+        (candidate) => (candidate.priority ?? 0) === highestPriority
+      );
+
+      if (topPriorityCandidates.length === 1) {
+        const selected = topPriorityCandidates[0]!;
+        const rewritten = selected.rewrite(currentAction, state);
+        currentAction = withAppliedReplacement(rewritten, selected.id);
+        continue;
+      }
+
       return {
         kind: "choice_required",
         action: currentAction,
-        pendingChoice: pendingChoiceFor(currentAction, candidates)
+        pendingChoice: pendingChoiceFor(currentAction, topPriorityCandidates)
       };
     }
 
