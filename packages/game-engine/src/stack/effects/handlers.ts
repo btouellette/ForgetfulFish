@@ -241,9 +241,7 @@ function resolveSearchLibraryShuffleTop(
 
       const typeLabel = spec.typeFilter.join(" or ");
       const prompt =
-        spec.min === 0
-          ? `Choose up to one ${typeLabel} card`
-          : `Choose a ${typeLabel} card`;
+        spec.min === 0 ? `Choose up to one ${typeLabel} card` : `Choose a ${typeLabel} card`;
 
       const chooseChoiceId = `${stackItem.id}:search-library-shuffle-top:choose-card`;
       const choice: NonNullable<GameState["pendingChoice"]> = {
@@ -275,7 +273,10 @@ function resolveSearchLibraryShuffleTop(
       `missing SEARCH_LIBRARY_SHUFFLE_TOP CHOOSE_CARDS payload in scratch state`
     );
     const selected = [...payload.selected];
-    requireUniqueIds(selected, "SEARCH_LIBRARY_SHUFFLE_TOP CHOOSE_CARDS payload must contain unique cards");
+    requireUniqueIds(
+      selected,
+      "SEARCH_LIBRARY_SHUFFLE_TOP CHOOSE_CARDS payload must contain unique cards"
+    );
     if (selected.length > spec.max) {
       throw new Error(
         `SEARCH_LIBRARY_SHUFFLE_TOP selected ${selected.length} cards but max is ${spec.max}`
