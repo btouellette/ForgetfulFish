@@ -5,11 +5,13 @@ import { createInitialPriorityState, type PriorityState } from "./priorityState"
 import type { GameMode } from "../mode/gameMode";
 import { SharedDeckMode } from "../mode/sharedDeck";
 import type { PendingChoice } from "../choices/pendingChoice";
+import type { ContinuousEffect } from "../effects/continuous/layers";
 import type { StackItem } from "../stack/stackItem";
 import type { ZoneKey, ZoneRef } from "./zones";
 
 export type { StackItem } from "../stack/stackItem";
 export type { PendingChoice } from "../choices/pendingChoice";
+export type { ContinuousEffect } from "../effects/continuous/layers";
 
 export type ManaPool = {
   white: number;
@@ -54,11 +56,6 @@ export type TurnState = {
   attackers: ObjectId[];
   blockers: Array<{ attackerId: ObjectId; blockerId: ObjectId }>;
   landPlayedThisTurn: boolean;
-};
-
-export type ContinuousEffect = {
-  id: string;
-  duration?: "until_end_of_turn";
 };
 
 export type TriggeredAbility = {
