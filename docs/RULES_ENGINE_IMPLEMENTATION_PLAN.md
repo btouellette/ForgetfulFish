@@ -965,7 +965,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after each step and choice resumption.
 Acceptance: Multi-choice resolution works end-to-end, persisted context survives interruption.
 
-### [ ] P2.10 — Card: Mystical Tutor
+### [x] P2.10 — Card: Mystical Tutor
 
 **Files**: `cards/mystical-tutor.ts`
 
