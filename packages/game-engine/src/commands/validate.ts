@@ -392,16 +392,34 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
 
   const handZone = state.mode.resolveZone(state, "hand", playerId);
   const hand = state.zones.get(zoneKey(handZone)) ?? [];
+  const cardDefinitionCache = new Map<string, CardDefinition | undefined>();
 
-  for (const cardId of hand) {
-    const playLandCommand: PlayLandCommand = { type: "PLAY_LAND", cardId };
-    if (canPlayLand(state, playLandCommand)) {
-      commands.push(playLandCommand);
+  const definitionFor = (cardDefId: string): CardDefinition | undefined => {
+    if (cardDefinitionCache.has(cardDefId)) {
+      return cardDefinitionCache.get(cardDefId);
     }
 
-    const castSpellCommand: CastSpellCommand = { type: "CAST_SPELL", cardId, targets: [] };
-    if (canCastSpell(state, castSpellCommand)) {
-      commands.push(castSpellCommand);
+    const definition = cardRegistry.get(cardDefId);
+    cardDefinitionCache.set(cardDefId, definition);
+    return definition;
+  };
+
+  for (const cardId of hand) {
+    const cardObject = state.objectPool.get(cardId);
+    const cardDefinition =
+      cardObject === undefined ? undefined : definitionFor(cardObject.cardDefId);
+    const isLandCard = cardDefinition?.typeLine.includes("Land") ?? false;
+
+    if (isLandCard) {
+      const playLandCommand: PlayLandCommand = { type: "PLAY_LAND", cardId };
+      if (canPlayLand(state, playLandCommand)) {
+        commands.push(playLandCommand);
+      }
+    } else {
+      const castSpellCommand: CastSpellCommand = { type: "CAST_SPELL", cardId, targets: [] };
+      if (canCastSpell(state, castSpellCommand)) {
+        commands.push(castSpellCommand);
+      }
     }
   }
 
@@ -413,7 +431,7 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
       continue;
     }
 
-    const sourceDefinition = cardRegistry.get(sourceObject.cardDefId);
+    const sourceDefinition = definitionFor(sourceObject.cardDefId);
     if (sourceDefinition === undefined || sourceDefinition.activatedAbilities.length === 0) {
       continue;
     }
