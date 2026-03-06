@@ -1,12 +1,14 @@
+import { runPipelineWithResult } from "../actions/pipeline";
 import { cardRegistry } from "../cards";
-import { hasResolveEffect } from "../cards/resolveEffect";
-import type { ChoicePayload } from "../commands/command";
 import { partitionResolvedTargets } from "../commands/validate";
 import { createEvent, type GameEvent, type GameEventPayload } from "../events/event";
 import type { Rng } from "../rng/rng";
 import type { GameState } from "../state/gameState";
 import { captureSnapshot, lkiKey } from "../state/lki";
 import { bumpZcc, zoneKey } from "../state/zones";
+import { resolveOnResolveEffect } from "./effects/handlers";
+import type { ResolveMutableState } from "./effects/types";
+import { OnResolveRegistry } from "./onResolveRegistry";
 
 export type ResolveStackResult = {
   state: GameState;
@@ -18,47 +20,6 @@ function isPermanentCard(typeLine: string[]): boolean {
   return typeLine.some((type) =>
     ["Artifact", "Creature", "Enchantment", "Land", "Planeswalker", "Battle"].includes(type)
   );
-}
-
-function isChooseCardsPayload(
-  payload: unknown
-): payload is Extract<ChoicePayload, { type: "CHOOSE_CARDS" }> {
-  if (typeof payload !== "object" || payload === null) {
-    return false;
-  }
-
-  const candidate = payload as Record<string, unknown>;
-  return (
-    candidate.type === "CHOOSE_CARDS" &&
-    Array.isArray(candidate.selected) &&
-    candidate.selected.every((value) => typeof value === "string")
-  );
-}
-
-function isOrderCardsPayload(
-  payload: unknown
-): payload is Extract<ChoicePayload, { type: "ORDER_CARDS" }> {
-  if (typeof payload !== "object" || payload === null) {
-    return false;
-  }
-
-  const candidate = payload as Record<string, unknown>;
-  return (
-    candidate.type === "ORDER_CARDS" &&
-    Array.isArray(candidate.ordered) &&
-    candidate.ordered.every((value) => typeof value === "string")
-  );
-}
-
-function isNameCardPayload(
-  payload: unknown
-): payload is Extract<ChoicePayload, { type: "NAME_CARD" }> {
-  if (typeof payload !== "object" || payload === null) {
-    return false;
-  }
-
-  const candidate = payload as Record<string, unknown>;
-  return candidate.type === "NAME_CARD" && typeof candidate.cardName === "string";
 }
 
 export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): ResolveStackResult {
@@ -82,6 +43,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
   }
 
   const validatedTargets = partitionResolvedTargets(state, stackItem.targets);
+  const onResolveRegistry = new OnResolveRegistry(cardDefinition.onResolve);
   const allTargetsIllegal =
     stackItem.targets.length > 0 &&
     validatedTargets.legalTargets.length === 0 &&
@@ -97,8 +59,23 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
   const stackKey = zoneKey(stackZone);
   const currentStackZone = state.zones.get(stackKey) ?? [];
 
-  let nextStack = state.stack.slice(0, -1);
-  let nextStackZone = currentStackZone.filter((id) => id !== stackItem.object.id);
+  const mutable: ResolveMutableState = {
+    nextStack: state.stack.slice(0, -1),
+    nextStackZone: currentStackZone.filter((id) => id !== stackItem.object.id),
+    nextZones: new Map(state.zones),
+    nextObjectPool: new Map(state.objectPool),
+    nextLkiStore: new Map(state.lkiStore),
+    nextPlayers: [
+      {
+        ...state.players[0],
+        hand: [...state.players[0].hand]
+      },
+      {
+        ...state.players[1],
+        hand: [...state.players[1].hand]
+      }
+    ]
+  };
 
   let nextVersion = state.version;
   const resolutionEvents: GameEvent[] = [];
@@ -118,36 +95,22 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     );
   };
 
-  const nextZones = new Map(state.zones);
-  nextZones.set(stackKey, nextStackZone);
-  const nextObjectPool = new Map(state.objectPool);
-  const nextLkiStore = new Map(state.lkiStore);
-  let nextPlayers: GameState["players"] = [
-    {
-      ...state.players[0],
-      hand: [...state.players[0].hand]
-    },
-    {
-      ...state.players[1],
-      hand: [...state.players[1].hand]
-    }
-  ];
-  let pendingChoice: GameState["pendingChoice"] = null;
+  mutable.nextZones.set(stackKey, mutable.nextStackZone);
 
   const markAttemptedDrawFromEmptyLibrary = (playerId: string): void => {
-    nextPlayers =
-      nextPlayers[0].id === playerId
+    mutable.nextPlayers =
+      mutable.nextPlayers[0].id === playerId
         ? [
             {
-              ...nextPlayers[0],
+              ...mutable.nextPlayers[0],
               attemptedDrawFromEmptyLibrary: true
             },
-            nextPlayers[1]
+            mutable.nextPlayers[1]
           ]
         : [
-            nextPlayers[0],
+            mutable.nextPlayers[0],
             {
-              ...nextPlayers[1],
+              ...mutable.nextPlayers[1],
               attemptedDrawFromEmptyLibrary: true
             }
           ];
@@ -160,17 +123,17 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     const libraryKey = zoneKey(libraryZone);
     const handKey = zoneKey(handZone);
 
-    const currentLibrary = nextZones.get(libraryKey) ?? [];
+    const currentLibrary = mutable.nextZones.get(libraryKey) ?? [];
     const drawnCardId = currentLibrary[0];
     if (drawnCardId === undefined) {
       markAttemptedDrawFromEmptyLibrary(playerId);
       return;
     }
 
-    nextZones.set(libraryKey, currentLibrary.slice(1));
-    nextZones.set(handKey, [...(nextZones.get(handKey) ?? []), drawnCardId]);
+    mutable.nextZones.set(libraryKey, currentLibrary.slice(1));
+    mutable.nextZones.set(handKey, [...(mutable.nextZones.get(handKey) ?? []), drawnCardId]);
 
-    const drawnObject = nextObjectPool.get(drawnCardId);
+    const drawnObject = mutable.nextObjectPool.get(drawnCardId);
     if (drawnObject === undefined) {
       throw new Error(`Cannot draw missing object '${drawnCardId}' during resolution`);
     }
@@ -182,26 +145,26 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
       controller: playerId,
       zone: handZone
     });
-    nextObjectPool.set(movedDrawnObject.id, movedDrawnObject);
-    nextLkiStore.set(
+    mutable.nextObjectPool.set(movedDrawnObject.id, movedDrawnObject);
+    mutable.nextLkiStore.set(
       lkiKey(drawnObject.id, drawnObject.zcc),
       captureSnapshot(drawnObject, drawnObject, libraryZone)
     );
 
-    nextPlayers =
-      nextPlayers[0].id === playerId
+    mutable.nextPlayers =
+      mutable.nextPlayers[0].id === playerId
         ? [
             {
-              ...nextPlayers[0],
-              hand: [...nextPlayers[0].hand, drawnCardId]
+              ...mutable.nextPlayers[0],
+              hand: [...mutable.nextPlayers[0].hand, drawnCardId]
             },
-            nextPlayers[1]
+            mutable.nextPlayers[1]
           ]
         : [
-            nextPlayers[0],
+            mutable.nextPlayers[0],
             {
-              ...nextPlayers[1],
-              hand: [...nextPlayers[1].hand, drawnCardId]
+              ...mutable.nextPlayers[1],
+              hand: [...mutable.nextPlayers[1].hand, drawnCardId]
             }
           ];
 
@@ -218,17 +181,17 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
   ): ResolveStackResult => {
     const pausedStack = state.stack.slice();
     pausedStack[pausedStack.length - 1] = updatedTopItem;
-    nextZones.set(stackKey, [...currentStackZone]);
+    mutable.nextZones.set(stackKey, [...currentStackZone]);
     nextVersion += 1;
 
     const nextState: GameState = {
       ...state,
       version: nextVersion,
-      players: nextPlayers,
+      players: mutable.nextPlayers,
       stack: pausedStack,
-      zones: nextZones,
-      objectPool: nextObjectPool,
-      lkiStore: nextLkiStore,
+      zones: mutable.nextZones,
+      objectPool: mutable.nextObjectPool,
+      lkiStore: mutable.nextLkiStore,
       pendingChoice: choice
     };
 
@@ -239,413 +202,60 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     };
   };
 
-  if (!allTargetsIllegal && hasResolveEffect(cardDefinition.onResolve, "BRAINSTORM")) {
-    const cursor = stackItem.effectContext.cursor;
-    const stepIndex = cursor.kind === "start" ? 0 : cursor.kind === "step" ? cursor.index : -1;
-
-    if (stepIndex === 0) {
-      for (let drawIndex = 0; drawIndex < 3; drawIndex += 1) {
-        drawOneCard(stackItem.controller);
-      }
-
-      const handZone = state.mode.resolveZone(state, "hand", stackItem.controller);
-      const handCards = nextZones.get(zoneKey(handZone)) ?? [];
-      const chooseChoiceId = `${stackItem.id}:brainstorm:choose-cards`;
-      const choice: NonNullable<GameState["pendingChoice"]> = {
-        id: chooseChoiceId,
-        type: "CHOOSE_CARDS",
-        forPlayer: stackItem.controller,
-        prompt: "Choose 2 cards to put back on top of your library",
-        constraints: {
-          candidates: [...handCards],
-          min: 2,
-          max: 2
-        }
-      };
-
-      const updatedTopItem = {
-        ...stackItem,
-        effectContext: {
-          ...stackItem.effectContext,
-          cursor: { kind: "waiting_choice", choiceId: chooseChoiceId } as const,
-          whiteboard: {
-            ...stackItem.effectContext.whiteboard,
-            scratch: {
-              ...stackItem.effectContext.whiteboard.scratch,
-              brainstormChooseChoiceId: chooseChoiceId,
-              [`resumeStepIndex:${chooseChoiceId}`]: 0
-            }
-          }
-        }
-      };
-
-      return pauseWithChoice(choice, updatedTopItem);
-    }
-
-    if (stepIndex === 1) {
-      const chooseChoiceId = stackItem.effectContext.whiteboard.scratch.brainstormChooseChoiceId;
-      if (typeof chooseChoiceId !== "string") {
-        throw new Error("missing Brainstorm CHOOSE_CARDS choice id in scratch state");
-      }
-
-      const rawPayload = stackItem.effectContext.whiteboard.scratch[`choice:${chooseChoiceId}`];
-      if (!isChooseCardsPayload(rawPayload)) {
-        throw new Error("missing Brainstorm CHOOSE_CARDS payload in scratch state");
-      }
-
-      const selectedCards = [...rawPayload.selected];
-      if (new Set(selectedCards).size !== selectedCards.length) {
-        throw new Error("Brainstorm CHOOSE_CARDS payload must contain unique cards");
-      }
-      const orderChoiceId = `${stackItem.id}:brainstorm:order-cards`;
-      const choice: NonNullable<GameState["pendingChoice"]> = {
-        id: orderChoiceId,
-        type: "ORDER_CARDS",
-        forPlayer: stackItem.controller,
-        prompt: "Order the chosen cards to put back on top",
-        constraints: {
-          cards: selectedCards
-        }
-      };
-
-      const updatedTopItem = {
-        ...stackItem,
-        effectContext: {
-          ...stackItem.effectContext,
-          cursor: { kind: "waiting_choice", choiceId: orderChoiceId } as const,
-          whiteboard: {
-            ...stackItem.effectContext.whiteboard,
-            scratch: {
-              ...stackItem.effectContext.whiteboard.scratch,
-              brainstormOrderChoiceId: orderChoiceId,
-              [`resumeStepIndex:${orderChoiceId}`]: 1
-            }
-          }
-        }
-      };
-
-      return pauseWithChoice(choice, updatedTopItem);
-    }
-
-    if (stepIndex >= 2) {
-      const orderChoiceId = stackItem.effectContext.whiteboard.scratch.brainstormOrderChoiceId;
-      if (typeof orderChoiceId !== "string") {
-        throw new Error("missing Brainstorm ORDER_CARDS choice id in scratch state");
-      }
-
-      const rawPayload = stackItem.effectContext.whiteboard.scratch[`choice:${orderChoiceId}`];
-      if (!isOrderCardsPayload(rawPayload)) {
-        throw new Error("missing Brainstorm ORDER_CARDS payload in scratch state");
-      }
-
-      const orderedCards = [...rawPayload.ordered];
-      if (new Set(orderedCards).size !== orderedCards.length) {
-        throw new Error("Brainstorm ORDER_CARDS payload must contain unique cards");
-      }
-      const handZone = state.mode.resolveZone(state, "hand", stackItem.controller);
-      const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
-      const handKey = zoneKey(handZone);
-      const libraryKey = zoneKey(libraryZone);
-      const currentHand = nextZones.get(handKey) ?? [];
-      const currentLibrary = nextZones.get(libraryKey) ?? [];
-
-      for (const cardId of orderedCards) {
-        if (!currentHand.includes(cardId)) {
-          throw new Error(`Brainstorm ordered card '${cardId}' is not in hand`);
-        }
-      }
-
-      const putBackSet = new Set(orderedCards);
-      nextZones.set(
-        handKey,
-        currentHand.filter((cardId) => !putBackSet.has(cardId))
-      );
-      nextZones.set(libraryKey, [...orderedCards, ...currentLibrary]);
-
-      for (const cardId of orderedCards) {
-        const handObject = nextObjectPool.get(cardId);
-        if (handObject === undefined) {
-          throw new Error(`Cannot move missing object '${cardId}' while resolving Brainstorm`);
-        }
-
-        nextObjectPool.set(
-          cardId,
-          bumpZcc({
-            ...handObject,
-            zone: libraryZone,
-            controller: stackItem.controller
-          })
-        );
-      }
-
-      nextPlayers =
-        nextPlayers[0].id === stackItem.controller
-          ? [
-              {
-                ...nextPlayers[0],
-                hand: nextPlayers[0].hand.filter((cardId) => !putBackSet.has(cardId))
-              },
-              nextPlayers[1]
-            ]
-          : [
-              nextPlayers[0],
-              {
-                ...nextPlayers[1],
-                hand: nextPlayers[1].hand.filter((cardId) => !putBackSet.has(cardId))
-              }
-            ];
-    }
-  }
-
-  if (!allTargetsIllegal && hasResolveEffect(cardDefinition.onResolve, "MYSTICAL_TUTOR")) {
-    const cursor = stackItem.effectContext.cursor;
-    const stepIndex = cursor.kind === "start" ? 0 : cursor.kind === "step" ? cursor.index : -1;
-    const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
-    const libraryKey = zoneKey(libraryZone);
-
-    if (stepIndex === 0) {
-      const currentLibrary = nextZones.get(libraryKey) ?? [];
-      if (currentLibrary.length > 0) {
-        const candidates = currentLibrary.filter((cardId) => {
-          const libraryObject = nextObjectPool.get(cardId);
-          if (libraryObject === undefined) {
-            return false;
-          }
-
-          const definition = cardRegistry.get(libraryObject.cardDefId);
-          if (definition === undefined) {
-            return false;
-          }
-
-          return definition.typeLine.includes("Instant") || definition.typeLine.includes("Sorcery");
-        });
-
-        const chooseChoiceId = `${stackItem.id}:mystical-tutor:choose-card`;
-        const choice: NonNullable<GameState["pendingChoice"]> = {
-          id: chooseChoiceId,
-          type: "CHOOSE_CARDS",
-          forPlayer: stackItem.controller,
-          prompt: "Choose up to one instant or sorcery card",
-          constraints: {
-            candidates,
-            min: 0,
-            max: 1
-          }
-        };
-
-        const updatedTopItem = {
-          ...stackItem,
-          effectContext: {
-            ...stackItem.effectContext,
-            cursor: { kind: "waiting_choice", choiceId: chooseChoiceId } as const,
-            whiteboard: {
-              ...stackItem.effectContext.whiteboard,
-              scratch: {
-                ...stackItem.effectContext.whiteboard.scratch,
-                mysticalTutorChoiceId: chooseChoiceId,
-                [`resumeStepIndex:${chooseChoiceId}`]: 0
-              }
-            }
-          }
-        };
-
-        return pauseWithChoice(choice, updatedTopItem);
-      }
-    }
-
-    let selectedCardId: string | null = null;
-    if (stepIndex >= 1) {
-      const choiceId = stackItem.effectContext.whiteboard.scratch.mysticalTutorChoiceId;
-      if (typeof choiceId === "string") {
-        const payload = stackItem.effectContext.whiteboard.scratch[`choice:${choiceId}`];
-        if (!isChooseCardsPayload(payload)) {
-          throw new Error("missing Mystical Tutor CHOOSE_CARDS payload in scratch state");
-        }
-
-        if (new Set(payload.selected).size !== payload.selected.length) {
-          throw new Error("Mystical Tutor CHOOSE_CARDS payload must contain unique cards");
-        }
-
-        if (payload.selected.length > 1) {
-          throw new Error("Mystical Tutor can only select up to one card");
-        }
-
-        selectedCardId = payload.selected[0] ?? null;
-      }
-    }
-
-    const currentLibrary = nextZones.get(libraryKey) ?? [];
-    if (selectedCardId !== null && !currentLibrary.includes(selectedCardId)) {
-      throw new Error(`Mystical Tutor selected card '${selectedCardId}' is not in library`);
-    }
-
-    const shuffledLibrary = rng.shuffle(currentLibrary);
-    const finalLibrary =
-      selectedCardId === null
-        ? shuffledLibrary
-        : [selectedCardId, ...shuffledLibrary.filter((cardId) => cardId !== selectedCardId)];
-    nextZones.set(libraryKey, finalLibrary);
-    emit({
-      type: "SHUFFLED",
-      zone: libraryZone,
-      resultOrder: finalLibrary
-    });
-  }
-
-  if (!allTargetsIllegal && hasResolveEffect(cardDefinition.onResolve, "PREDICT")) {
-    const cursor = stackItem.effectContext.cursor;
-    const stepIndex = cursor.kind === "start" ? 0 : cursor.kind === "step" ? cursor.index : -1;
-
-    if (stepIndex === 0) {
-      const nameChoiceId = `${stackItem.id}:predict:name-card`;
-      const choice: NonNullable<GameState["pendingChoice"]> = {
-        id: nameChoiceId,
-        type: "NAME_CARD",
-        forPlayer: stackItem.controller,
-        prompt: "Name a card",
-        constraints: {}
-      };
-
-      const updatedTopItem = {
-        ...stackItem,
-        effectContext: {
-          ...stackItem.effectContext,
-          cursor: { kind: "waiting_choice", choiceId: nameChoiceId } as const,
-          whiteboard: {
-            ...stackItem.effectContext.whiteboard,
-            scratch: {
-              ...stackItem.effectContext.whiteboard.scratch,
-              predictNameChoiceId: nameChoiceId,
-              [`resumeStepIndex:${nameChoiceId}`]: 0
-            }
-          }
-        }
-      };
-
-      return pauseWithChoice(choice, updatedTopItem);
-    }
-
-    if (stepIndex >= 1) {
-      const choiceId = stackItem.effectContext.whiteboard.scratch.predictNameChoiceId;
-      if (typeof choiceId !== "string") {
-        throw new Error("missing Predict NAME_CARD choice id in scratch state");
-      }
-
-      const rawPayload = stackItem.effectContext.whiteboard.scratch[`choice:${choiceId}`];
-      if (!isNameCardPayload(rawPayload)) {
-        throw new Error("missing Predict NAME_CARD payload in scratch state");
-      }
-
-      const namedCard = rawPayload.cardName.trim();
-      const namedCardLower = namedCard.toLowerCase();
-
-      const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
-      const graveyardZone = state.mode.resolveZone(state, "graveyard", stackItem.controller);
-      const libraryKey = zoneKey(libraryZone);
-      const graveyardKey = zoneKey(graveyardZone);
-
-      const currentLibrary = nextZones.get(libraryKey) ?? [];
-      const milledCards = currentLibrary.slice(0, 2);
-      const remainingLibrary = currentLibrary.slice(milledCards.length);
-      const currentGraveyard = nextZones.get(graveyardKey) ?? [];
-
-      nextZones.set(libraryKey, remainingLibrary);
-      nextZones.set(graveyardKey, [...currentGraveyard, ...milledCards]);
-
-      for (const milledCardId of milledCards) {
-        const milledObject = nextObjectPool.get(milledCardId);
-        if (milledObject === undefined) {
-          throw new Error(`Cannot mill missing object '${milledCardId}' while resolving Predict`);
-        }
-
-        nextLkiStore.set(
-          lkiKey(milledObject.id, milledObject.zcc),
-          captureSnapshot(milledObject, milledObject, libraryZone)
-        );
-        nextObjectPool.set(
-          milledCardId,
-          bumpZcc({
-            ...milledObject,
-            zone: graveyardZone
-          })
-        );
-      }
-
-      const namedCardWasMilled = milledCards.some((milledCardId) => {
-        const milledObject = nextObjectPool.get(milledCardId);
-        if (milledObject === undefined) {
-          return false;
-        }
-
-        const milledDefinition = cardRegistry.get(milledObject.cardDefId);
-        return milledDefinition?.name.toLowerCase() === namedCardLower;
+  if (!allTargetsIllegal) {
+    for (const effectSpec of cardDefinition.onResolve) {
+      const effectResult = resolveOnResolveEffect(effectSpec.id, {
+        state,
+        stackItem,
+        cardDefinition,
+        rng,
+        mutable,
+        effects: onResolveRegistry,
+        drawOneCard,
+        emit,
+        pauseWithChoice
       });
 
-      if (namedCardWasMilled) {
-        drawOneCard(stackItem.controller);
-        drawOneCard(stackItem.controller);
+      if (effectResult.kind === "pause") {
+        return effectResult.result;
       }
     }
   }
 
-  if (
-    !allTargetsIllegal &&
-    hasResolveEffect(cardDefinition.onResolve, "COUNTER") &&
-    hasResolveEffect(cardDefinition.onResolve, "MOVE_ZONE")
-  ) {
-    const objectTarget = stackItem.targets.find((target) => target.kind === "object");
-    if (objectTarget !== undefined) {
-      const targetObject = nextObjectPool.get(objectTarget.object.id);
-      if (targetObject !== undefined && targetObject.zcc === objectTarget.object.zcc) {
-        nextStack = nextStack.filter((item) => item.object.id !== objectTarget.object.id);
-        nextStackZone = nextStackZone.filter((id) => id !== objectTarget.object.id);
-        nextZones.set(stackKey, nextStackZone);
-
-        const libraryZone = state.mode.resolveZone(state, "library", targetObject.owner);
-        const libraryKey = zoneKey(libraryZone);
-        const currentLibrary = nextZones.get(libraryKey) ?? [];
-        nextZones.set(libraryKey, [targetObject.id, ...currentLibrary]);
-
-        const movedTarget = bumpZcc({
-          ...targetObject,
-          zone: libraryZone
-        });
-        nextObjectPool.set(movedTarget.id, movedTarget);
-        emit({
-          type: "SPELL_COUNTERED",
-          object: { id: movedTarget.id, zcc: movedTarget.zcc }
-        });
+  const pipelineResult = runPipelineWithResult(state, stackItem.effectContext.whiteboard.actions);
+  if (pipelineResult.pendingChoice !== null) {
+    const choice = pipelineResult.pendingChoice;
+    const resumeStepIndex =
+      stackItem.effectContext.cursor.kind === "step" ? stackItem.effectContext.cursor.index : 0;
+    const pausedTopItem: GameState["stack"][number] = {
+      ...stackItem,
+      effectContext: {
+        ...stackItem.effectContext,
+        cursor: { kind: "waiting_choice", choiceId: choice.id },
+        whiteboard: {
+          ...stackItem.effectContext.whiteboard,
+          actions: pipelineResult.actions,
+          scratch: {
+            ...stackItem.effectContext.whiteboard.scratch,
+            [`resumeStepIndex:${choice.id}`]: resumeStepIndex
+          }
+        }
       }
-    }
-  }
+    };
 
-  if (
-    !allTargetsIllegal &&
-    hasResolveEffect(cardDefinition.onResolve, "DRAW_ACCUMULATED_KNOWLEDGE")
-  ) {
-    const graveyardZone = state.mode.resolveZone(state, "graveyard", stackItem.controller);
-    const graveyardCards = nextZones.get(zoneKey(graveyardZone)) ?? [];
-    const accumulatedKnowledgeCount = graveyardCards.reduce((count, objectId) => {
-      const graveyardObject = nextObjectPool.get(objectId);
-      return graveyardObject?.cardDefId === "accumulated-knowledge" ? count + 1 : count;
-    }, 0);
-
-    const cardsToDraw = accumulatedKnowledgeCount + 1;
-    for (let drawIndex = 0; drawIndex < cardsToDraw; drawIndex += 1) {
-      drawOneCard(stackItem.controller);
-    }
+    return pauseWithChoice(choice, pausedTopItem);
   }
 
   const movedObject = bumpZcc({
     ...object,
     zone: destinationZone
   });
-  nextObjectPool.set(movedObject.id, movedObject);
+  mutable.nextObjectPool.set(movedObject.id, movedObject);
 
   const destinationKey = zoneKey(destinationZone);
-  const currentDestination = nextZones.get(destinationKey) ?? [];
+  const currentDestination = mutable.nextZones.get(destinationKey) ?? [];
   const nextDestination = [...currentDestination, stackItem.object.id];
-  nextZones.set(destinationKey, nextDestination);
+  mutable.nextZones.set(destinationKey, nextDestination);
 
   emit(
     allTargetsIllegal
@@ -656,17 +266,17 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
   const nextState: GameState = {
     ...state,
     version: nextVersion,
-    players: nextPlayers,
-    stack: nextStack,
-    zones: nextZones,
-    objectPool: nextObjectPool,
-    lkiStore: nextLkiStore,
-    pendingChoice: pendingChoice
+    players: mutable.nextPlayers,
+    stack: mutable.nextStack,
+    zones: mutable.nextZones,
+    objectPool: mutable.nextObjectPool,
+    lkiStore: mutable.nextLkiStore,
+    pendingChoice: null
   };
 
   return {
     state: nextState,
     events: resolutionEvents,
-    pendingChoice
+    pendingChoice: null
   };
 }
