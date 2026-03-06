@@ -10,6 +10,13 @@ export type ApplyReplacementEffectsResult =
   | { kind: "applied"; action: GameAction }
   | { kind: "choice_required"; action: GameAction; pendingChoice: PendingChoice };
 
+export type ApplyReplacementEffectsOptions = {
+  chooseReplacement?: (
+    action: Readonly<GameAction>,
+    candidates: readonly ReplacementEffectDefinition[]
+  ) => ReplacementId | null;
+};
+
 function withAppliedReplacement(action: GameAction, replacementId: ReplacementId): GameAction {
   if (action.appliedReplacements.includes(replacementId)) {
     return action;
@@ -85,7 +92,8 @@ function pendingChoiceFor(
 export function applyReplacementEffects(
   action: GameAction,
   state: Readonly<GameState>,
-  registry: ReplacementRegistry
+  registry: ReplacementRegistry,
+  options: ApplyReplacementEffectsOptions = {}
 ): ApplyReplacementEffectsResult {
   let currentAction = { ...action, appliedReplacements: [...action.appliedReplacements] };
   let iterations = 0;
@@ -112,6 +120,18 @@ export function applyReplacementEffects(
         const rewritten = selected.rewrite(currentAction, state);
         currentAction = withAppliedReplacement(rewritten, selected.id);
         continue;
+      }
+
+      const chosenReplacementId = options.chooseReplacement?.(currentAction, topPriorityCandidates);
+      if (chosenReplacementId !== null && chosenReplacementId !== undefined) {
+        const selectedCandidate = topPriorityCandidates.find(
+          (candidate) => candidate.id === chosenReplacementId
+        );
+        if (selectedCandidate !== undefined) {
+          const rewritten = selectedCandidate.rewrite(currentAction, state);
+          currentAction = withAppliedReplacement(rewritten, selectedCandidate.id);
+          continue;
+        }
       }
 
       return {

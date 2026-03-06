@@ -1,4 +1,5 @@
 import { runPipelineWithResult } from "../actions/pipeline";
+import type { ReplacementId } from "../actions/action";
 import { cardRegistry } from "../cards";
 import { partitionResolvedTargets } from "../commands/validate";
 import { createEvent, type GameEvent, type GameEventPayload } from "../events/event";
@@ -20,6 +21,34 @@ function isPermanentCard(typeLine: string[]): boolean {
   return typeLine.some((type) =>
     ["Artifact", "Creature", "Enchantment", "Land", "Planeswalker", "Battle"].includes(type)
   );
+}
+
+function collectReplacementSelections(
+  scratch: Readonly<Record<string, unknown>>
+): Map<string, ReplacementId> {
+  const selections = new Map<string, ReplacementId>();
+
+  for (const [key, value] of Object.entries(scratch)) {
+    if (!key.startsWith("choice:")) {
+      continue;
+    }
+
+    const choiceId = key.slice("choice:".length);
+    if (!choiceId.startsWith("choice:replacement:")) {
+      continue;
+    }
+
+    if (typeof value !== "object" || value === null) {
+      continue;
+    }
+
+    const payload = value as { type?: unknown; replacementId?: unknown };
+    if (payload.type === "CHOOSE_REPLACEMENT" && typeof payload.replacementId === "string") {
+      selections.set(choiceId, payload.replacementId);
+    }
+  }
+
+  return selections;
 }
 
 export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): ResolveStackResult {
@@ -222,7 +251,9 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     }
   }
 
-  const pipelineResult = runPipelineWithResult(state, stackItem.effectContext.whiteboard.actions);
+  const pipelineResult = runPipelineWithResult(state, stackItem.effectContext.whiteboard.actions, {
+    replacementSelections: collectReplacementSelections(stackItem.effectContext.whiteboard.scratch)
+  });
   if (pipelineResult.pendingChoice !== null) {
     const choice = pipelineResult.pendingChoice;
     const resumeStepIndex =

@@ -43,7 +43,13 @@ export class ReplacementRegistry {
           return priorityDelta;
         }
 
-        return left.id.localeCompare(right.id);
+        if (left.id < right.id) {
+          return -1;
+        }
+        if (left.id > right.id) {
+          return 1;
+        }
+        return 0;
       });
   }
 }

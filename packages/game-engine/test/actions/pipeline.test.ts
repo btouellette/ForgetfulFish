@@ -222,6 +222,156 @@ describe("actions/pipeline", () => {
     expect(result.pendingChoice.constraints.replacements).toEqual(["replace-a", "replace-b"]);
   });
 
+  it("keeps unprocessed actions when replacement choice pauses rewrite", () => {
+    const state = createStateWithObject("obj-1", 0);
+    registerPipelineReplacementEffect("DEAL_DAMAGE", {
+      id: "replace-a",
+      appliesTo: (action) => action.type === "DEAL_DAMAGE",
+      rewrite: (action) => action,
+      priority: 1
+    });
+    registerPipelineReplacementEffect("DEAL_DAMAGE", {
+      id: "replace-b",
+      appliesTo: (action) => action.type === "DEAL_DAMAGE",
+      rewrite: (action) => action,
+      priority: 1
+    });
+
+    const result = runPipelineWithResult(state, [
+      {
+        ...baseActionFields(),
+        id: "action-damage",
+        type: "DEAL_DAMAGE",
+        amount: 2,
+        target: { kind: "player", playerId: "p2" }
+      },
+      {
+        ...baseActionFields(),
+        id: "action-followup",
+        type: "GAIN_LIFE",
+        playerId: "p1",
+        amount: 1
+      }
+    ]);
+
+    expect(result.pendingChoice?.type).toBe("CHOOSE_REPLACEMENT");
+    expect(result.actions.map((action) => action.id)).toEqual(["action-damage", "action-followup"]);
+  });
+
+  it("throws when runPipeline would drop a pending replacement choice", () => {
+    const state = createStateWithObject("obj-1", 0);
+    registerPipelineReplacementEffect("DEAL_DAMAGE", {
+      id: "replace-a",
+      appliesTo: (action) => action.type === "DEAL_DAMAGE",
+      rewrite: (action) => action,
+      priority: 1
+    });
+    registerPipelineReplacementEffect("DEAL_DAMAGE", {
+      id: "replace-b",
+      appliesTo: (action) => action.type === "DEAL_DAMAGE",
+      rewrite: (action) => action,
+      priority: 1
+    });
+
+    expect(() =>
+      runPipeline(state, [
+        {
+          ...baseActionFields(),
+          id: "action-damage",
+          type: "DEAL_DAMAGE",
+          amount: 2,
+          target: { kind: "player", playerId: "p2" }
+        }
+      ])
+    ).toThrow("runPipeline cannot drop pending choice; use runPipelineWithResult");
+  });
+
+  it("clears pending choice when later stages remove the triggering action", () => {
+    const state = createStateWithObject("obj-1", 1);
+    registerPipelineReplacementEffect("DEAL_DAMAGE", {
+      id: "replace-a",
+      appliesTo: (action) => action.type === "DEAL_DAMAGE",
+      rewrite: (action) => action,
+      priority: 1
+    });
+    registerPipelineReplacementEffect("DEAL_DAMAGE", {
+      id: "replace-b",
+      appliesTo: (action) => action.type === "DEAL_DAMAGE",
+      rewrite: (action) => action,
+      priority: 1
+    });
+
+    const result = runPipelineWithResult(state, [
+      {
+        ...baseActionFields(),
+        id: "action-stale",
+        type: "DEAL_DAMAGE",
+        amount: 2,
+        target: { kind: "object", object: { id: "obj-1", zcc: 0 } }
+      }
+    ]);
+
+    expect(result.actions).toEqual([]);
+    expect(result.pendingChoice).toBeNull();
+  });
+
+  it("applies chosen replacement when a prior CHOOSE_REPLACEMENT exists in scratch state", () => {
+    const state = createStateWithObject("obj-1", 0);
+    registerPipelineReplacementEffect("DEAL_DAMAGE", {
+      id: "replace-a",
+      appliesTo: (action) => action.type === "DEAL_DAMAGE",
+      rewrite: (action) => {
+        if (action.type !== "DEAL_DAMAGE") {
+          return action;
+        }
+
+        return {
+          ...action,
+          amount: action.amount + 1
+        };
+      },
+      priority: 1
+    });
+    registerPipelineReplacementEffect("DEAL_DAMAGE", {
+      id: "replace-b",
+      appliesTo: (action) => action.type === "DEAL_DAMAGE",
+      rewrite: (action) => {
+        if (action.type !== "DEAL_DAMAGE") {
+          return action;
+        }
+
+        return {
+          ...action,
+          amount: action.amount * 2
+        };
+      },
+      priority: 1
+    });
+
+    const result = runPipelineWithResult(
+      state,
+      [
+        {
+          ...baseActionFields(),
+          id: "action-damage",
+          type: "DEAL_DAMAGE",
+          amount: 2,
+          target: { kind: "player", playerId: "p2" }
+        }
+      ],
+      {
+        replacementSelections: new Map([["choice:replacement:action-damage:0", "replace-b"]])
+      }
+    );
+
+    expect(result.pendingChoice).toBeNull();
+    if (result.actions[0]?.type !== "DEAL_DAMAGE") {
+      throw new Error("expected DEAL_DAMAGE result action");
+    }
+    expect(result.actions[0].amount).toBe(5);
+    expect(result.actions[0].appliedReplacements).toEqual(["replace-b", "replace-a"]);
+  });
+
   it("automatically applies highest-priority replacement before lower priorities", () => {
     const state = createStateWithObject("obj-1", 0);
     registerPipelineReplacementEffect("DEAL_DAMAGE", {

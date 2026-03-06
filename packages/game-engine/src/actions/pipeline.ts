@@ -1,4 +1,5 @@
 import type { GameAction } from "./action";
+import type { ReplacementId } from "./action";
 import { applyReplacementEffects } from "../effects/replacement/applyOnce";
 import {
   ReplacementRegistry,
@@ -25,6 +26,10 @@ export type PipelineResult = {
   pendingChoice: PendingChoice | null;
 };
 
+export type PipelineOptions = {
+  replacementSelections?: ReadonlyMap<string, ReplacementId>;
+};
+
 function isExistingPlayerId(state: Readonly<GameState>, playerId: string): boolean {
   return state.players.some((player) => player.id === playerId);
 }
@@ -40,15 +45,43 @@ function isLiveObjectRef(
   return currentObject !== undefined && currentObject.zcc === object.zcc;
 }
 
-function rewriteStage(state: Readonly<GameState>, actions: readonly GameAction[]): PipelineResult {
+function replacementChoiceIdFor(action: Readonly<GameAction>): string {
+  return `choice:replacement:${action.id}:${action.appliedReplacements.length}`;
+}
+
+function replacementChoiceActionId(choice: PendingChoice | null): string | null {
+  if (choice?.type !== "CHOOSE_REPLACEMENT") {
+    return null;
+  }
+
+  const match = /^choice:replacement:(.+):\d+$/.exec(choice.id);
+  return match?.[1] ?? null;
+}
+
+function rewriteStage(
+  state: Readonly<GameState>,
+  actions: readonly GameAction[],
+  options: PipelineOptions
+): PipelineResult {
   const rewritten: GameAction[] = [];
 
-  for (const action of actions) {
-    const replacementResult = applyReplacementEffects(action, state, defaultReplacementRegistry);
+  for (let index = 0; index < actions.length; index += 1) {
+    const action = actions[index]!;
+    const replacementResult = applyReplacementEffects(action, state, defaultReplacementRegistry, {
+      chooseReplacement: (currentAction, candidates) => {
+        const selected = options.replacementSelections?.get(replacementChoiceIdFor(currentAction));
+        if (selected === undefined) {
+          return null;
+        }
+
+        return candidates.some((candidate) => candidate.id === selected) ? selected : null;
+      }
+    });
     rewritten.push(replacementResult.action);
+
     if (replacementResult.kind === "choice_required") {
       return {
-        actions: rewritten,
+        actions: [...rewritten, ...actions.slice(index + 1)],
         pendingChoice: replacementResult.pendingChoice
       };
     }
@@ -92,21 +125,30 @@ export function runPipeline(
   state: Readonly<GameState>,
   actions: readonly GameAction[]
 ): GameAction[] {
-  const rewritten = rewriteStage(state, actions);
-  const filtered = filterStage(state, rewritten.actions);
-  const redirected = redirectStage(state, filtered);
-  return augmentStage(state, redirected);
+  const result = runPipelineWithResult(state, actions);
+  if (result.pendingChoice !== null) {
+    throw new Error("runPipeline cannot drop pending choice; use runPipelineWithResult");
+  }
+
+  return result.actions;
 }
 
 export function runPipelineWithResult(
   state: Readonly<GameState>,
-  actions: readonly GameAction[]
+  actions: readonly GameAction[],
+  options: PipelineOptions = {}
 ): PipelineResult {
-  const rewritten = rewriteStage(state, actions);
+  const rewritten = rewriteStage(state, actions, options);
   const filtered = filterStage(state, rewritten.actions);
   const redirected = redirectStage(state, filtered);
+  const finalActions = augmentStage(state, redirected);
+  const pendingChoiceActionId = replacementChoiceActionId(rewritten.pendingChoice);
+  const hasPendingChoiceAction =
+    pendingChoiceActionId === null ||
+    finalActions.some((action) => action.id === pendingChoiceActionId);
+
   return {
-    actions: augmentStage(state, redirected),
-    pendingChoice: rewritten.pendingChoice
+    actions: finalActions,
+    pendingChoice: hasPendingChoiceAction ? rewritten.pendingChoice : null
   };
 }

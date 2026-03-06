@@ -5,6 +5,7 @@ import {
   resetPipelineReplacementRegistry
 } from "../../src/actions/pipeline";
 import { cardRegistry, islandCardDefinition } from "../../src/cards";
+import { processCommand } from "../../src/engine/processCommand";
 import { resolveTopOfStack } from "../../src/stack/resolve";
 import { type StackItem } from "../../src/stack/stackItem";
 import type { GameObject } from "../../src/state/gameObject";
@@ -108,5 +109,69 @@ describe("stack/resolve pipeline choice integration", () => {
       kind: "waiting_choice",
       choiceId: result.pendingChoice.id
     });
+  });
+
+  it("continues resolution after CHOOSE_REPLACEMENT is provided", () => {
+    registerPipelineReplacementEffect("DEAL_DAMAGE", {
+      id: "replace-a",
+      appliesTo: (action) => action.type === "DEAL_DAMAGE",
+      rewrite: (action) => action,
+      priority: 1
+    });
+    registerPipelineReplacementEffect("DEAL_DAMAGE", {
+      id: "replace-b",
+      appliesTo: (action) => action.type === "DEAL_DAMAGE",
+      rewrite: (action) => action,
+      priority: 1
+    });
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "resolve-pipeline-choice-resume",
+      rngSeed: "resolve-pipeline-choice-resume-seed"
+    });
+
+    const stackZone = state.mode.resolveZone(state, "stack", "p1");
+    const stackKey = zoneKey(stackZone);
+    const object = makeStackSpellObject("obj-spell");
+    state.objectPool.set(object.id, object);
+    state.zones.set(stackKey, [object.id]);
+
+    const stackItem: StackItem = {
+      id: "stack-item-1",
+      object: { id: object.id, zcc: object.zcc },
+      controller: "p1",
+      targets: [],
+      effectContext: {
+        stackItemId: "stack-item-1",
+        source: { id: object.id, zcc: object.zcc },
+        controller: "p1",
+        targets: [],
+        cursor: { kind: "start" },
+        whiteboard: {
+          actions: [makeDamageAction("action-damage")],
+          scratch: {}
+        }
+      }
+    };
+    state.stack = [stackItem];
+
+    const firstResolve = resolveTopOfStack(state, new Rng(state.rngSeed));
+    expect(firstResolve.pendingChoice?.type).toBe("CHOOSE_REPLACEMENT");
+    if (firstResolve.pendingChoice?.type !== "CHOOSE_REPLACEMENT") {
+      throw new Error("expected CHOOSE_REPLACEMENT pending choice");
+    }
+
+    const resumed = processCommand(
+      firstResolve.state,
+      {
+        type: "MAKE_CHOICE",
+        payload: { type: "CHOOSE_REPLACEMENT", replacementId: "replace-a" }
+      },
+      new Rng(firstResolve.state.rngSeed)
+    );
+
+    expect(resumed.pendingChoice).toBeNull();
+    expect(resumed.nextState.pendingChoice).toBeNull();
+    expect(resumed.nextState.stack).toHaveLength(0);
   });
 });
