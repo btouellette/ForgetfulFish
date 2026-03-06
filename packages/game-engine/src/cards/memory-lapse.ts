@@ -14,7 +14,7 @@ export const memoryLapseCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: [{ id: "COUNTER" }, { id: "MOVE_ZONE" }],
+  onResolve: [{ id: "COUNTER_SPELL", destination: "library-top" }],
   continuousEffects: [],
   replacementEffects: []
 };

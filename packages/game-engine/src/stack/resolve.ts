@@ -233,7 +233,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
 
   if (!allTargetsIllegal) {
     for (const effectSpec of cardDefinition.onResolve) {
-      const effectResult = resolveOnResolveEffect(effectSpec.id, {
+      const effectResult = resolveOnResolveEffect(effectSpec, {
         state,
         stackItem,
         cardDefinition,

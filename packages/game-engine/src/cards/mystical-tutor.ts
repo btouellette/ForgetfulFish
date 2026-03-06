@@ -14,7 +14,7 @@ export const mysticalTutorCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: [{ id: "MYSTICAL_TUTOR" }],
+  onResolve: [{ id: "SEARCH_LIBRARY_SHUFFLE_TOP", typeFilter: ["Instant", "Sorcery"], min: 0, max: 1 }],
   continuousEffects: [],
   replacementEffects: []
 };
