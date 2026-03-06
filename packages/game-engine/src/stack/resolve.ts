@@ -1,4 +1,5 @@
 import { cardRegistry } from "../cards";
+import type { ChoicePayload } from "../commands/command";
 import { partitionResolvedTargets } from "../commands/validate";
 import { createEvent, type GameEvent, type GameEventPayload } from "../events/event";
 import type { GameState } from "../state/gameState";
@@ -8,6 +9,7 @@ import { bumpZcc, zoneKey } from "../state/zones";
 export type ResolveStackResult = {
   state: GameState;
   events: GameEvent[];
+  pendingChoice: GameState["pendingChoice"];
 };
 
 function isPermanentCard(typeLine: string[]): boolean {
@@ -16,14 +18,44 @@ function isPermanentCard(typeLine: string[]): boolean {
   );
 }
 
+function isChooseCardsPayload(
+  payload: unknown
+): payload is Extract<ChoicePayload, { type: "CHOOSE_CARDS" }> {
+  if (typeof payload !== "object" || payload === null) {
+    return false;
+  }
+
+  const candidate = payload as Record<string, unknown>;
+  return (
+    candidate.type === "CHOOSE_CARDS" &&
+    Array.isArray(candidate.selected) &&
+    candidate.selected.every((value) => typeof value === "string")
+  );
+}
+
+function isOrderCardsPayload(
+  payload: unknown
+): payload is Extract<ChoicePayload, { type: "ORDER_CARDS" }> {
+  if (typeof payload !== "object" || payload === null) {
+    return false;
+  }
+
+  const candidate = payload as Record<string, unknown>;
+  return (
+    candidate.type === "ORDER_CARDS" &&
+    Array.isArray(candidate.ordered) &&
+    candidate.ordered.every((value) => typeof value === "string")
+  );
+}
+
 export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResult {
   if (state.stack.length === 0) {
-    return { state: { ...state }, events: [] };
+    return { state: { ...state }, events: [], pendingChoice: state.pendingChoice ?? null };
   }
 
   const stackItem = state.stack[state.stack.length - 1];
   if (stackItem === undefined) {
-    return { state: { ...state }, events: [] };
+    return { state: { ...state }, events: [], pendingChoice: state.pendingChoice ?? null };
   }
 
   const object = state.objectPool.get(stackItem.object.id);
@@ -87,6 +119,270 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
       hand: [...state.players[1].hand]
     }
   ];
+  let pendingChoice: GameState["pendingChoice"] = null;
+
+  const markAttemptedDrawFromEmptyLibrary = (playerId: string): void => {
+    nextPlayers =
+      nextPlayers[0].id === playerId
+        ? [
+            {
+              ...nextPlayers[0],
+              attemptedDrawFromEmptyLibrary: true
+            },
+            nextPlayers[1]
+          ]
+        : [
+            nextPlayers[0],
+            {
+              ...nextPlayers[1],
+              attemptedDrawFromEmptyLibrary: true
+            }
+          ];
+    nextVersion += 1;
+  };
+
+  const drawOneCard = (playerId: string): void => {
+    const libraryZone = state.mode.resolveZone(state, "library", playerId);
+    const handZone = state.mode.resolveZone(state, "hand", playerId);
+    const libraryKey = zoneKey(libraryZone);
+    const handKey = zoneKey(handZone);
+
+    const currentLibrary = nextZones.get(libraryKey) ?? [];
+    const drawnCardId = currentLibrary[0];
+    if (drawnCardId === undefined) {
+      markAttemptedDrawFromEmptyLibrary(playerId);
+      return;
+    }
+
+    nextZones.set(libraryKey, currentLibrary.slice(1));
+    nextZones.set(handKey, [...(nextZones.get(handKey) ?? []), drawnCardId]);
+
+    const drawnObject = nextObjectPool.get(drawnCardId);
+    if (drawnObject === undefined) {
+      throw new Error(`Cannot draw missing object '${drawnCardId}' during resolution`);
+    }
+
+    const nextOwner = state.mode.determineOwner(playerId, "draw");
+    const movedDrawnObject = bumpZcc({
+      ...drawnObject,
+      owner: nextOwner,
+      controller: playerId,
+      zone: handZone
+    });
+    nextObjectPool.set(movedDrawnObject.id, movedDrawnObject);
+    nextLkiStore.set(
+      lkiKey(drawnObject.id, drawnObject.zcc),
+      captureSnapshot(drawnObject, drawnObject, libraryZone)
+    );
+
+    nextPlayers =
+      nextPlayers[0].id === playerId
+        ? [
+            {
+              ...nextPlayers[0],
+              hand: [...nextPlayers[0].hand, drawnCardId]
+            },
+            nextPlayers[1]
+          ]
+        : [
+            nextPlayers[0],
+            {
+              ...nextPlayers[1],
+              hand: [...nextPlayers[1].hand, drawnCardId]
+            }
+          ];
+
+    emit({
+      type: "CARD_DRAWN",
+      playerId,
+      cardId: drawnCardId
+    });
+  };
+
+  const pauseWithChoice = (
+    choice: NonNullable<GameState["pendingChoice"]>,
+    updatedTopItem: GameState["stack"][number]
+  ): ResolveStackResult => {
+    const pausedStack = state.stack.slice();
+    pausedStack[pausedStack.length - 1] = updatedTopItem;
+    nextZones.set(stackKey, [...currentStackZone]);
+    nextVersion += 1;
+
+    const nextState: GameState = {
+      ...state,
+      version: nextVersion,
+      players: nextPlayers,
+      stack: pausedStack,
+      zones: nextZones,
+      objectPool: nextObjectPool,
+      lkiStore: nextLkiStore,
+      pendingChoice: choice
+    };
+
+    return {
+      state: nextState,
+      events: resolutionEvents,
+      pendingChoice: choice
+    };
+  };
+
+  if (!allTargetsIllegal && cardDefinition.onResolve.includes("BRAINSTORM")) {
+    const cursor = stackItem.effectContext.cursor;
+    const stepIndex = cursor.kind === "start" ? 0 : cursor.kind === "step" ? cursor.index : -1;
+
+    if (stepIndex === 0) {
+      for (let drawIndex = 0; drawIndex < 3; drawIndex += 1) {
+        drawOneCard(stackItem.controller);
+      }
+
+      const handZone = state.mode.resolveZone(state, "hand", stackItem.controller);
+      const handCards = nextZones.get(zoneKey(handZone)) ?? [];
+      const chooseChoiceId = `${stackItem.id}:brainstorm:choose-cards`;
+      const choice: NonNullable<GameState["pendingChoice"]> = {
+        id: chooseChoiceId,
+        type: "CHOOSE_CARDS",
+        forPlayer: stackItem.controller,
+        prompt: "Choose 2 cards to put back on top of your library",
+        constraints: {
+          candidates: [...handCards],
+          min: 2,
+          max: 2
+        }
+      };
+
+      const updatedTopItem = {
+        ...stackItem,
+        effectContext: {
+          ...stackItem.effectContext,
+          cursor: { kind: "waiting_choice", choiceId: chooseChoiceId } as const,
+          whiteboard: {
+            ...stackItem.effectContext.whiteboard,
+            scratch: {
+              ...stackItem.effectContext.whiteboard.scratch,
+              brainstormChooseChoiceId: chooseChoiceId,
+              [`resumeStepIndex:${chooseChoiceId}`]: 0
+            }
+          }
+        }
+      };
+
+      return pauseWithChoice(choice, updatedTopItem);
+    }
+
+    if (stepIndex === 1) {
+      const chooseChoiceId = stackItem.effectContext.whiteboard.scratch.brainstormChooseChoiceId;
+      if (typeof chooseChoiceId !== "string") {
+        throw new Error("missing Brainstorm CHOOSE_CARDS choice id in scratch state");
+      }
+
+      const rawPayload = stackItem.effectContext.whiteboard.scratch[`choice:${chooseChoiceId}`];
+      if (!isChooseCardsPayload(rawPayload)) {
+        throw new Error("missing Brainstorm CHOOSE_CARDS payload in scratch state");
+      }
+
+      const selectedCards = [...rawPayload.selected];
+      if (new Set(selectedCards).size !== selectedCards.length) {
+        throw new Error("Brainstorm CHOOSE_CARDS payload must contain unique cards");
+      }
+      const orderChoiceId = `${stackItem.id}:brainstorm:order-cards`;
+      const choice: NonNullable<GameState["pendingChoice"]> = {
+        id: orderChoiceId,
+        type: "ORDER_CARDS",
+        forPlayer: stackItem.controller,
+        prompt: "Order the chosen cards to put back on top",
+        constraints: {
+          cards: selectedCards
+        }
+      };
+
+      const updatedTopItem = {
+        ...stackItem,
+        effectContext: {
+          ...stackItem.effectContext,
+          cursor: { kind: "waiting_choice", choiceId: orderChoiceId } as const,
+          whiteboard: {
+            ...stackItem.effectContext.whiteboard,
+            scratch: {
+              ...stackItem.effectContext.whiteboard.scratch,
+              brainstormOrderChoiceId: orderChoiceId,
+              [`resumeStepIndex:${orderChoiceId}`]: 1
+            }
+          }
+        }
+      };
+
+      return pauseWithChoice(choice, updatedTopItem);
+    }
+
+    if (stepIndex >= 2) {
+      const orderChoiceId = stackItem.effectContext.whiteboard.scratch.brainstormOrderChoiceId;
+      if (typeof orderChoiceId !== "string") {
+        throw new Error("missing Brainstorm ORDER_CARDS choice id in scratch state");
+      }
+
+      const rawPayload = stackItem.effectContext.whiteboard.scratch[`choice:${orderChoiceId}`];
+      if (!isOrderCardsPayload(rawPayload)) {
+        throw new Error("missing Brainstorm ORDER_CARDS payload in scratch state");
+      }
+
+      const orderedCards = [...rawPayload.ordered];
+      if (new Set(orderedCards).size !== orderedCards.length) {
+        throw new Error("Brainstorm ORDER_CARDS payload must contain unique cards");
+      }
+      const handZone = state.mode.resolveZone(state, "hand", stackItem.controller);
+      const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
+      const handKey = zoneKey(handZone);
+      const libraryKey = zoneKey(libraryZone);
+      const currentHand = nextZones.get(handKey) ?? [];
+      const currentLibrary = nextZones.get(libraryKey) ?? [];
+
+      for (const cardId of orderedCards) {
+        if (!currentHand.includes(cardId)) {
+          throw new Error(`Brainstorm ordered card '${cardId}' is not in hand`);
+        }
+      }
+
+      const putBackSet = new Set(orderedCards);
+      nextZones.set(
+        handKey,
+        currentHand.filter((cardId) => !putBackSet.has(cardId))
+      );
+      nextZones.set(libraryKey, [...orderedCards, ...currentLibrary]);
+
+      for (const cardId of orderedCards) {
+        const handObject = nextObjectPool.get(cardId);
+        if (handObject === undefined) {
+          throw new Error(`Cannot move missing object '${cardId}' while resolving Brainstorm`);
+        }
+
+        nextObjectPool.set(
+          cardId,
+          bumpZcc({
+            ...handObject,
+            zone: libraryZone,
+            controller: stackItem.controller
+          })
+        );
+      }
+
+      nextPlayers =
+        nextPlayers[0].id === stackItem.controller
+          ? [
+              {
+                ...nextPlayers[0],
+                hand: nextPlayers[0].hand.filter((cardId) => !putBackSet.has(cardId))
+              },
+              nextPlayers[1]
+            ]
+          : [
+              nextPlayers[0],
+              {
+                ...nextPlayers[1],
+                hand: nextPlayers[1].hand.filter((cardId) => !putBackSet.has(cardId))
+              }
+            ];
+    }
+  }
 
   if (
     !allTargetsIllegal &&
@@ -128,78 +424,8 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
     }, 0);
 
     const cardsToDraw = accumulatedKnowledgeCount + 1;
-    const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
-    const handZone = state.mode.resolveZone(state, "hand", stackItem.controller);
-    const libraryKey = zoneKey(libraryZone);
-    const handKey = zoneKey(handZone);
-
     for (let drawIndex = 0; drawIndex < cardsToDraw; drawIndex += 1) {
-      const currentLibrary = nextZones.get(libraryKey) ?? [];
-      const drawnCardId = currentLibrary[0];
-      if (drawnCardId === undefined) {
-        nextPlayers =
-          nextPlayers[0].id === stackItem.controller
-            ? [
-                {
-                  ...nextPlayers[0],
-                  attemptedDrawFromEmptyLibrary: true
-                },
-                nextPlayers[1]
-              ]
-            : [
-                nextPlayers[0],
-                {
-                  ...nextPlayers[1],
-                  attemptedDrawFromEmptyLibrary: true
-                }
-              ];
-        nextVersion += 1;
-        continue;
-      }
-
-      nextZones.set(libraryKey, currentLibrary.slice(1));
-      nextZones.set(handKey, [...(nextZones.get(handKey) ?? []), drawnCardId]);
-
-      const drawnObject = nextObjectPool.get(drawnCardId);
-      if (drawnObject === undefined) {
-        throw new Error(`Cannot draw missing object '${drawnCardId}' during resolution`);
-      }
-
-      const nextOwner = state.mode.determineOwner(stackItem.controller, "draw");
-      const movedDrawnObject = bumpZcc({
-        ...drawnObject,
-        owner: nextOwner,
-        controller: stackItem.controller,
-        zone: handZone
-      });
-      nextObjectPool.set(movedDrawnObject.id, movedDrawnObject);
-      nextLkiStore.set(
-        lkiKey(drawnObject.id, drawnObject.zcc),
-        captureSnapshot(drawnObject, drawnObject, libraryZone)
-      );
-
-      nextPlayers =
-        nextPlayers[0].id === stackItem.controller
-          ? [
-              {
-                ...nextPlayers[0],
-                hand: [...nextPlayers[0].hand, drawnCardId]
-              },
-              nextPlayers[1]
-            ]
-          : [
-              nextPlayers[0],
-              {
-                ...nextPlayers[1],
-                hand: [...nextPlayers[1].hand, drawnCardId]
-              }
-            ];
-
-      emit({
-        type: "CARD_DRAWN",
-        playerId: stackItem.controller,
-        cardId: drawnCardId
-      });
+      drawOneCard(stackItem.controller);
     }
   }
 
@@ -227,11 +453,13 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
     stack: nextStack,
     zones: nextZones,
     objectPool: nextObjectPool,
-    lkiStore: nextLkiStore
+    lkiStore: nextLkiStore,
+    pendingChoice: pendingChoice
   };
 
   return {
     state: nextState,
-    events: resolutionEvents
+    events: resolutionEvents,
+    pendingChoice
   };
 }

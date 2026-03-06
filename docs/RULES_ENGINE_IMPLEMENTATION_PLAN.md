@@ -935,7 +935,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after all draws completed.
 Acceptance: Count is correct and uses shared graveyard.
 
-### [ ] P2.9 — Card: Brainstorm
+### [x] P2.9 — Card: Brainstorm
 
 **Files**: `cards/brainstorm.ts`
 
