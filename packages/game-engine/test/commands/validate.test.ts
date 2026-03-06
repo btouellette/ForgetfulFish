@@ -4,6 +4,7 @@ import { cardRegistry } from "../../src/cards";
 import type { CardDefinition } from "../../src/cards/cardDefinition";
 import { partitionResolvedTargets } from "../../src/commands/validate";
 import type { Target } from "../../src/commands/command";
+import { Rng } from "../../src/rng/rng";
 import { resolveTopOfStack } from "../../src/stack/resolve";
 import type { GameObject } from "../../src/state/gameObject";
 import { createInitialGameState, type GameState } from "../../src/state/gameState";
@@ -116,7 +117,7 @@ describe("commands/validate target staleness", () => {
     const state = setupStateWithStack([{ kind: "object", object: { id: "target-1", zcc: 0 } }]);
     addBattlefieldObject(state, "target-1", 2);
 
-    const result = resolveTopOfStack(state);
+    const result = resolveTopOfStack(state, new Rng(state.rngSeed));
     const graveyard = state.mode.resolveZone(state, "graveyard", "p1");
     const graveyardCards = result.state.zones.get(zoneKey(graveyard)) ?? [];
 
@@ -132,7 +133,7 @@ describe("commands/validate target staleness", () => {
     addBattlefieldObject(state, "target-legal", 0);
     addBattlefieldObject(state, "target-illegal", 1);
 
-    const result = resolveTopOfStack(state);
+    const result = resolveTopOfStack(state, new Rng(state.rngSeed));
     expect(result.events[0]?.type).toBe("SPELL_RESOLVED");
   });
 
@@ -171,7 +172,7 @@ describe("commands/validate target staleness", () => {
     const state = setupStateWithStack([{ kind: "object", object: { id: "target-1", zcc: 0 } }]);
     addBattlefieldObject(state, "target-1", 2);
 
-    const result = resolveTopOfStack(state);
+    const result = resolveTopOfStack(state, new Rng(state.rngSeed));
     expect(() => assertStateInvariants(result.state)).not.toThrow();
   });
 });
