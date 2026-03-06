@@ -25,7 +25,7 @@ This plan is constrained to finishing out Phase 2 from `docs/RULES_ENGINE_IMPLEM
 - [x] PR A - Resolve Effect Type and Registry Foundation ([#61](https://github.com/btouellette/ForgetfulFish/pull/61))
 - [x] PR B - Resolver Dispatch + Effect Handler Extraction ([#62](https://github.com/btouellette/ForgetfulFish/pull/62))
 - [x] PR C - Card Migration to Structured Resolve Specs ([#63](https://github.com/btouellette/ForgetfulFish/pull/63))
-- [ ] PR D - Pipeline Replacement Wiring and Choice Surfacing
+- [x] PR D - Pipeline Replacement Wiring and Choice Surfacing ([#64](https://github.com/btouellette/ForgetfulFish/pull/64))
 - [ ] PR E - Command Validation Hot-Path Tightening
 
 ## Slice 1 - Determinism and Replay Baseline
