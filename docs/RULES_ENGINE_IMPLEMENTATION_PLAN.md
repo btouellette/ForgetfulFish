@@ -1043,7 +1043,7 @@ Test: **Write tests FIRST**, then implement.
 6. `addContinuousEffect` does not mutate the original `GameState`.
 Acceptance: CRUD for continuous effects works.
 
-### [ ] P3.2 — computeGameObject (layer application engine)
+### [x] P3.2 — computeGameObject (layer application engine)
 
 **Files**: `effects/continuous/layers.ts` (extend)
 
