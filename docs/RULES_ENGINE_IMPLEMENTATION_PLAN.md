@@ -856,7 +856,7 @@ Test: **Write tests FIRST**, then implement.
 6. Actions not matching any criteria pass through unchanged.
 Acceptance: Replacement pipeline is sound with apply-once semantics.
 
-### [ ] P2.6 — Target validation with ObjectRef staleness
+### [x] P2.6 — Target validation with ObjectRef staleness
 
 **Files**: `commands/validate.ts` (extend), `stack/resolve.ts` (extend)
 
