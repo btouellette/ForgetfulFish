@@ -463,37 +463,21 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     }
 
     const currentLibrary = nextZones.get(libraryKey) ?? [];
-    if (currentLibrary.length > 0) {
-      const shuffledLibrary = rng.shuffle(currentLibrary);
-      nextZones.set(libraryKey, shuffledLibrary);
-      emit({
-        type: "SHUFFLED",
-        zone: libraryZone,
-        resultOrder: shuffledLibrary
-      });
-
-      if (selectedCardId !== null) {
-        const selectedObject = nextObjectPool.get(selectedCardId);
-        if (selectedObject === undefined) {
-          throw new Error(
-            `Cannot move missing object '${selectedCardId}' while resolving Mystical Tutor`
-          );
-        }
-
-        nextZones.set(libraryKey, [
-          selectedCardId,
-          ...shuffledLibrary.filter((cardId) => cardId !== selectedCardId)
-        ]);
-        nextObjectPool.set(
-          selectedCardId,
-          bumpZcc({
-            ...selectedObject,
-            zone: libraryZone,
-            controller: stackItem.controller
-          })
-        );
-      }
+    if (selectedCardId !== null && !currentLibrary.includes(selectedCardId)) {
+      throw new Error(`Mystical Tutor selected card '${selectedCardId}' is not in library`);
     }
+
+    const shuffledLibrary = rng.shuffle(currentLibrary);
+    const finalLibrary =
+      selectedCardId === null
+        ? shuffledLibrary
+        : [selectedCardId, ...shuffledLibrary.filter((cardId) => cardId !== selectedCardId)];
+    nextZones.set(libraryKey, finalLibrary);
+    emit({
+      type: "SHUFFLED",
+      zone: libraryZone,
+      resultOrder: finalLibrary
+    });
   }
 
   if (
