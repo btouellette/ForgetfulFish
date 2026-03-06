@@ -51,6 +51,10 @@ function sameItems(left: string[], right: string[]): boolean {
   return leftCounts.size === 0;
 }
 
+function hasNoDuplicates(values: string[]): boolean {
+  return new Set(values).size === values.length;
+}
+
 function validateChoicePayload(choice: PendingChoice, payload: ChoicePayload): void {
   const choiceContext = `[choice ${choice.id}:${choice.type}]`;
 
@@ -59,6 +63,10 @@ function validateChoicePayload(choice: PendingChoice, payload: ChoicePayload): v
       assertPayloadType(payload, "CHOOSE_CARDS");
       const { selected } = payload;
       const candidateIds = new Set(choice.constraints.candidates);
+      assertChoicePayload(
+        hasNoDuplicates(selected),
+        `${choiceContext} selected cards must be unique`
+      );
       assertChoicePayload(
         selected.length >= choice.constraints.min,
         `${choiceContext} selected fewer cards than minimum`
@@ -75,6 +83,10 @@ function validateChoicePayload(choice: PendingChoice, payload: ChoicePayload): v
     }
     case "ORDER_CARDS": {
       assertPayloadType(payload, "ORDER_CARDS");
+      assertChoicePayload(
+        hasNoDuplicates(payload.ordered),
+        `${choiceContext} ordered cards must be unique`
+      );
       assertChoicePayload(
         sameItems(payload.ordered, choice.constraints.cards),
         `${choiceContext} ordered cards do not match required cards`

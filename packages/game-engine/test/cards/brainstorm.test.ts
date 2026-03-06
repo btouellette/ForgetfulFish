@@ -66,7 +66,11 @@ function addToSharedZone(
 
 function passPriorityPair(state: GameState): ReturnType<typeof processCommand> {
   const pass1 = processCommand(state, { type: "PASS_PRIORITY" }, new Rng(state.rngSeed));
-  return processCommand(pass1.nextState, { type: "PASS_PRIORITY" }, new Rng(state.rngSeed));
+  return processCommand(
+    pass1.nextState,
+    { type: "PASS_PRIORITY" },
+    new Rng(pass1.nextState.rngSeed)
+  );
 }
 
 function createBrainstormState(): GameState {

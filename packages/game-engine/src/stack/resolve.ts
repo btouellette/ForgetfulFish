@@ -281,6 +281,9 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
       }
 
       const selectedCards = [...rawPayload.selected];
+      if (new Set(selectedCards).size !== selectedCards.length) {
+        throw new Error("Brainstorm CHOOSE_CARDS payload must contain unique cards");
+      }
       const orderChoiceId = `${stackItem.id}:brainstorm:order-cards`;
       const choice: NonNullable<GameState["pendingChoice"]> = {
         id: orderChoiceId,
@@ -323,6 +326,9 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
       }
 
       const orderedCards = [...rawPayload.ordered];
+      if (new Set(orderedCards).size !== orderedCards.length) {
+        throw new Error("Brainstorm ORDER_CARDS payload must contain unique cards");
+      }
       const handZone = state.mode.resolveZone(state, "hand", stackItem.controller);
       const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
       const handKey = zoneKey(handZone);
