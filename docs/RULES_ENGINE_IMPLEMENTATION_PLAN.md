@@ -1022,7 +1022,7 @@ Acceptance: Conditional draw works correctly based on named card match.
 
 ## Phase 3 — Continuous effects + layers
 
-### [ ] P3.1 — ContinuousEffect type and registry
+### [x] P3.1 — ContinuousEffect type and registry
 
 **Files**: `effects/continuous/layers.ts`
 

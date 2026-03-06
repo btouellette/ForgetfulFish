@@ -27,6 +27,7 @@ export * from "./engine/processCommand";
 export * from "./engine/sba";
 export * from "./effects/replacement/applyOnce";
 export * from "./effects/replacement/registry";
+export * from "./effects/continuous/layers";
 export * from "./events/event";
 export * from "./events/eventBus";
 export * from "./mode/gameMode";
