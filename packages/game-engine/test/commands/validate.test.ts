@@ -147,6 +147,26 @@ describe("commands/validate target staleness", () => {
     expect(validation.illegalTargets).toHaveLength(1);
   });
 
+  it("treats existing player targets as legal", () => {
+    const state = setupStateWithStack([]);
+
+    const validation = partitionResolvedTargets(state, [{ kind: "player", playerId: "p2" }]);
+
+    expect(validation.legalTargets).toHaveLength(1);
+    expect(validation.illegalTargets).toHaveLength(0);
+  });
+
+  it("treats missing player targets as illegal", () => {
+    const state = setupStateWithStack([]);
+
+    const validation = partitionResolvedTargets(state, [
+      { kind: "player", playerId: "missing-player" }
+    ]);
+
+    expect(validation.legalTargets).toHaveLength(0);
+    expect(validation.illegalTargets).toHaveLength(1);
+  });
+
   it("preserves state invariants after a fizzle", () => {
     const state = setupStateWithStack([{ kind: "object", object: { id: "target-1", zcc: 0 } }]);
     addBattlefieldObject(state, "target-1", 2);
