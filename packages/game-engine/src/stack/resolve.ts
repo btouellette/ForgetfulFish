@@ -2,6 +2,7 @@ import { cardRegistry } from "../cards";
 import type { ChoicePayload } from "../commands/command";
 import { partitionResolvedTargets } from "../commands/validate";
 import { createEvent, type GameEvent, type GameEventPayload } from "../events/event";
+import type { Rng } from "../rng/rng";
 import type { GameState } from "../state/gameState";
 import { captureSnapshot, lkiKey } from "../state/lki";
 import { bumpZcc, zoneKey } from "../state/zones";
@@ -48,7 +49,7 @@ function isOrderCardsPayload(
   );
 }
 
-export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResult {
+export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): ResolveStackResult {
   if (state.stack.length === 0) {
     return { state: { ...state }, events: [], pendingChoice: state.pendingChoice ?? null };
   }
@@ -381,6 +382,117 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
                 hand: nextPlayers[1].hand.filter((cardId) => !putBackSet.has(cardId))
               }
             ];
+    }
+  }
+
+  if (!allTargetsIllegal && cardDefinition.onResolve.includes("MYSTICAL_TUTOR")) {
+    const cursor = stackItem.effectContext.cursor;
+    const stepIndex = cursor.kind === "start" ? 0 : cursor.kind === "step" ? cursor.index : -1;
+    const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
+    const libraryKey = zoneKey(libraryZone);
+
+    if (stepIndex === 0) {
+      const currentLibrary = nextZones.get(libraryKey) ?? [];
+      if (currentLibrary.length > 0) {
+        const candidates = currentLibrary.filter((cardId) => {
+          const libraryObject = nextObjectPool.get(cardId);
+          if (libraryObject === undefined) {
+            return false;
+          }
+
+          const definition = cardRegistry.get(libraryObject.cardDefId);
+          if (definition === undefined) {
+            return false;
+          }
+
+          return definition.typeLine.includes("Instant") || definition.typeLine.includes("Sorcery");
+        });
+
+        const chooseChoiceId = `${stackItem.id}:mystical-tutor:choose-card`;
+        const choice: NonNullable<GameState["pendingChoice"]> = {
+          id: chooseChoiceId,
+          type: "CHOOSE_CARDS",
+          forPlayer: stackItem.controller,
+          prompt: "Choose up to one instant or sorcery card",
+          constraints: {
+            candidates,
+            min: 0,
+            max: 1
+          }
+        };
+
+        const updatedTopItem = {
+          ...stackItem,
+          effectContext: {
+            ...stackItem.effectContext,
+            cursor: { kind: "waiting_choice", choiceId: chooseChoiceId } as const,
+            whiteboard: {
+              ...stackItem.effectContext.whiteboard,
+              scratch: {
+                ...stackItem.effectContext.whiteboard.scratch,
+                mysticalTutorChoiceId: chooseChoiceId,
+                [`resumeStepIndex:${chooseChoiceId}`]: 0
+              }
+            }
+          }
+        };
+
+        return pauseWithChoice(choice, updatedTopItem);
+      }
+    }
+
+    let selectedCardId: string | null = null;
+    if (stepIndex >= 1) {
+      const choiceId = stackItem.effectContext.whiteboard.scratch.mysticalTutorChoiceId;
+      if (typeof choiceId === "string") {
+        const payload = stackItem.effectContext.whiteboard.scratch[`choice:${choiceId}`];
+        if (!isChooseCardsPayload(payload)) {
+          throw new Error("missing Mystical Tutor CHOOSE_CARDS payload in scratch state");
+        }
+
+        if (new Set(payload.selected).size !== payload.selected.length) {
+          throw new Error("Mystical Tutor CHOOSE_CARDS payload must contain unique cards");
+        }
+
+        if (payload.selected.length > 1) {
+          throw new Error("Mystical Tutor can only select up to one card");
+        }
+
+        selectedCardId = payload.selected[0] ?? null;
+      }
+    }
+
+    const currentLibrary = nextZones.get(libraryKey) ?? [];
+    if (currentLibrary.length > 0) {
+      const shuffledLibrary = rng.shuffle(currentLibrary);
+      nextZones.set(libraryKey, shuffledLibrary);
+      emit({
+        type: "SHUFFLED",
+        zone: libraryZone,
+        resultOrder: shuffledLibrary
+      });
+
+      if (selectedCardId !== null) {
+        const selectedObject = nextObjectPool.get(selectedCardId);
+        if (selectedObject === undefined) {
+          throw new Error(
+            `Cannot move missing object '${selectedCardId}' while resolving Mystical Tutor`
+          );
+        }
+
+        nextZones.set(libraryKey, [
+          selectedCardId,
+          ...shuffledLibrary.filter((cardId) => cardId !== selectedCardId)
+        ]);
+        nextObjectPool.set(
+          selectedCardId,
+          bumpZcc({
+            ...selectedObject,
+            zone: libraryZone,
+            controller: stackItem.controller
+          })
+        );
+      }
     }
   }
 

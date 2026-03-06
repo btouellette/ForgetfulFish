@@ -59,7 +59,7 @@ function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): Handle
 
   if (priorityResult.bothPassed) {
     if (passedState.stack.length > 0) {
-      const resolved = resolveTopOfStack(passedState);
+      const resolved = resolveTopOfStack(passedState, rng);
       const priorityPlayerId =
         resolved.pendingChoice?.forPlayer ?? resolved.state.turnState.activePlayerId;
       return {
@@ -100,7 +100,8 @@ function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): Handle
 
 function handleMakeChoiceCommand(
   state: Readonly<GameState>,
-  command: MakeChoiceCommand
+  command: MakeChoiceCommand,
+  rng: Rng
 ): HandlerResult {
   if (state.pendingChoice === null) {
     throw new Error("no pending choice to resolve");
@@ -133,7 +134,7 @@ function handleMakeChoiceCommand(
     (resumedTopItem.effectContext.cursor.kind === "start" ||
       resumedTopItem.effectContext.cursor.kind === "step")
   ) {
-    const resolved = resolveTopOfStack(nextState);
+    const resolved = resolveTopOfStack(nextState, rng);
     nextState = resolved.state;
     pendingChoice = resolved.pendingChoice;
     events.push(...resolved.events);
@@ -586,7 +587,7 @@ export function processCommand(
       case "CONCEDE":
         return passThrough(state);
       case "MAKE_CHOICE":
-        return handleMakeChoiceCommand(state, command);
+        return handleMakeChoiceCommand(state, command, rng);
       case "DECLARE_ATTACKERS":
         return handleDeclareAttackersCommand(state, command);
       case "DECLARE_BLOCKERS":
