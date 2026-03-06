@@ -49,24 +49,60 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
       : state.mode.resolveZone(state, "graveyard", object.owner);
 
   const stackKey = zoneKey(stackZone);
-  const destinationKey = zoneKey(destinationZone);
   const currentStackZone = state.zones.get(stackKey) ?? [];
-  const currentDestination = state.zones.get(destinationKey) ?? [];
 
-  const nextStack = state.stack.slice(0, -1);
-  const nextStackZone = currentStackZone.filter((id) => id !== stackItem.object.id);
-  const nextDestination = [...currentDestination, stackItem.object.id];
+  let nextStack = state.stack.slice(0, -1);
+  let nextStackZone = currentStackZone.filter((id) => id !== stackItem.object.id);
+
+  const resolutionEvents: GameEvent[] = [];
+
+  const nextZones = new Map(state.zones);
+  nextZones.set(stackKey, nextStackZone);
+  const nextObjectPool = new Map(state.objectPool);
+
+  if (!allTargetsIllegal && object.cardDefId === "memory-lapse") {
+    const objectTarget = stackItem.targets.find((target) => target.kind === "object");
+    if (objectTarget !== undefined) {
+      const targetObject = nextObjectPool.get(objectTarget.object.id);
+      if (targetObject !== undefined && targetObject.zcc === objectTarget.object.zcc) {
+        nextStack = nextStack.filter((item) => item.object.id !== objectTarget.object.id);
+        nextStackZone = nextStackZone.filter((id) => id !== objectTarget.object.id);
+        nextZones.set(stackKey, nextStackZone);
+
+        const libraryZone = state.mode.resolveZone(state, "library", targetObject.owner);
+        const libraryKey = zoneKey(libraryZone);
+        const currentLibrary = nextZones.get(libraryKey) ?? [];
+        nextZones.set(libraryKey, [targetObject.id, ...currentLibrary]);
+
+        const movedTarget = bumpZcc({
+          ...targetObject,
+          zone: libraryZone
+        });
+        nextObjectPool.set(movedTarget.id, movedTarget);
+        resolutionEvents.push(
+          createEvent(
+            {
+              engineVersion: state.engineVersion,
+              schemaVersion: 1,
+              gameId: state.id
+            },
+            state.version + 1,
+            { type: "SPELL_COUNTERED", object: { id: movedTarget.id, zcc: movedTarget.zcc } }
+          )
+        );
+      }
+    }
+  }
 
   const movedObject = bumpZcc({
     ...object,
     zone: destinationZone
   });
-
-  const nextObjectPool = new Map(state.objectPool);
   nextObjectPool.set(movedObject.id, movedObject);
 
-  const nextZones = new Map(state.zones);
-  nextZones.set(stackKey, nextStackZone);
+  const destinationKey = zoneKey(destinationZone);
+  const currentDestination = nextZones.get(destinationKey) ?? [];
+  const nextDestination = [...currentDestination, stackItem.object.id];
   nextZones.set(destinationKey, nextDestination);
 
   const nextState: GameState = {
@@ -80,6 +116,7 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
   return {
     state: nextState,
     events: [
+      ...resolutionEvents,
       createEvent(
         {
           engineVersion: state.engineVersion,

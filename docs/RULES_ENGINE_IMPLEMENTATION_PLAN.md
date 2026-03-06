@@ -880,7 +880,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` holds after a spell fizzles.
 Acceptance: Fizzle rules match MTG CR 608.2b.
 
-### [ ] P2.7 — Card: Memory Lapse
+### [x] P2.7 — Card: Memory Lapse
 
 **Files**: `cards/memory-lapse.ts`
 
