@@ -5,6 +5,7 @@ import { createInitialGameState, type GameState } from "../../../src/state/gameS
 import {
   LAYERS,
   addContinuousEffect,
+  matchesEffectTarget,
   removeContinuousEffect,
   type ContinuousEffect
 } from "../../../src/effects/continuous/layers";
@@ -42,8 +43,11 @@ function createEffect(id: string, timestamp = 1): ContinuousEffect {
     layer: LAYERS.CONTROL,
     timestamp,
     duration: "until_end_of_turn",
-    appliesTo: (view) => view.id === "obj-a",
-    apply: (view) => ({ ...view, controller: "p2" })
+    appliesTo: { kind: "object", objectId: "obj-a" },
+    effect: {
+      kind: "set_controller",
+      payload: { playerId: "p2" }
+    }
   };
 }
 
@@ -82,8 +86,8 @@ describe("effects/continuous/layers", () => {
       throw new Error("expected test objects to exist");
     }
 
-    expect(effect.appliesTo(objectA, state)).toBe(true);
-    expect(effect.appliesTo(objectB, state)).toBe(false);
+    expect(matchesEffectTarget(effect.appliesTo, objectA, state)).toBe(true);
+    expect(matchesEffectTarget(effect.appliesTo, objectB, state)).toBe(false);
   });
 
   it("tracks multiple continuous effects simultaneously", () => {
@@ -104,5 +108,13 @@ describe("effects/continuous/layers", () => {
     expect(state.continuousEffects).toHaveLength(0);
     expect(nextState.continuousEffects).toHaveLength(1);
     expect(nextState).not.toBe(state);
+  });
+
+  it("rejects duplicate effect ids on add", () => {
+    const withFirst = addContinuousEffect(createStateWithObjects(), createEffect("effect-dup"));
+
+    expect(() => addContinuousEffect(withFirst, createEffect("effect-dup", 2))).toThrow(
+      "continuous effect 'effect-dup' already exists"
+    );
   });
 });

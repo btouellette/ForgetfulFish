@@ -19,7 +19,19 @@ export type Layer = (typeof LAYERS)[keyof typeof LAYERS];
 
 export type Sublayer = Extract<Layer, "7a" | "7b" | "7c">;
 
-export type EffectTarget = (view: Readonly<GameObjectView>, state: Readonly<GameState>) => boolean;
+export type EffectTarget =
+  | { kind: "all" }
+  | { kind: "object"; objectId: string }
+  | { kind: "controller"; playerId: string };
+
+export type ContinuousEffectPayload = {
+  kind: string;
+  payload?: Record<string, unknown>;
+};
+
+export type EffectDependency = {
+  effectId: string;
+};
 
 export type ContinuousEffect = {
   id: string;
@@ -29,15 +41,38 @@ export type ContinuousEffect = {
   timestamp: number;
   duration: Duration;
   appliesTo: EffectTarget;
-  apply: (view: Readonly<GameObjectView>) => GameObjectView;
-  dependsOn?: (other: Readonly<ContinuousEffect>, state: Readonly<GameState>) => boolean;
+  effect: ContinuousEffectPayload;
+  dependsOn?: EffectDependency[];
   condition?: ConditionAst;
 };
+
+export function matchesEffectTarget(
+  target: Readonly<EffectTarget>,
+  view: Readonly<GameObjectView>,
+  _state: Readonly<GameState>
+): boolean {
+  switch (target.kind) {
+    case "all":
+      return true;
+    case "object":
+      return view.id === target.objectId;
+    case "controller":
+      return view.controller === target.playerId;
+    default: {
+      const neverTarget: never = target;
+      return neverTarget;
+    }
+  }
+}
 
 export function addContinuousEffect(
   state: Readonly<GameState>,
   effect: ContinuousEffect
 ): GameState {
+  if (state.continuousEffects.some((existingEffect) => existingEffect.id === effect.id)) {
+    throw new Error(`continuous effect '${effect.id}' already exists`);
+  }
+
   return {
     ...state,
     continuousEffects: [...state.continuousEffects, effect]
@@ -45,8 +80,19 @@ export function addContinuousEffect(
 }
 
 export function removeContinuousEffect(state: Readonly<GameState>, effectId: string): GameState {
+  const effects = [...state.continuousEffects];
+  const index = effects.findIndex((effect) => effect.id === effectId);
+  if (index === -1) {
+    return {
+      ...state,
+      continuousEffects: effects
+    };
+  }
+
+  effects.splice(index, 1);
+
   return {
     ...state,
-    continuousEffects: state.continuousEffects.filter((effect) => effect.id !== effectId)
+    continuousEffects: effects
   };
 }
