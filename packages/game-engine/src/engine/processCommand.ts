@@ -60,26 +60,28 @@ function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): Handle
   if (priorityResult.bothPassed) {
     if (passedState.stack.length > 0) {
       const resolved = resolveTopOfStack(passedState);
-      const activePlayerId = resolved.state.turnState.activePlayerId;
+      const priorityPlayerId =
+        resolved.pendingChoice?.forPlayer ?? resolved.state.turnState.activePlayerId;
       return {
         state: {
           ...resolved.state,
           players: [
             {
               ...resolved.state.players[0],
-              priority: resolved.state.players[0].id === activePlayerId
+              priority: resolved.state.players[0].id === priorityPlayerId
             },
             {
               ...resolved.state.players[1],
-              priority: resolved.state.players[1].id === activePlayerId
+              priority: resolved.state.players[1].id === priorityPlayerId
             }
           ],
           turnState: {
             ...resolved.state.turnState,
-            priorityState: createInitialPriorityState(activePlayerId)
+            priorityState: createInitialPriorityState(priorityPlayerId)
           }
         },
-        events: [priorityPassedEvent, ...resolved.events]
+        events: [priorityPassedEvent, ...resolved.events],
+        pendingChoice: resolved.pendingChoice
       };
     }
 
