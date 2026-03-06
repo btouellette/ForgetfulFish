@@ -245,9 +245,19 @@ describe("cards/mystical-tutor", () => {
       new Rng(state.rngSeed)
     );
 
-    expect(() => passPriorityPair(cast.nextState)).not.toThrow();
-    const resolved = passPriorityPair(cast.nextState);
+    const resolve = () => passPriorityPair(cast.nextState);
+    expect(resolve).not.toThrow();
+    const resolved = resolve();
     expect(resolved.pendingChoice).toBeNull();
+    expect(resolved.newEvents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "SHUFFLED",
+          zone: { kind: "library", scope: "shared" },
+          resultOrder: []
+        })
+      ])
+    );
   });
 
   it("preserves invariants after shuffle and placement", () => {
