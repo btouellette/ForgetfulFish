@@ -157,7 +157,7 @@ describe("engine/processCommand", () => {
     expect(result).toHaveProperty("pendingChoice");
   });
 
-  it("keeps CommandResult.pendingChoice synchronized with nextState.pendingChoice", () => {
+  it("rejects non-choice commands while pendingChoice exists", () => {
     const state = createInitialGameState("p1", "p2", { id: "game-4b", rngSeed: "seed-4b" });
     const stateWithChoice = {
       ...state,
@@ -165,10 +165,9 @@ describe("engine/processCommand", () => {
     };
     const rng = new Rng(stateWithChoice.rngSeed);
 
-    const result = processCommand(stateWithChoice, { type: "PASS_PRIORITY" }, rng);
-
-    expect(result.pendingChoice).toEqual(stateWithChoice.pendingChoice);
-    expect(result.pendingChoice).toEqual(result.nextState.pendingChoice);
+    expect(() => processCommand(stateWithChoice, { type: "PASS_PRIORITY" }, rng)).toThrow(
+      /only MAKE_CHOICE or CONCEDE are allowed/
+    );
   });
 
   it("does not mutate the input Readonly<GameState>", () => {

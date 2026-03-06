@@ -107,15 +107,13 @@ function handleMakeChoiceCommand(
   }
 
   const resumed = resumeChoiceResolution(state, command);
-  const nextState = resumed.state;
-
   const choiceEvent = createEvent(
     {
       engineVersion: state.engineVersion,
       schemaVersion: 1,
       gameId: state.id
     },
-    nextState.version,
+    resumed.state.version,
     {
       type: "CHOICE_MADE",
       choiceId: state.pendingChoice.id,
@@ -124,10 +122,46 @@ function handleMakeChoiceCommand(
     }
   );
 
+  let nextState = resumed.state;
+  const events: GameEvent[] = [choiceEvent];
+  let pendingChoice: PendingChoice | null = resumed.pendingChoice;
+
+  const resumedTopItem = nextState.stack[nextState.stack.length - 1];
+  if (
+    pendingChoice === null &&
+    resumedTopItem !== undefined &&
+    (resumedTopItem.effectContext.cursor.kind === "start" ||
+      resumedTopItem.effectContext.cursor.kind === "step")
+  ) {
+    const resolved = resolveTopOfStack(nextState);
+    nextState = resolved.state;
+    pendingChoice = resolved.pendingChoice;
+    events.push(...resolved.events);
+  }
+
+  const priorityPlayerId = pendingChoice?.forPlayer ?? nextState.turnState.activePlayerId;
+  const stateWithPriority: GameState = {
+    ...nextState,
+    players: [
+      {
+        ...nextState.players[0],
+        priority: nextState.players[0].id === priorityPlayerId
+      },
+      {
+        ...nextState.players[1],
+        priority: nextState.players[1].id === priorityPlayerId
+      }
+    ],
+    turnState: {
+      ...nextState.turnState,
+      priorityState: createInitialPriorityState(priorityPlayerId)
+    }
+  };
+
   return {
-    state: nextState,
-    events: [choiceEvent],
-    pendingChoice: resumed.pendingChoice
+    state: stateWithPriority,
+    events,
+    pendingChoice
   };
 }
 
@@ -535,6 +569,14 @@ export function processCommand(
   command: Command,
   rng: Rng
 ): CommandResult {
+  if (
+    state.pendingChoice !== null &&
+    command.type !== "MAKE_CHOICE" &&
+    command.type !== "CONCEDE"
+  ) {
+    throw new Error("only MAKE_CHOICE or CONCEDE are allowed while a pending choice exists");
+  }
+
   const handlerResult = (() => {
     switch (command.type) {
       case "CAST_SPELL":

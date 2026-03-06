@@ -166,10 +166,8 @@ describe("cards/brainstorm", () => {
       },
       new Rng(firstResolve.nextState.rngSeed)
     );
-    const secondResolve = passPriorityPair(choose.nextState);
-
-    expect(secondResolve.pendingChoice?.type).toBe("ORDER_CARDS");
-    expect(secondResolve.pendingChoice?.constraints).toEqual({ cards: ["obj-lib-0", "obj-lib-1"] });
+    expect(choose.pendingChoice?.type).toBe("ORDER_CARDS");
+    expect(choose.pendingChoice?.constraints).toEqual({ cards: ["obj-lib-0", "obj-lib-1"] });
   });
 
   it("moves ordered cards to top of shared library in chosen order", () => {
@@ -194,9 +192,8 @@ describe("cards/brainstorm", () => {
       },
       new Rng(firstResolve.nextState.rngSeed)
     );
-    const secondResolve = passPriorityPair(choose.nextState);
     const order = processCommand(
-      secondResolve.nextState,
+      choose.nextState,
       {
         type: "MAKE_CHOICE",
         payload: {
@@ -204,9 +201,9 @@ describe("cards/brainstorm", () => {
           ordered: ["obj-lib-1", "obj-lib-0"]
         }
       },
-      new Rng(secondResolve.nextState.rngSeed)
+      new Rng(choose.nextState.rngSeed)
     );
-    const finalResolve = passPriorityPair(order.nextState);
+    const finalResolve = order;
 
     const library =
       finalResolve.nextState.zones.get(zoneKey({ kind: "library", scope: "shared" })) ?? [];
@@ -250,9 +247,8 @@ describe("cards/brainstorm", () => {
       },
       new Rng(firstResolve.nextState.rngSeed)
     );
-    const secondResolve = passPriorityPair(choose.nextState);
     const order = processCommand(
-      secondResolve.nextState,
+      choose.nextState,
       {
         type: "MAKE_CHOICE",
         payload: {
@@ -260,9 +256,9 @@ describe("cards/brainstorm", () => {
           ordered: ["obj-lib-0", "obj-lib-1"]
         }
       },
-      new Rng(secondResolve.nextState.rngSeed)
+      new Rng(choose.nextState.rngSeed)
     );
-    const finalResolve = passPriorityPair(order.nextState);
+    const finalResolve = order;
 
     const graveyard =
       finalResolve.nextState.zones.get(zoneKey({ kind: "graveyard", scope: "shared" })) ?? [];
@@ -290,9 +286,8 @@ describe("cards/brainstorm", () => {
       },
       new Rng(firstResolve.nextState.rngSeed)
     );
-    const secondResolve = passPriorityPair(choose.nextState);
     const order = processCommand(
-      secondResolve.nextState,
+      choose.nextState,
       {
         type: "MAKE_CHOICE",
         payload: {
@@ -300,9 +295,9 @@ describe("cards/brainstorm", () => {
           ordered: ["obj-lib-1", "obj-lib-0"]
         }
       },
-      new Rng(secondResolve.nextState.rngSeed)
+      new Rng(choose.nextState.rngSeed)
     );
-    const finalResolve = passPriorityPair(order.nextState);
+    const finalResolve = order;
 
     expect(() => assertStateInvariants(finalResolve.nextState)).not.toThrow();
   });

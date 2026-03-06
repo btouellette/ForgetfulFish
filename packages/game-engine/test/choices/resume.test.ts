@@ -72,12 +72,12 @@ function buildPausedChoiceState(choice: PendingChoice): GameState {
 }
 
 describe("choices/resume", () => {
-  it("returns pendingChoice while resolution is paused", () => {
+  it("rejects non-choice commands while resolution is paused", () => {
     const state = buildPausedChoiceState(pendingYesNoChoice());
 
-    const result = processCommand(state, { type: "PASS_PRIORITY" }, new Rng(state.rngSeed));
-
-    expect(result.pendingChoice).toEqual(state.pendingChoice);
+    expect(() => processCommand(state, { type: "PASS_PRIORITY" }, new Rng(state.rngSeed))).toThrow(
+      /only MAKE_CHOICE or CONCEDE are allowed/
+    );
   });
 
   it("resumes choice resolution from the next step on valid MAKE_CHOICE", () => {
@@ -89,8 +89,7 @@ describe("choices/resume", () => {
       new Rng(state.rngSeed)
     );
 
-    const stackTop = result.nextState.stack[result.nextState.stack.length - 1];
-    expect(stackTop?.effectContext.cursor).toEqual({ kind: "step", index: 2 });
+    expect(result.nextState.stack).toHaveLength(0);
     expect(result.nextState.pendingChoice).toBeNull();
   });
 
@@ -114,9 +113,8 @@ describe("choices/resume", () => {
       new Rng(state.rngSeed)
     );
 
-    const stackTop = result.nextState.stack[result.nextState.stack.length - 1];
-    expect(stackTop?.effectContext.whiteboard.actions).toHaveLength(1);
-    expect(stackTop?.effectContext.cursor).toEqual({ kind: "step", index: 2 });
+    expect(result.nextState.stack).toHaveLength(0);
+    expect(result.nextState.pendingChoice).toBeNull();
   });
 
   it("rejects MAKE_CHOICE payloads that violate constraints", () => {
@@ -142,6 +140,31 @@ describe("choices/resume", () => {
         new Rng(state.rngSeed)
       )
     ).toThrow(/selected more cards than maximum/);
+  });
+
+  it("rejects CHOOSE_CARDS payloads with duplicate card ids", () => {
+    const state = buildPausedChoiceState({
+      id: "choice-cards-dup",
+      type: "CHOOSE_CARDS",
+      forPlayer: "p1",
+      prompt: "Choose exactly two",
+      constraints: {
+        candidates: ["obj-a", "obj-b"],
+        min: 2,
+        max: 2
+      }
+    });
+
+    expect(() =>
+      processCommand(
+        state,
+        {
+          type: "MAKE_CHOICE",
+          payload: { type: "CHOOSE_CARDS", selected: ["obj-a", "obj-a"], min: 2, max: 2 }
+        },
+        new Rng(state.rngSeed)
+      )
+    ).toThrow(/selected cards must be unique/);
   });
 
   it("rejects MAKE_CHOICE when no pendingChoice exists", () => {
