@@ -14,7 +14,9 @@ export const predictCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: [{ id: "PREDICT" }],
+  onResolve: [
+    { id: "NAME_MILL_DRAW_ON_HIT", millAmount: 1, drawOnHitAmount: 2, missDrawAmount: 1 }
+  ],
   continuousEffects: [],
   replacementEffects: []
 };

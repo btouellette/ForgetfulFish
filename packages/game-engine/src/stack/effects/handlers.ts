@@ -1,5 +1,12 @@
 import { cardRegistry } from "../../cards";
-import type { ResolveEffectId } from "../../cards/resolveEffect";
+import type {
+  CounterSpellSpec,
+  DrawByGraveyardCopyCountSpec,
+  DrawChooseReturnSpec,
+  NameMillDrawOnHitSpec,
+  ResolveEffectSpec,
+  SearchLibraryShuffleTopSpec
+} from "../../cards/resolveEffect";
 import type { ChoicePayload } from "../../commands/command";
 import type { GameState } from "../../state/gameState";
 import { captureSnapshot, lkiKey } from "../../state/lki";
@@ -56,13 +63,16 @@ function isNameCardPayload(
   return candidate.type === "NAME_CARD" && typeof candidate.cardName === "string";
 }
 
-function resolveBrainstorm(context: ResolveEffectHandlerContext): ResolveEffectResult {
+function resolveDrawChooseReturn(
+  spec: DrawChooseReturnSpec,
+  context: ResolveEffectHandlerContext
+): ResolveEffectResult {
   const stepHandlers: StepHandler[] = [
     {
       matches: (stepIndex) => stepIndex === 0,
       execute: (stepContext) => {
         const { stackItem, state, mutable } = stepContext;
-        drawCards(stepContext.drawOneCard, stackItem.controller, 3);
+        drawCards(stepContext.drawOneCard, stackItem.controller, spec.drawAmount);
 
         const handZone = state.mode.resolveZone(state, "hand", stackItem.controller);
         const handCards = mutable.nextZones.get(zoneKey(handZone)) ?? [];
@@ -71,11 +81,11 @@ function resolveBrainstorm(context: ResolveEffectHandlerContext): ResolveEffectR
           id: chooseChoiceId,
           type: "CHOOSE_CARDS",
           forPlayer: stackItem.controller,
-          prompt: "Choose 2 cards to put back on top of your library",
+          prompt: `Choose ${spec.returnAmount} card${spec.returnAmount === 1 ? "" : "s"} to put back on top of your library`,
           constraints: {
             candidates: [...handCards],
-            min: 2,
-            max: 2
+            min: spec.returnAmount,
+            max: spec.returnAmount
           }
         };
 
@@ -197,7 +207,16 @@ function resolveBrainstorm(context: ResolveEffectHandlerContext): ResolveEffectR
   return runStepHandlers(context, stepHandlers);
 }
 
-function resolveMysticalTutor(context: ResolveEffectHandlerContext): ResolveEffectResult {
+function resolveSearchLibraryShuffleTop(
+  spec: SearchLibraryShuffleTopSpec,
+  context: ResolveEffectHandlerContext
+): ResolveEffectResult {
+  if (spec.max > 1) {
+    throw new Error(
+      `SEARCH_LIBRARY_SHUFFLE_TOP does not support max > 1 (got ${spec.max}): placing multiple cards on top in order is not implemented`
+    );
+  }
+
   const { stackItem, state, mutable, rng, emit } = context;
   const stepIndex = getStepIndex(stackItem);
   const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
@@ -217,24 +236,28 @@ function resolveMysticalTutor(context: ResolveEffectHandlerContext): ResolveEffe
           return false;
         }
 
-        return definition.typeLine.includes("Instant") || definition.typeLine.includes("Sorcery");
+        return spec.typeFilter.some((type) => definition.typeLine.includes(type));
       });
 
-      const chooseChoiceId = `${stackItem.id}:mystical-tutor:choose-card`;
+      const typeLabel = spec.typeFilter.join(" or ");
+      const prompt =
+        spec.min === 0 ? `Choose up to one ${typeLabel} card` : `Choose a ${typeLabel} card`;
+
+      const chooseChoiceId = `${stackItem.id}:search-library-shuffle-top:choose-card`;
       const choice: NonNullable<GameState["pendingChoice"]> = {
         id: chooseChoiceId,
         type: "CHOOSE_CARDS",
         forPlayer: stackItem.controller,
-        prompt: "Choose up to one instant or sorcery card",
+        prompt,
         constraints: {
           candidates,
-          min: 0,
-          max: 1
+          min: spec.min,
+          max: spec.max
         }
       };
 
       return pauseWithChoiceAndScratch(context, choice, {
-        mysticalTutorChoiceId: chooseChoiceId,
+        searchLibraryChoiceId: chooseChoiceId,
         [`resumeStepIndex:${chooseChoiceId}`]: 0
       });
     }
@@ -244,15 +267,20 @@ function resolveMysticalTutor(context: ResolveEffectHandlerContext): ResolveEffe
   if (stepIndex >= 1) {
     const payload = requireChoicePayload(
       stackItem,
-      "mysticalTutorChoiceId",
+      "searchLibraryChoiceId",
       isChooseCardsPayload,
-      "missing Mystical Tutor CHOOSE_CARDS choice id in scratch state",
-      "missing Mystical Tutor CHOOSE_CARDS payload in scratch state"
+      `missing SEARCH_LIBRARY_SHUFFLE_TOP CHOOSE_CARDS choice id in scratch state`,
+      `missing SEARCH_LIBRARY_SHUFFLE_TOP CHOOSE_CARDS payload in scratch state`
     );
     const selected = [...payload.selected];
-    requireUniqueIds(selected, "Mystical Tutor CHOOSE_CARDS payload must contain unique cards");
-    if (selected.length > 1) {
-      throw new Error("Mystical Tutor can only select up to one card");
+    requireUniqueIds(
+      selected,
+      "SEARCH_LIBRARY_SHUFFLE_TOP CHOOSE_CARDS payload must contain unique cards"
+    );
+    if (selected.length > spec.max) {
+      throw new Error(
+        `SEARCH_LIBRARY_SHUFFLE_TOP selected ${selected.length} cards but max is ${spec.max}`
+      );
     }
 
     selectedCardId = selected[0] ?? null;
@@ -260,7 +288,9 @@ function resolveMysticalTutor(context: ResolveEffectHandlerContext): ResolveEffe
 
   const currentLibrary = mutable.nextZones.get(libraryKey) ?? [];
   if (selectedCardId !== null && !currentLibrary.includes(selectedCardId)) {
-    throw new Error(`Mystical Tutor selected card '${selectedCardId}' is not in library`);
+    throw new Error(
+      `SEARCH_LIBRARY_SHUFFLE_TOP selected card '${selectedCardId}' is not in library`
+    );
   }
 
   const shuffledLibrary = rng.shuffle(currentLibrary);
@@ -278,7 +308,10 @@ function resolveMysticalTutor(context: ResolveEffectHandlerContext): ResolveEffe
   return { kind: "continue" };
 }
 
-function resolvePredict(context: ResolveEffectHandlerContext): ResolveEffectResult {
+function resolveNameMillDrawOnHit(
+  spec: NameMillDrawOnHitSpec,
+  context: ResolveEffectHandlerContext
+): ResolveEffectResult {
   const stepHandlers: StepHandler[] = [
     {
       matches: (stepIndex) => stepIndex === 0,
@@ -319,7 +352,7 @@ function resolvePredict(context: ResolveEffectHandlerContext): ResolveEffectResu
         const graveyardKey = zoneKey(graveyardZone);
 
         const currentLibrary = mutable.nextZones.get(libraryKey) ?? [];
-        const milledCards = currentLibrary.slice(0, 2);
+        const milledCards = currentLibrary.slice(0, spec.millAmount);
         const remainingLibrary = currentLibrary.slice(milledCards.length);
         const currentGraveyard = mutable.nextZones.get(graveyardKey) ?? [];
 
@@ -356,7 +389,9 @@ function resolvePredict(context: ResolveEffectHandlerContext): ResolveEffectResu
         });
 
         if (namedCardWasMilled) {
-          drawCards(stepContext.drawOneCard, stackItem.controller, 2);
+          drawCards(stepContext.drawOneCard, stackItem.controller, spec.drawOnHitAmount);
+        } else {
+          drawCards(stepContext.drawOneCard, stackItem.controller, spec.missDrawAmount);
         }
 
         return { kind: "continue" };
@@ -367,45 +402,60 @@ function resolvePredict(context: ResolveEffectHandlerContext): ResolveEffectResu
   return runStepHandlers(context, stepHandlers);
 }
 
-function resolveCounterMoveZone(context: ResolveEffectHandlerContext): ResolveEffectResult {
-  const { stackItem, state, mutable, emit, effects } = context;
-  if (!effects.has("MOVE_ZONE")) {
+function resolveCounterSpell(
+  spec: CounterSpellSpec,
+  context: ResolveEffectHandlerContext
+): ResolveEffectResult {
+  const { stackItem, state, mutable, emit } = context;
+
+  const objectTarget = stackItem.targets.find((target) => target.kind === "object");
+  if (objectTarget === undefined) {
     return { kind: "continue" };
   }
 
-  const objectTarget = stackItem.targets.find((target) => target.kind === "object");
-  if (objectTarget !== undefined) {
-    const targetObject = mutable.nextObjectPool.get(objectTarget.object.id);
-    if (targetObject !== undefined && targetObject.zcc === objectTarget.object.zcc) {
-      mutable.nextStack = mutable.nextStack.filter(
-        (item) => item.object.id !== objectTarget.object.id
-      );
-      mutable.nextStackZone = mutable.nextStackZone.filter((id) => id !== objectTarget.object.id);
-
-      const stackZone = state.mode.resolveZone(state, "stack", stackItem.controller);
-      mutable.nextZones.set(zoneKey(stackZone), mutable.nextStackZone);
-
-      const libraryZone = state.mode.resolveZone(state, "library", targetObject.owner);
-      const libraryKey = zoneKey(libraryZone);
-      const currentLibrary = mutable.nextZones.get(libraryKey) ?? [];
-      mutable.nextZones.set(libraryKey, [targetObject.id, ...currentLibrary]);
-
-      const movedTarget = bumpZcc({
-        ...targetObject,
-        zone: libraryZone
-      });
-      mutable.nextObjectPool.set(movedTarget.id, movedTarget);
-      emit({
-        type: "SPELL_COUNTERED",
-        object: { id: movedTarget.id, zcc: movedTarget.zcc }
-      });
-    }
+  const targetObject = mutable.nextObjectPool.get(objectTarget.object.id);
+  if (targetObject === undefined || targetObject.zcc !== objectTarget.object.zcc) {
+    return { kind: "continue" };
   }
+
+  mutable.nextStack = mutable.nextStack.filter((item) => item.object.id !== objectTarget.object.id);
+  mutable.nextStackZone = mutable.nextStackZone.filter((id) => id !== objectTarget.object.id);
+
+  const stackZone = state.mode.resolveZone(state, "stack", stackItem.controller);
+  mutable.nextZones.set(zoneKey(stackZone), mutable.nextStackZone);
+
+  let destinationZone: typeof targetObject.zone;
+  if (spec.destination === "library-top") {
+    const libraryZone = state.mode.resolveZone(state, "library", targetObject.owner);
+    const libraryKey = zoneKey(libraryZone);
+    const currentLibrary = mutable.nextZones.get(libraryKey) ?? [];
+    mutable.nextZones.set(libraryKey, [targetObject.id, ...currentLibrary]);
+    destinationZone = libraryZone;
+  } else {
+    const graveyardZone = state.mode.resolveZone(state, "graveyard", targetObject.owner);
+    const graveyardKey = zoneKey(graveyardZone);
+    const currentGraveyard = mutable.nextZones.get(graveyardKey) ?? [];
+    mutable.nextZones.set(graveyardKey, [...currentGraveyard, targetObject.id]);
+    destinationZone = graveyardZone;
+  }
+
+  const movedTarget = bumpZcc({
+    ...targetObject,
+    zone: destinationZone
+  });
+  mutable.nextObjectPool.set(movedTarget.id, movedTarget);
+  emit({
+    type: "SPELL_COUNTERED",
+    object: { id: movedTarget.id, zcc: movedTarget.zcc }
+  });
 
   return { kind: "continue" };
 }
 
-function resolveAccumulatedKnowledge(context: ResolveEffectHandlerContext): ResolveEffectResult {
+function resolveDrawByGraveyardCopyCount(
+  spec: DrawByGraveyardCopyCountSpec,
+  context: ResolveEffectHandlerContext
+): ResolveEffectResult {
   const { stackItem, state, mutable, drawOneCard, cardDefinition } = context;
   const graveyardZone = state.mode.resolveZone(state, "graveyard", stackItem.controller);
   const graveyardCards = mutable.nextZones.get(zoneKey(graveyardZone)) ?? [];
@@ -420,26 +470,29 @@ function resolveAccumulatedKnowledge(context: ResolveEffectHandlerContext): Reso
     return graveyardDefinition?.name === resolvingCardName ? count + 1 : count;
   }, 0);
 
-  drawCards(drawOneCard, stackItem.controller, accumulatedKnowledgeCount + 1);
+  drawCards(drawOneCard, stackItem.controller, accumulatedKnowledgeCount + spec.bonus);
 
   return { kind: "continue" };
 }
 
-const handlers: Record<
-  ResolveEffectId,
-  (context: ResolveEffectHandlerContext) => ResolveEffectResult
-> = {
-  BRAINSTORM: resolveBrainstorm,
-  MYSTICAL_TUTOR: resolveMysticalTutor,
-  PREDICT: resolvePredict,
-  COUNTER: resolveCounterMoveZone,
-  MOVE_ZONE: () => ({ kind: "continue" }),
-  DRAW_ACCUMULATED_KNOWLEDGE: resolveAccumulatedKnowledge
-};
-
 export function resolveOnResolveEffect(
-  effectId: ResolveEffectId,
+  spec: ResolveEffectSpec,
   context: ResolveEffectHandlerContext
 ): ResolveEffectResult {
-  return handlers[effectId](context);
+  switch (spec.id) {
+    case "DRAW_CHOOSE_RETURN":
+      return resolveDrawChooseReturn(spec, context);
+    case "SEARCH_LIBRARY_SHUFFLE_TOP":
+      return resolveSearchLibraryShuffleTop(spec, context);
+    case "NAME_MILL_DRAW_ON_HIT":
+      return resolveNameMillDrawOnHit(spec, context);
+    case "COUNTER_SPELL":
+      return resolveCounterSpell(spec, context);
+    case "DRAW_BY_GRAVEYARD_COPY_COUNT":
+      return resolveDrawByGraveyardCopyCount(spec, context);
+    default: {
+      const exhaustive: never = spec;
+      return exhaustive;
+    }
+  }
 }
