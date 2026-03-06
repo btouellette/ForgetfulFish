@@ -1,6 +1,6 @@
 import { cardRegistry } from "../cards";
 import { partitionResolvedTargets } from "../commands/validate";
-import { createEvent, type GameEvent } from "../events/event";
+import { createEvent, type GameEvent, type GameEventPayload } from "../events/event";
 import type { GameState } from "../state/gameState";
 import { bumpZcc, zoneKey } from "../state/zones";
 
@@ -49,29 +49,69 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
       : state.mode.resolveZone(state, "graveyard", object.owner);
 
   const stackKey = zoneKey(stackZone);
-  const destinationKey = zoneKey(destinationZone);
   const currentStackZone = state.zones.get(stackKey) ?? [];
-  const currentDestination = state.zones.get(destinationKey) ?? [];
 
-  const nextStack = state.stack.slice(0, -1);
-  const nextStackZone = currentStackZone.filter((id) => id !== stackItem.object.id);
-  const nextDestination = [...currentDestination, stackItem.object.id];
+  let nextStack = state.stack.slice(0, -1);
+  let nextStackZone = currentStackZone.filter((id) => id !== stackItem.object.id);
+
+  const resolutionPayloads: GameEventPayload[] = [];
+
+  const nextZones = new Map(state.zones);
+  nextZones.set(stackKey, nextStackZone);
+  const nextObjectPool = new Map(state.objectPool);
+
+  if (
+    !allTargetsIllegal &&
+    cardDefinition.onResolve.includes("COUNTER") &&
+    cardDefinition.onResolve.includes("MOVE_ZONE")
+  ) {
+    const objectTarget = stackItem.targets.find((target) => target.kind === "object");
+    if (objectTarget !== undefined) {
+      const targetObject = nextObjectPool.get(objectTarget.object.id);
+      if (targetObject !== undefined && targetObject.zcc === objectTarget.object.zcc) {
+        nextStack = nextStack.filter((item) => item.object.id !== objectTarget.object.id);
+        nextStackZone = nextStackZone.filter((id) => id !== objectTarget.object.id);
+        nextZones.set(stackKey, nextStackZone);
+
+        const libraryZone = state.mode.resolveZone(state, "library", targetObject.owner);
+        const libraryKey = zoneKey(libraryZone);
+        const currentLibrary = nextZones.get(libraryKey) ?? [];
+        nextZones.set(libraryKey, [targetObject.id, ...currentLibrary]);
+
+        const movedTarget = bumpZcc({
+          ...targetObject,
+          zone: libraryZone
+        });
+        nextObjectPool.set(movedTarget.id, movedTarget);
+        resolutionPayloads.push({
+          type: "SPELL_COUNTERED",
+          object: { id: movedTarget.id, zcc: movedTarget.zcc }
+        });
+      }
+    }
+  }
 
   const movedObject = bumpZcc({
     ...object,
     zone: destinationZone
   });
-
-  const nextObjectPool = new Map(state.objectPool);
   nextObjectPool.set(movedObject.id, movedObject);
 
-  const nextZones = new Map(state.zones);
-  nextZones.set(stackKey, nextStackZone);
+  const destinationKey = zoneKey(destinationZone);
+  const currentDestination = nextZones.get(destinationKey) ?? [];
+  const nextDestination = [...currentDestination, stackItem.object.id];
   nextZones.set(destinationKey, nextDestination);
 
+  resolutionPayloads.push(
+    allTargetsIllegal
+      ? { type: "SPELL_COUNTERED", object: { id: movedObject.id, zcc: movedObject.zcc } }
+      : { type: "SPELL_RESOLVED", object: { id: movedObject.id, zcc: movedObject.zcc } }
+  );
+
+  const nextVersion = state.version + resolutionPayloads.length;
   const nextState: GameState = {
     ...state,
-    version: state.version + 1,
+    version: nextVersion,
     stack: nextStack,
     zones: nextZones,
     objectPool: nextObjectPool
@@ -79,18 +119,16 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
 
   return {
     state: nextState,
-    events: [
+    events: resolutionPayloads.map((payload, index) =>
       createEvent(
         {
           engineVersion: state.engineVersion,
           schemaVersion: 1,
           gameId: state.id
         },
-        nextState.version,
-        allTargetsIllegal
-          ? { type: "SPELL_COUNTERED", object: { id: movedObject.id, zcc: movedObject.zcc } }
-          : { type: "SPELL_RESOLVED", object: { id: movedObject.id, zcc: movedObject.zcc } }
+        state.version + index + 1,
+        payload
       )
-    ]
+    )
   };
 }
