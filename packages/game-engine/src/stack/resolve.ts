@@ -2,6 +2,7 @@ import { cardRegistry } from "../cards";
 import { partitionResolvedTargets } from "../commands/validate";
 import { createEvent, type GameEvent, type GameEventPayload } from "../events/event";
 import type { GameState } from "../state/gameState";
+import { captureSnapshot, lkiKey } from "../state/lki";
 import { bumpZcc, zoneKey } from "../state/zones";
 
 export type ResolveStackResult = {
@@ -54,11 +55,28 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
   let nextStack = state.stack.slice(0, -1);
   let nextStackZone = currentStackZone.filter((id) => id !== stackItem.object.id);
 
-  const resolutionPayloads: GameEventPayload[] = [];
+  let nextVersion = state.version;
+  const resolutionEvents: GameEvent[] = [];
+
+  const emit = (payload: GameEventPayload): void => {
+    nextVersion += 1;
+    resolutionEvents.push(
+      createEvent(
+        {
+          engineVersion: state.engineVersion,
+          schemaVersion: 1,
+          gameId: state.id
+        },
+        nextVersion,
+        payload
+      )
+    );
+  };
 
   const nextZones = new Map(state.zones);
   nextZones.set(stackKey, nextStackZone);
   const nextObjectPool = new Map(state.objectPool);
+  const nextLkiStore = new Map(state.lkiStore);
   let nextPlayers: GameState["players"] = [
     {
       ...state.players[0],
@@ -93,7 +111,7 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
           zone: libraryZone
         });
         nextObjectPool.set(movedTarget.id, movedTarget);
-        resolutionPayloads.push({
+        emit({
           type: "SPELL_COUNTERED",
           object: { id: movedTarget.id, zcc: movedTarget.zcc }
         });
@@ -119,7 +137,24 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
       const currentLibrary = nextZones.get(libraryKey) ?? [];
       const drawnCardId = currentLibrary[0];
       if (drawnCardId === undefined) {
-        break;
+        nextPlayers =
+          nextPlayers[0].id === stackItem.controller
+            ? [
+                {
+                  ...nextPlayers[0],
+                  attemptedDrawFromEmptyLibrary: true
+                },
+                nextPlayers[1]
+              ]
+            : [
+                nextPlayers[0],
+                {
+                  ...nextPlayers[1],
+                  attemptedDrawFromEmptyLibrary: true
+                }
+              ];
+        nextVersion += 1;
+        continue;
       }
 
       nextZones.set(libraryKey, currentLibrary.slice(1));
@@ -138,6 +173,10 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
         zone: handZone
       });
       nextObjectPool.set(movedDrawnObject.id, movedDrawnObject);
+      nextLkiStore.set(
+        lkiKey(drawnObject.id, drawnObject.zcc),
+        captureSnapshot(drawnObject, drawnObject, libraryZone)
+      );
 
       nextPlayers =
         nextPlayers[0].id === stackItem.controller
@@ -156,7 +195,7 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
               }
             ];
 
-      resolutionPayloads.push({
+      emit({
         type: "CARD_DRAWN",
         playerId: stackItem.controller,
         cardId: drawnCardId
@@ -175,34 +214,24 @@ export function resolveTopOfStack(state: Readonly<GameState>): ResolveStackResul
   const nextDestination = [...currentDestination, stackItem.object.id];
   nextZones.set(destinationKey, nextDestination);
 
-  resolutionPayloads.push(
+  emit(
     allTargetsIllegal
       ? { type: "SPELL_COUNTERED", object: { id: movedObject.id, zcc: movedObject.zcc } }
       : { type: "SPELL_RESOLVED", object: { id: movedObject.id, zcc: movedObject.zcc } }
   );
 
-  const nextVersion = state.version + resolutionPayloads.length;
   const nextState: GameState = {
     ...state,
     version: nextVersion,
     players: nextPlayers,
     stack: nextStack,
     zones: nextZones,
-    objectPool: nextObjectPool
+    objectPool: nextObjectPool,
+    lkiStore: nextLkiStore
   };
 
   return {
     state: nextState,
-    events: resolutionPayloads.map((payload, index) =>
-      createEvent(
-        {
-          engineVersion: state.engineVersion,
-          schemaVersion: 1,
-          gameId: state.id
-        },
-        state.version + index + 1,
-        payload
-      )
-    )
+    events: resolutionEvents
   };
 }

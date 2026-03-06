@@ -35,7 +35,7 @@ function makeCard(
 function setMainPhasePriority(state: GameState, playerId: "p1" | "p2"): void {
   state.turnState.phase = "MAIN_1";
   state.turnState.step = "MAIN_1";
-  state.turnState.activePlayerId = "p1";
+  state.turnState.activePlayerId = playerId;
   state.turnState.priorityState = createInitialPriorityState(playerId);
   state.players[0].priority = state.players[0].id === playerId;
   state.players[1].priority = state.players[1].id === playerId;
@@ -209,7 +209,6 @@ describe("cards/accumulated-knowledge", () => {
 
   it("draws only available cards when library has fewer than requested", () => {
     const state = createAccumulatedKnowledgeState({ graveyardCount: 1, libraryCount: 1 });
-    const handBefore = state.players[0].hand.length;
     const cast = processCommand(
       state,
       { type: "CAST_SPELL", cardId: "obj-ak-cast", targets: [] },
@@ -217,7 +216,8 @@ describe("cards/accumulated-knowledge", () => {
     );
     const resolved = resolveTopSpellByPassing(cast.nextState);
 
-    expect(resolved.nextState.players[0].hand.length).toBe(handBefore);
+    expect(resolved.nextState.players[0].hasLost).toBe(true);
+    expect(resolved.newEvents.some((event) => event.type === "PLAYER_LOST")).toBe(true);
   });
 
   it("preserves invariants after Accumulated Knowledge resolution", () => {
