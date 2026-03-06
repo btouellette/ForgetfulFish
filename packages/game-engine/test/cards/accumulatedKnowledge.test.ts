@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { accumulatedKnowledgeCardDefinition } from "../../src/cards/accumulated-knowledge";
 import { cardRegistry } from "../../src/cards";
+import type { CardDefinition } from "../../src/cards/cardDefinition";
 import { processCommand } from "../../src/engine/processCommand";
 import { Rng } from "../../src/rng/rng";
 import type { GameObject } from "../../src/state/gameObject";
@@ -190,6 +191,47 @@ describe("cards/accumulated-knowledge", () => {
     const resolved = resolveTopSpellByPassing(cast.nextState);
 
     expect(resolved.nextState.players[0].hand.length).toBe(handBefore + 1);
+  });
+
+  it("counts cards by Accumulated Knowledge name across definition ids", () => {
+    const alternateAccumulatedKnowledge: CardDefinition = {
+      ...accumulatedKnowledgeCardDefinition,
+      id: "accumulated-knowledge-alt"
+    };
+    const hadPrevious = cardRegistry.has(alternateAccumulatedKnowledge.id);
+    const previousDefinition = hadPrevious
+      ? cardRegistry.get(alternateAccumulatedKnowledge.id)
+      : undefined;
+
+    try {
+      cardRegistry.set(alternateAccumulatedKnowledge.id, alternateAccumulatedKnowledge);
+
+      const state = createAccumulatedKnowledgeState({ graveyardCount: 0, libraryCount: 5 });
+      addToSharedZone(
+        state,
+        "graveyard",
+        makeCard("obj-ak-alt-gy", alternateAccumulatedKnowledge.id, "p2", {
+          kind: "graveyard",
+          scope: "shared"
+        })
+      );
+      const handBefore = state.players[0].hand.length;
+
+      const cast = processCommand(
+        state,
+        { type: "CAST_SPELL", cardId: "obj-ak-cast", targets: [] },
+        new Rng(state.rngSeed)
+      );
+      const resolved = resolveTopSpellByPassing(cast.nextState);
+
+      expect(resolved.nextState.players[0].hand.length).toBe(handBefore + 1);
+    } finally {
+      if (hadPrevious && previousDefinition !== undefined) {
+        cardRegistry.set(alternateAccumulatedKnowledge.id, previousDefinition);
+      } else {
+        cardRegistry.delete(alternateAccumulatedKnowledge.id);
+      }
+    }
   });
 
   it("does not count itself while resolving on the stack", () => {
