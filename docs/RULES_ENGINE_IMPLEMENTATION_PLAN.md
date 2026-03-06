@@ -992,7 +992,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after shuffle and placement.
 Acceptance: Full search-shuffle-put-on-top sequence works.
 
-### [ ] P2.11 — Card: Predict
+### [x] P2.11 — Card: Predict
 
 **Files**: `cards/predict.ts`
 
