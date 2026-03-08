@@ -15,7 +15,7 @@ export const predictCardDefinition: CardDefinition = {
   triggeredAbilities: [],
   activatedAbilities: [],
   onResolve: [
-    { id: "NAME_MILL_DRAW_ON_HIT", millAmount: 1, drawOnHitAmount: 2, missDrawAmount: 1 }
+    { id: "NAME_MILL_DRAW_ON_HIT", millAmount: 2, drawOnHitAmount: 2, missDrawAmount: 1 }
   ],
   continuousEffects: [],
   replacementEffects: []

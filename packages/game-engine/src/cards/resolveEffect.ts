@@ -29,13 +29,10 @@ export type SearchLibraryShuffleTopSpec = {
 
 /**
  * Pause to let the controller name a card, then mill `millAmount` cards from
- * the top of the controller's library. The controller always draws at least
+ * the top of the targeted player's library (or the controller if no player
+ * target is provided). The controller always draws at least
  * `missDrawAmount` cards; if the named card was among the milled cards, the
  * controller draws `drawOnHitAmount` cards instead.
- *
- * Note: the Oracle text targets "a player" whose library is milled, but player
- * targeting at cast time is not yet implemented — the controller's own library
- * is always used.
  *
  * @param millAmount - Number of cards milled from the top of the library.
  * @param drawOnHitAmount - Cards drawn when the named card is among the milled cards.
