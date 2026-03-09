@@ -94,13 +94,3 @@ export function requireChoicePayload<T extends ChoicePayload>(
 
   return rawPayload;
 }
-
-export function drawCards(
-  drawOneCard: ResolveEffectHandlerContext["drawOneCard"],
-  playerId: string,
-  amount: number
-): void {
-  for (let index = 0; index < amount; index += 1) {
-    drawOneCard(playerId);
-  }
-}

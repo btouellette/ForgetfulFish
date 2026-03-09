@@ -6,7 +6,6 @@ import { partitionResolvedTargets } from "../commands/validate";
 import { createEvent, type GameEvent, type GameEventPayload } from "../events/event";
 import type { Rng } from "../rng/rng";
 import type { GameState } from "../state/gameState";
-import { captureSnapshot, lkiKey } from "../state/lki";
 import { bumpZcc, zoneKey } from "../state/zones";
 import { resolveOnResolveEffect } from "./effects/handlers";
 import type { ResolveMutableState } from "./effects/types";
@@ -92,6 +91,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
   const mutable: ResolveMutableState = {
     nextStack: state.stack.slice(0, -1),
     nextStackZone: currentStackZone.filter((id) => id !== stackItem.object.id),
+    nextActions: [],
     nextZones: new Map(state.zones),
     nextObjectPool: new Map(state.objectPool),
     nextLkiStore: new Map(state.lkiStore),
@@ -127,88 +127,34 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
 
   mutable.nextZones.set(stackKey, mutable.nextStackZone);
 
-  const markAttemptedDrawFromEmptyLibrary = (playerId: string): void => {
-    mutable.nextPlayers =
-      mutable.nextPlayers[0].id === playerId
-        ? [
-            {
-              ...mutable.nextPlayers[0],
-              attemptedDrawFromEmptyLibrary: true
-            },
-            mutable.nextPlayers[1]
-          ]
-        : [
-            mutable.nextPlayers[0],
-            {
-              ...mutable.nextPlayers[1],
-              attemptedDrawFromEmptyLibrary: true
-            }
-          ];
-    nextVersion += 1;
-  };
-
-  const drawOneCard = (playerId: string): void => {
-    const libraryZone = state.mode.resolveZone(state, "library", playerId);
-    const handZone = state.mode.resolveZone(state, "hand", playerId);
-    const libraryKey = zoneKey(libraryZone);
-    const handKey = zoneKey(handZone);
-
-    const currentLibrary = mutable.nextZones.get(libraryKey) ?? [];
-    const drawnCardId = currentLibrary[0];
-    if (drawnCardId === undefined) {
-      markAttemptedDrawFromEmptyLibrary(playerId);
-      return;
-    }
-
-    mutable.nextZones.set(libraryKey, currentLibrary.slice(1));
-    mutable.nextZones.set(handKey, [...(mutable.nextZones.get(handKey) ?? []), drawnCardId]);
-
-    const drawnObject = mutable.nextObjectPool.get(drawnCardId);
-    if (drawnObject === undefined) {
-      throw new Error(`Cannot draw missing object '${drawnCardId}' during resolution`);
-    }
-
-    const nextOwner = state.mode.determineOwner(playerId, "draw");
-    const movedDrawnObject = bumpZcc({
-      ...drawnObject,
-      owner: nextOwner,
-      controller: playerId,
-      zone: handZone
-    });
-    mutable.nextObjectPool.set(movedDrawnObject.id, movedDrawnObject);
-    mutable.nextLkiStore.set(
-      lkiKey(drawnObject.id, drawnObject.zcc),
-      captureSnapshot(drawnObject, drawnObject, libraryZone)
-    );
-
-    mutable.nextPlayers =
-      mutable.nextPlayers[0].id === playerId
-        ? [
-            {
-              ...mutable.nextPlayers[0],
-              hand: [...mutable.nextPlayers[0].hand, drawnCardId]
-            },
-            mutable.nextPlayers[1]
-          ]
-        : [
-            mutable.nextPlayers[0],
-            {
-              ...mutable.nextPlayers[1],
-              hand: [...mutable.nextPlayers[1].hand, drawnCardId]
-            }
-          ];
-
-    emit({
-      type: "CARD_DRAWN",
-      playerId,
-      cardId: drawnCardId
-    });
+  const enqueueAction = (action: (typeof mutable.nextActions)[number]): void => {
+    mutable.nextActions.push(action);
   };
 
   const pauseWithChoice = (
     choice: NonNullable<GameState["pendingChoice"]>,
     updatedTopItem: GameState["stack"][number]
   ): ResolveStackResult => {
+    if (choice.type !== "CHOOSE_REPLACEMENT" && mutable.nextActions.length > 0) {
+      const prePauseState: GameState = {
+        ...state,
+        version: nextVersion,
+        players: mutable.nextPlayers,
+        stack: mutable.nextStack,
+        zones: mutable.nextZones,
+        objectPool: mutable.nextObjectPool,
+        lkiStore: mutable.nextLkiStore,
+        pendingChoice: null
+      };
+      const postActionState = applyActions(prePauseState, mutable.nextActions, rng, emit);
+      mutable.nextPlayers = postActionState.players;
+      mutable.nextZones = postActionState.zones;
+      mutable.nextObjectPool = postActionState.objectPool;
+      mutable.nextLkiStore = postActionState.lkiStore;
+      mutable.nextStack = postActionState.stack;
+      mutable.nextActions = [];
+    }
+
     const pausedStack = state.stack.slice();
     pausedStack[pausedStack.length - 1] = updatedTopItem;
     mutable.nextZones.set(stackKey, [...currentStackZone]);
@@ -246,7 +192,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
           rng,
           mutable,
           effects: onResolveRegistry,
-          drawOneCard,
+          enqueueAction,
           emit,
           pauseWithChoice
         });
@@ -271,7 +217,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
 
   const pipelineResult = runPipelineWithResult(
     pipelineState,
-    stackItem.effectContext.whiteboard.actions,
+    [...stackItem.effectContext.whiteboard.actions, ...mutable.nextActions],
     {
       replacementSelections: collectReplacementSelections(
         stackItem.effectContext.whiteboard.scratch
@@ -302,7 +248,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     return pauseWithChoice(choice, pausedTopItem);
   }
 
-  const postActionState = applyActions(pipelineState, pipelineResult.actions, rng);
+  const postActionState = applyActions(pipelineState, pipelineResult.actions, rng, emit);
   mutable.nextPlayers = postActionState.players;
   mutable.nextZones = postActionState.zones;
   mutable.nextObjectPool = postActionState.objectPool;
