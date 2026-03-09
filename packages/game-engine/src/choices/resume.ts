@@ -218,6 +218,9 @@ export function resumeChoiceResolution(
     `choice:${state.pendingChoice.id}`,
     command.payload
   );
+  const isPipelineChoice =
+    resumedContext.whiteboard.scratch[`pipelineChoice:${topItem.id}`] === true &&
+    state.pendingChoice.type === "CHOOSE_REPLACEMENT";
   const nextStep = getResumeStepIndex(state, state.pendingChoice) + 1;
 
   const nextStack = state.stack.slice(0, -1);
@@ -225,7 +228,16 @@ export function resumeChoiceResolution(
     ...topItem,
     effectContext: {
       ...resumedContext,
-      cursor: { kind: "step", index: nextStep }
+      cursor: { kind: "step", index: nextStep },
+      whiteboard: isPipelineChoice
+        ? {
+            ...resumedContext.whiteboard,
+            scratch: {
+              ...resumedContext.whiteboard.scratch,
+              [`pipelineChoice:${topItem.id}`]: true
+            }
+          }
+        : resumedContext.whiteboard
     }
   });
 
