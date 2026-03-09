@@ -112,6 +112,7 @@ export interface CreateTokenAction extends GameActionBase {
 export interface ShuffleAction extends GameActionBase {
   type: "SHUFFLE";
   zone: ZoneRef;
+  topObjectId?: ObjectId;
 }
 
 export type GameAction =

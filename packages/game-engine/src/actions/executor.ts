@@ -40,6 +40,11 @@ function setObjectZoneAndMove(
 
   const fromKey = zoneKey(object.zone);
   const toKey = zoneKey(to);
+
+  if (fromKey !== toKey) {
+    state.lkiStore.set(lkiKey(object.id, object.zcc), captureSnapshot(object, object, object.zone));
+  }
+
   const fromZone = state.zones.get(fromKey) ?? [];
   const removedFromSource = removeFromArray(fromZone, objectId);
 
@@ -364,11 +369,15 @@ export function applyActions(
         const key = zoneKey(action.zone);
         const zone = next.zones.get(key) ?? [];
         const shuffled = rng.shuffle(zone);
-        next.zones.set(key, shuffled);
+        const finalOrder =
+          action.topObjectId === undefined || !shuffled.includes(action.topObjectId)
+            ? shuffled
+            : [action.topObjectId, ...shuffled.filter((cardId) => cardId !== action.topObjectId)];
+        next.zones.set(key, finalOrder);
         emit?.({
           type: "SHUFFLED",
           zone: action.zone,
-          resultOrder: shuffled
+          resultOrder: finalOrder
         });
         break;
       }

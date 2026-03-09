@@ -324,20 +324,10 @@ function resolveSearchLibraryShuffleTop(
     ...baseActionFields(context),
     id: actionId(context, "SHUFFLE", "search-library"),
     type: "SHUFFLE",
-    zone: libraryZone
+    zone: libraryZone,
+    ...(selectedCardId === null ? {} : { topObjectId: selectedCardId })
   };
   context.enqueueAction(shuffleAction);
-
-  if (selectedCardId !== null) {
-    enqueueMoveZoneAction(
-      context,
-      selectedCardId,
-      libraryZone,
-      libraryZone,
-      "search-library-put-on-top",
-      0
-    );
-  }
 
   return { kind: "continue" };
 }
