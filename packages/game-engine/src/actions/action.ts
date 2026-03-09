@@ -58,6 +58,8 @@ export interface DealDamageAction extends GameActionBase {
 export interface CounterAction extends GameActionBase {
   type: "COUNTER";
   object: ObjectRef;
+  destination?: ZoneRef;
+  toIndex?: number;
 }
 
 export interface SetControlAction extends GameActionBase {
@@ -110,6 +112,7 @@ export interface CreateTokenAction extends GameActionBase {
 export interface ShuffleAction extends GameActionBase {
   type: "SHUFFLE";
   zone: ZoneRef;
+  topObjectId?: ObjectId;
 }
 
 export type GameAction =

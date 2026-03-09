@@ -1,6 +1,8 @@
 import type { GameAction } from "./action";
+import type { GameEventPayload } from "../events/event";
 import type { Rng } from "../rng/rng";
 import type { GameState } from "../state/gameState";
+import type { GameObject } from "../state/gameObject";
 import { captureSnapshot, lkiKey } from "../state/lki";
 import { bumpZcc, type ZoneRef, zoneKey } from "../state/zones";
 
@@ -26,18 +28,23 @@ function setObjectZoneAndMove(
   to: ZoneRef,
   expectedFrom?: ZoneRef,
   toIndex?: number
-): void {
+): GameObject | undefined {
   const object = state.objectPool.get(objectId);
   if (object === undefined) {
-    return;
+    return undefined;
   }
 
   if (expectedFrom !== undefined && zoneKey(object.zone) !== zoneKey(expectedFrom)) {
-    return;
+    return undefined;
   }
 
   const fromKey = zoneKey(object.zone);
   const toKey = zoneKey(to);
+
+  if (fromKey !== toKey) {
+    state.lkiStore.set(lkiKey(object.id, object.zcc), captureSnapshot(object, object, object.zone));
+  }
+
   const fromZone = state.zones.get(fromKey) ?? [];
   const removedFromSource = removeFromArray(fromZone, objectId);
 
@@ -94,9 +101,11 @@ function setObjectZoneAndMove(
         ? [{ ...receivingPlayer, hand: nextHand }, state.players[1]]
         : [state.players[0], { ...receivingPlayer, hand: nextHand }];
   }
+
+  return moved;
 }
 
-function drawOne(state: GameState, playerId: string): void {
+function drawOne(state: GameState, playerId: string): string | null {
   const libraryZone = state.mode.resolveZone(state, "library", playerId);
   const handZone = state.mode.resolveZone(state, "hand", playerId);
   const library = state.zones.get(zoneKey(libraryZone)) ?? [];
@@ -109,12 +118,12 @@ function drawOne(state: GameState, playerId: string): void {
       playerIndex === 0
         ? [{ ...player, attemptedDrawFromEmptyLibrary: true }, state.players[1]]
         : [state.players[0], { ...player, attemptedDrawFromEmptyLibrary: true }];
-    return;
+    return null;
   }
 
   const topObject = state.objectPool.get(top);
   if (topObject === undefined) {
-    return;
+    return null;
   }
 
   const nextOwner = state.mode.determineOwner(playerId, "draw");
@@ -143,12 +152,15 @@ function drawOne(state: GameState, playerId: string): void {
     playerIndex === 0
       ? [{ ...player, hand: [...player.hand, top] }, state.players[1]]
       : [state.players[0], { ...player, hand: [...player.hand, top] }];
+
+  return top;
 }
 
 export function applyActions(
   state: Readonly<GameState>,
   actions: readonly GameAction[],
-  rng: Rng
+  rng: Rng,
+  emit?: (payload: GameEventPayload) => void
 ): GameState {
   const next: GameState = {
     ...state,
@@ -177,7 +189,14 @@ export function applyActions(
     switch (action.type) {
       case "DRAW": {
         for (let index = 0; index < action.count; index += 1) {
-          drawOne(next, action.playerId);
+          const drawn = drawOne(next, action.playerId);
+          if (drawn !== null) {
+            emit?.({
+              type: "CARD_DRAWN",
+              playerId: action.playerId,
+              cardId: drawn
+            });
+          }
         }
         break;
       }
@@ -214,8 +233,21 @@ export function applyActions(
           const stackZoneObjects = next.zones.get(stackKey) ?? [];
           next.zones.set(stackKey, removeFromArray(stackZoneObjects, targetObject.id));
 
-          const graveyardZone = next.mode.resolveZone(next, "graveyard", targetObject.owner);
-          setObjectZoneAndMove(next, targetObject.id, graveyardZone);
+          const destination =
+            action.destination ?? next.mode.resolveZone(next, "graveyard", targetObject.owner);
+          const moved = setObjectZoneAndMove(
+            next,
+            targetObject.id,
+            destination,
+            stackZone,
+            action.toIndex
+          );
+          if (moved !== undefined) {
+            emit?.({
+              type: "SPELL_COUNTERED",
+              object: { id: moved.id, zcc: moved.zcc }
+            });
+          }
         }
         break;
       }
@@ -336,7 +368,17 @@ export function applyActions(
       case "SHUFFLE": {
         const key = zoneKey(action.zone);
         const zone = next.zones.get(key) ?? [];
-        next.zones.set(key, rng.shuffle(zone));
+        const shuffled = rng.shuffle(zone);
+        const finalOrder =
+          action.topObjectId === undefined || !shuffled.includes(action.topObjectId)
+            ? shuffled
+            : [action.topObjectId, ...shuffled.filter((cardId) => cardId !== action.topObjectId)];
+        next.zones.set(key, finalOrder);
+        emit?.({
+          type: "SHUFFLED",
+          zone: action.zone,
+          resultOrder: finalOrder
+        });
         break;
       }
       default: {
