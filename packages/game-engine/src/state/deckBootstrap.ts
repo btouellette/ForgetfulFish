@@ -121,6 +121,8 @@ export function createInitialGameStateFromDecks(
       const cards = state.zones.get(key) ?? [];
       state.zones.set(key, rng.shuffle(cards));
     }
+
+    state.rngSeed = rng.getSeed();
   }
 
   if (openingDrawCount === 0) {

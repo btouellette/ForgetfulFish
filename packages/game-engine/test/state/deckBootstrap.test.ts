@@ -58,6 +58,39 @@ describe("state/deckBootstrap", () => {
     expect(serializeGameState(first)).toEqual(serializeGameState(second));
   });
 
+  it("advances rngSeed when bootstrap shuffles libraries", () => {
+    const shuffled = createInitialGameStateFromDecks("p1", "p2", {
+      id: "deck-bootstrap-rng-advanced",
+      rngSeed: "seed-rng-advanced",
+      decks: {
+        playerOne: {
+          cards: [{ cardDefId: "island", count: 3 }]
+        },
+        playerTwo: {
+          cards: [{ cardDefId: "island", count: 3 }]
+        }
+      },
+      shuffleLibraries: true
+    });
+
+    const notShuffled = createInitialGameStateFromDecks("p1", "p2", {
+      id: "deck-bootstrap-rng-not-advanced",
+      rngSeed: "seed-rng-advanced",
+      decks: {
+        playerOne: {
+          cards: [{ cardDefId: "island", count: 3 }]
+        },
+        playerTwo: {
+          cards: [{ cardDefId: "island", count: 3 }]
+        }
+      },
+      shuffleLibraries: false
+    });
+
+    expect(shuffled.rngSeed).not.toBe("seed-rng-advanced");
+    expect(notShuffled.rngSeed).toBe("seed-rng-advanced");
+  });
+
   it("supports command-driven smoke flow without direct state mutations", () => {
     const state = createInitialGameStateFromDecks("p1", "p2", {
       id: "deck-bootstrap-smoke",
