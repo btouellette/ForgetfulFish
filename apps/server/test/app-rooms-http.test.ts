@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { createInitialGameState } from "@forgetful-fish/game-engine";
+import {
+  createInitialGameStateFromDecks,
+  createUniformDeckDefinition
+} from "@forgetful-fish/game-engine";
 
 import { buildServer } from "../src/app";
 import {
@@ -493,9 +496,14 @@ describe("server room routes", () => {
     expect(retryStartResponse.json()).toEqual(startResponse.json());
 
     const startedGameId: string = startResponse.json().gameId;
-    const expectedInitialState = createInitialGameState("owner-1", "user-2", {
+    const expectedInitialState = createInitialGameStateFromDecks("owner-1", "user-2", {
       id: startedGameId,
-      rngSeed: `seed-${startedGameId}`
+      rngSeed: `seed-${startedGameId}`,
+      decks: {
+        playerOne: createUniformDeckDefinition("island", 20),
+        playerTwo: createUniformDeckDefinition("island", 20)
+      },
+      openingDrawCount: 0
     });
 
     const room = roomStore.inspectRoom(roomId);

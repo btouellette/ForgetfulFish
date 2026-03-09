@@ -1,4 +1,7 @@
-import { createInitialGameState } from "@forgetful-fish/game-engine";
+import {
+  createInitialGameStateFromDecks,
+  createUniformDeckDefinition
+} from "@forgetful-fish/game-engine";
 
 import { buildServer } from "../../src/app";
 
@@ -218,12 +221,17 @@ export function createInMemoryRoomStore() {
       }
 
       const stateVersion = 1;
-      const gameState = createInitialGameState(
+      const gameState = createInitialGameStateFromDecks(
         firstParticipant[1].userId,
         secondParticipant[1].userId,
         {
           id: gameId,
-          rngSeed: `seed-${gameId}`
+          rngSeed: `seed-${gameId}`,
+          decks: {
+            playerOne: createUniformDeckDefinition("island", 20),
+            playerTwo: createUniformDeckDefinition("island", 20)
+          },
+          openingDrawCount: 0
         }
       );
       room.gameState = gameState;

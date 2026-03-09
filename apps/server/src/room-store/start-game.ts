@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 
 import { prisma } from "@forgetful-fish/database";
-import { createInitialGameState } from "@forgetful-fish/game-engine";
+import {
+  createInitialGameStateFromDecks,
+  createUniformDeckDefinition
+} from "@forgetful-fish/game-engine";
 
 import { toPersistedGameState } from "./state-persistence";
 import type { StartGameResult } from "./types";
@@ -82,10 +85,19 @@ export async function startGameInDatabase(
   }
 
   const gameId = randomUUID();
-  const initialState = createInitialGameState(firstParticipant.userId, secondParticipant.userId, {
-    id: gameId,
-    rngSeed: randomUUID()
-  });
+  const initialState = createInitialGameStateFromDecks(
+    firstParticipant.userId,
+    secondParticipant.userId,
+    {
+      id: gameId,
+      rngSeed: randomUUID(),
+      decks: {
+        playerOne: createUniformDeckDefinition("island", 20),
+        playerTwo: createUniformDeckDefinition("island", 20)
+      },
+      openingDrawCount: 0
+    }
+  );
   const serializedInitialState = toPersistedGameState(initialState);
   const stateVersion = 1;
 

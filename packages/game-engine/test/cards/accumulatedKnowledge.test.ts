@@ -193,7 +193,7 @@ describe("cards/accumulated-knowledge", () => {
     expect(resolved.nextState.players[0].hand.length).toBe(handBefore + 1);
   });
 
-  it("counts cards by Accumulated Knowledge name across definition ids", () => {
+  it("counts only matching card definition ids in graveyard", () => {
     const alternateAccumulatedKnowledge: CardDefinition = {
       ...accumulatedKnowledgeCardDefinition,
       id: "accumulated-knowledge-alt"
@@ -224,7 +224,7 @@ describe("cards/accumulated-knowledge", () => {
       );
       const resolved = resolveTopSpellByPassing(cast.nextState);
 
-      expect(resolved.nextState.players[0].hand.length).toBe(handBefore + 1);
+      expect(resolved.nextState.players[0].hand.length).toBe(handBefore);
     } finally {
       if (hadPrevious && previousDefinition !== undefined) {
         cardRegistry.set(alternateAccumulatedKnowledge.id, previousDefinition);

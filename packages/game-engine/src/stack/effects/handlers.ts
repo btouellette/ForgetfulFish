@@ -346,8 +346,10 @@ function resolveNameMillDrawOnHit(
 
         const namedCardLower = payload.cardName.trim().toLowerCase();
 
-        const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
-        const graveyardZone = state.mode.resolveZone(state, "graveyard", stackItem.controller);
+        const playerTarget = stackItem.targets.find((target) => target.kind === "player");
+        const milledPlayerId = playerTarget?.playerId ?? stackItem.controller;
+        const libraryZone = state.mode.resolveZone(state, "library", milledPlayerId);
+        const graveyardZone = state.mode.resolveZone(state, "graveyard", milledPlayerId);
         const libraryKey = zoneKey(libraryZone);
         const graveyardKey = zoneKey(graveyardZone);
 
@@ -459,15 +461,14 @@ function resolveDrawByGraveyardCopyCount(
   const { stackItem, state, mutable, drawOneCard, cardDefinition } = context;
   const graveyardZone = state.mode.resolveZone(state, "graveyard", stackItem.controller);
   const graveyardCards = mutable.nextZones.get(zoneKey(graveyardZone)) ?? [];
-  const resolvingCardName = cardDefinition.name;
+  const resolvingCardDefId = cardDefinition.id;
   const accumulatedKnowledgeCount = graveyardCards.reduce((count, objectId) => {
     const graveyardObject = mutable.nextObjectPool.get(objectId);
     if (graveyardObject === undefined) {
       return count;
     }
 
-    const graveyardDefinition = cardRegistry.get(graveyardObject.cardDefId);
-    return graveyardDefinition?.name === resolvingCardName ? count + 1 : count;
+    return graveyardObject.cardDefId === resolvingCardDefId ? count + 1 : count;
   }, 0);
 
   drawCards(drawOneCard, stackItem.controller, accumulatedKnowledgeCount + spec.bonus);
