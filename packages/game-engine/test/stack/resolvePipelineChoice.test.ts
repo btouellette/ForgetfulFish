@@ -346,4 +346,72 @@ describe("stack/resolve pipeline choice integration", () => {
     expect(chooseReplacement.pendingChoice).toBeNull();
     expect(chooseReplacement.nextState.stack).toHaveLength(0);
   });
+
+  it("propagates stack mutations from pipeline actions", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "resolve-pipeline-stack-mutations",
+      rngSeed: "resolve-pipeline-stack-mutations-seed"
+    });
+
+    const stackZone = state.mode.resolveZone(state, "stack", "p1");
+    const stackKey = zoneKey(stackZone);
+
+    const bottomObject = makeStackSpellObject("obj-bottom-spell");
+    state.objectPool.set(bottomObject.id, bottomObject);
+    const topObject = makeStackSpellObject("obj-top-spell");
+    state.objectPool.set(topObject.id, topObject);
+    state.zones.set(stackKey, [bottomObject.id, topObject.id]);
+
+    const bottomStackItem: StackItem = {
+      id: "stack-item-bottom",
+      object: { id: bottomObject.id, zcc: bottomObject.zcc },
+      controller: "p1",
+      targets: [],
+      effectContext: {
+        stackItemId: "stack-item-bottom",
+        source: { id: bottomObject.id, zcc: bottomObject.zcc },
+        controller: "p1",
+        targets: [],
+        cursor: { kind: "start" },
+        whiteboard: {
+          actions: [],
+          scratch: {}
+        }
+      }
+    };
+
+    const topStackItem: StackItem = {
+      id: "stack-item-top",
+      object: { id: topObject.id, zcc: topObject.zcc },
+      controller: "p1",
+      targets: [],
+      effectContext: {
+        stackItemId: "stack-item-top",
+        source: { id: topObject.id, zcc: topObject.zcc },
+        controller: "p1",
+        targets: [],
+        cursor: { kind: "start" },
+        whiteboard: {
+          actions: [
+            {
+              id: "counter-bottom",
+              type: "COUNTER",
+              source: { id: topObject.id, zcc: topObject.zcc },
+              controller: "p1",
+              object: { id: bottomObject.id, zcc: bottomObject.zcc },
+              appliedReplacements: []
+            }
+          ],
+          scratch: {}
+        }
+      }
+    };
+
+    state.stack = [bottomStackItem, topStackItem];
+
+    const resolved = resolveTopOfStack(state, new Rng(state.rngSeed));
+
+    expect(resolved.state.stack).toHaveLength(0);
+    expect(resolved.state.zones.get(stackKey)).toEqual([]);
+  });
 });

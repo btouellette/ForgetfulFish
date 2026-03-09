@@ -62,10 +62,16 @@ function setObjectZoneAndMove(
     state.zones.set(toKey, nextTo);
   }
 
-  const moved = bumpZcc({
-    ...object,
-    zone: to
-  });
+  const moved =
+    fromKey === toKey
+      ? {
+          ...object,
+          zone: to
+        }
+      : bumpZcc({
+          ...object,
+          zone: to
+        });
   state.objectPool.set(objectId, moved);
 
   state.players = [
@@ -335,7 +341,7 @@ export function applyActions(
       }
       default: {
         const neverAction: never = action;
-        throw new Error(`unsupported action type '${String(neverAction)}'`);
+        throw new Error(`unsupported action payload '${JSON.stringify(neverAction)}'`);
       }
     }
   }

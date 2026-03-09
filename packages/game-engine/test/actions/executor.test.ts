@@ -139,6 +139,8 @@ describe("actions/executor", () => {
     );
 
     expect(next.zones.get(libraryKey)).toEqual(["obj-a"]);
+    const moved = next.objectPool.get("obj-a");
+    expect(moved?.zcc).toBe(0);
   });
 
   it("ignores MOVE_ZONE when object is no longer in expected from-zone", () => {

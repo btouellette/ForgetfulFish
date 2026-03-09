@@ -307,6 +307,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
   mutable.nextZones = postActionState.zones;
   mutable.nextObjectPool = postActionState.objectPool;
   mutable.nextLkiStore = postActionState.lkiStore;
+  mutable.nextStack = postActionState.stack;
 
   const movedObject = bumpZcc({
     ...object,
