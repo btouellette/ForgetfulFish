@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createGameSessionAdapter } from "./game-session-adapter";
+import { createGameSessionAdapter, toSessionStatusMessage } from "./game-session-adapter";
+import { ServerApiError } from "./server-api";
 
 describe("createGameSessionAdapter", () => {
   it("delegates websocket lifecycle to adapter-owned realtime client", () => {
@@ -141,5 +142,23 @@ describe("createGameSessionAdapter", () => {
       stateVersion: 3,
       lastAppliedEventSeq: 7
     });
+  });
+});
+
+describe("toSessionStatusMessage", () => {
+  it("maps unauthorized and forbidden server errors to clear user messages", () => {
+    expect(toSessionStatusMessage(new ServerApiError(401, "server request failed (401)"))).toBe(
+      "Session expired. Please verify your sign-in again."
+    );
+    expect(toSessionStatusMessage(new ServerApiError(403, "server request failed (403)"))).toBe(
+      "You are no longer authorized for this room."
+    );
+  });
+
+  it("returns null for non-session failures", () => {
+    expect(
+      toSessionStatusMessage(new ServerApiError(409, "server request failed (409)"))
+    ).toBeNull();
+    expect(toSessionStatusMessage(new Error("network"))).toBeNull();
   });
 });
