@@ -7,12 +7,29 @@ import type {
 
 import { createRoomRealtimeClient, type RoomRealtimeStatus } from "./room-realtime";
 import {
+  ServerApiError,
   getRoomLobby,
   joinRoom,
   setRoomReady,
   startRoomGame,
   submitGameplayCommand
 } from "./server-api";
+
+export function toSessionStatusMessage(error: unknown) {
+  if (!(error instanceof ServerApiError)) {
+    return null;
+  }
+
+  if (error.status === 401) {
+    return "Session expired. Please verify your sign-in again.";
+  }
+
+  if (error.status === 403) {
+    return "You are no longer authorized for this room.";
+  }
+
+  return null;
+}
 
 type GameSessionAdapterApi = {
   joinRoom: typeof joinRoom;

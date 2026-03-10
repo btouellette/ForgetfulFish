@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { createGameSessionAdapter } from "../../../lib/game-session-adapter";
+import {
+  createGameSessionAdapter,
+  toSessionStatusMessage
+} from "../../../lib/game-session-adapter";
 import {
   disconnectedLobbyPollIntervalMs,
   getReadyUpdateStatusMessage,
@@ -131,6 +134,12 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
           }
         }
 
+        const sessionStatusMessage = toSessionStatusMessage(error);
+        if (sessionStatusMessage) {
+          setStatus(`Join failed: ${sessionStatusMessage}`);
+          return;
+        }
+
         const message = error instanceof Error ? error.message : "unknown error";
         setStatus(`Join failed: ${message}`);
       }
@@ -215,6 +224,12 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
         return;
       }
 
+      const sessionStatusMessage = toSessionStatusMessage(error);
+      if (sessionStatusMessage) {
+        setStatus(`Ready update failed: ${sessionStatusMessage}`);
+        return;
+      }
+
       const message = error instanceof Error ? error.message : "unknown error";
       setStatus(`Ready update failed: ${message}`);
     } finally {
@@ -251,6 +266,12 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
       await refreshLobby();
     } catch (error) {
       if (!isMountedRef.current) {
+        return;
+      }
+
+      const sessionStatusMessage = toSessionStatusMessage(error);
+      if (sessionStatusMessage) {
+        setStatus(`Start failed: ${sessionStatusMessage}`);
         return;
       }
 
