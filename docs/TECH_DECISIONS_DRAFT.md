@@ -16,6 +16,9 @@ Status: defaults are approved in `docs/DECISIONS_LOG.md`.
 - Next.js handles UI/auth surfaces only.
 - No Next.js Server Actions for game-domain mutations.
 - Web-server communication must use explicit API/WebSocket contracts.
+- Client state is split by cadence and responsibility:
+  - Zustand for session/authoritative gameplay state consumed by React components.
+  - Refs + `requestAnimationFrame` for high-frequency interaction/visual effects (non-persistent).
 
 ## Why This Stack
 - Fast iteration with shared TypeScript types.

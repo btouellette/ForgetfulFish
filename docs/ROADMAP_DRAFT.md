@@ -82,6 +82,87 @@
 - [x] Unauthorized and non-participant clients cannot receive room events.
 - [x] WS payload contracts are schema-validated and covered by tests.
 
+## Milestone 2.5 - UI Integration Foundation (Next)
+
+Goal: wire the web app to authoritative server gameplay endpoints with a durable client architecture,
+while expanding browser coverage to include deterministic manual UI verification flows.
+
+### Phase A - Integration Contract Stabilization
+
+- [ ] Lock the initial gameplay transport contract for web clients:
+  - [ ] HTTP command route: `POST /api/rooms/:id/commands`
+  - [ ] Room realtime channel: `GET /ws/rooms/:roomId`
+  - [ ] Versioned message envelopes from `@forgetful-fish/realtime-contract`
+- [ ] Add a single web-side "game session adapter" in `apps/web/lib` that owns:
+  - [ ] websocket connect/reconnect lifecycle
+  - [ ] command submission API
+  - [ ] server snapshot/event normalization into a UI view model
+- [ ] Keep server authoritative: no rules resolution in client code; client only renders projected state and submits legal intents.
+
+### Phase B - Frontend Stack Baseline for Arena-Style UX (Non-3D)
+
+- [ ] Keep Next.js + React as the product shell (routing, auth, deployment alignment).
+- [ ] Adopt a two-lane rendering strategy:
+  - [ ] Lane 1 (now): semantic DOM + CSS + motion primitives for lobby and gameplay scaffolding
+  - [ ] Lane 2 (later): optional canvas battlefield layer for high-density interaction zones only
+- [ ] Pick an interaction state model optimized for rapid realtime updates and optimistic local affordances.
+- [ ] Define UX constraints now (target drag latency, animation budget, reconnect/resync behavior) and enforce them in tests.
+
+### Phase C - Gameplay UI Skeleton (No Full Visual Polish Yet)
+
+- [ ] Build a minimal but structured gameplay surface under `apps/web/app/play/[roomId]`:
+  - [ ] zones panel (library, hand, battlefield, graveyard summaries)
+  - [ ] priority/status rail (whose priority, pending choice, stack depth)
+  - [ ] command panel for legal actions surfaced from server responses
+- [ ] Separate adapter state from presentational components to avoid coupling transport concerns into visual components.
+- [ ] Preserve current lobby/start flow while extending the same route with gameplay-state rendering after start.
+
+### Phase D - Test Expansion (Automated + Manual Browser Validation)
+
+- [ ] Extend Playwright E2E beyond lobby sync:
+  - [ ] command submission roundtrip updates both clients consistently
+  - [ ] reconnect during pending choice rehydrates canonical server state
+  - [ ] invalid/expired session behavior remains safe and user-visible
+- [ ] Add a manual verification test pack in `e2e/manual/` with deterministic fixtures:
+  - [ ] two-browser local script for observer-driven interaction checks
+  - [ ] documented pass/fail checklist for UX-critical flows
+  - [ ] artifact capture (trace/video/screenshots) for regression review
+- [ ] Keep all manual scenarios reproducible from one command and fixed test users/seed data.
+
+### Phase E - Execution Guardrails
+
+- [ ] Test-first for each behavior increment (failing test before implementation).
+- [ ] No client-side rule authority; all gameplay legality validated by server/game-engine.
+- [ ] Keep API/WS contracts versioned and parsed at boundaries.
+- [ ] Do not block on final visual system decisions before shipping integration scaffolding.
+
+### Milestone 2.5 Exit Criteria
+
+- [ ] Web client can render authoritative gameplay session state from server transport without full page refresh.
+- [ ] Two-client command/action sync is covered by automated browser tests.
+- [ ] Manual UI test pack exists, is documented, and is runnable by contributors.
+- [ ] Integration architecture is ready for higher-fidelity interaction work without rewrites.
+
+### Decision Gates Before Implementation
+
+- [x] Confirm primary interaction rendering path for gameplay launch:
+  - [ ] DOM-first only (defer canvas)
+  - [x] hybrid DOM + canvas from first gameplay slice
+- [x] Confirm animation/motion library baseline: Framer Motion.
+- [x] Confirm manual test artifact policy: failure-only capture by default.
+- [x] Confirm state model for web gameplay session adapter: Zustand for session/authoritative state, refs + RAF for interaction/visual effects.
+
+#### Chosen Direction (2026-03-10)
+
+- Build the first gameplay integration slice with a hybrid renderer:
+  - keep React/DOM for shell, controls, overlays, and accessibility surfaces
+  - use canvas for battlefield/card-surface rendering and high-frequency interactions
+- Partition client state by update frequency and authority:
+  - use Zustand for session/authoritative gameplay state consumed by React UI
+  - keep drag/hover/targeting and visual FX in refs + RAF (non-persistent presentation lane)
+- Keep Framer Motion as the initial motion system for DOM-layer transitions.
+- Keep manual test artifacts on failure by default (trace/video/screenshots), with optional debug runs for always-on capture.
+
 ## Milestone 3 - Core Rules Loop
 
 - [ ] Build authoritative engine skeleton with deterministic event log.

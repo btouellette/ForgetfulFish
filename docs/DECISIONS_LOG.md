@@ -100,6 +100,17 @@
 - Phase 0 now plans mode-routed logical zones (`resolveZone` + `createInitialZones`) and zone storage keyed by `ZoneRef`/`ZoneKey`, instead of fixed `{ library, graveyard, ... }` fields.
 - Shared-deck behavior remains a concrete baseline mode, with an added split-zone conformance test fixture to prove the kernel stays mode-agnostic.
 
+## 2026-03-10 UI Integration Foundation Decisions
+
+- First gameplay integration slice uses a hybrid renderer in browser:
+  - React/DOM remains the shell for controls, text, overlays, and accessible interaction affordances.
+  - Canvas rendering is included from the first slice for battlefield/card-surface interaction zones.
+- Initial motion library baseline remains Framer Motion for DOM-layer animation flows.
+- Manual UI verification artifact policy defaults to failure-only capture (trace/video/screenshots), with optional always-capture debug runs.
+- Client state model is partitioned by update frequency:
+  - Zustand stores session/authoritative gameplay state used by React UI surfaces.
+  - High-frequency interaction and visual effects (drag/hover/targeting/FX) remain non-persistent refs + RAF state outside Zustand.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.
