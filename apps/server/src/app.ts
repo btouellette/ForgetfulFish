@@ -15,6 +15,8 @@ import type WebSocket from "ws";
 
 import { databaseRoomStore, type RoomStore } from "./room-store";
 import {
+  gameplayCommandBodySchema,
+  gameplayCommandRouteResponseSchema,
   gameStartedResponseSchema,
   joinRoomParamsSchema,
   meResponseSchema,
@@ -541,6 +543,56 @@ export function buildServer({
       const payload = roomReadyResponseSchema.parse(readyResult);
       await broadcastRoomLobbyUpdate(params.id, request.actor.userId);
       return payload;
+    }
+  );
+
+  app.post(
+    "/api/rooms/:id/commands",
+    {
+      preHandler: authorizeRequest
+    },
+    async (request, reply) => {
+      if (!request.actor) {
+        return reply.code(401).send({ error: "unauthorized" });
+      }
+
+      const params = joinRoomParamsSchema.parse(request.params);
+      const body = gameplayCommandBodySchema.safeParse(request.body);
+
+      if (!body.success) {
+        return reply.code(400).send({ error: "invalid_gameplay_command_payload" });
+      }
+
+      const applyResult = await roomStore.applyCommand(
+        params.id,
+        request.actor.userId,
+        body.data.command
+      );
+
+      if (applyResult.status === "not_found") {
+        return reply.code(404).send({ error: "room_or_game_not_found" });
+      }
+
+      if (applyResult.status === "forbidden") {
+        return reply.code(403).send({ error: "forbidden" });
+      }
+
+      if (applyResult.status === "conflict") {
+        return reply.code(409).send({ error: "conflict" });
+      }
+
+      if (applyResult.status === "invalid_command") {
+        return reply.code(409).send({ error: "invalid_command", message: applyResult.message });
+      }
+
+      return gameplayCommandRouteResponseSchema.parse({
+        roomId: applyResult.roomId,
+        gameId: applyResult.gameId,
+        stateVersion: applyResult.stateVersion,
+        lastAppliedEventSeq: applyResult.lastAppliedEventSeq,
+        pendingChoice: applyResult.pendingChoice,
+        emittedEvents: applyResult.emittedEvents
+      });
     }
   );
 

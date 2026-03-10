@@ -1,3 +1,4 @@
+import { applyGameplayCommandInDatabase } from "./apply-command";
 import { createRoomInDatabase } from "./create-room";
 import { getRoomLobbyInDatabase } from "./get-lobby";
 import { joinRoomInDatabase } from "./join-room";
@@ -21,5 +22,6 @@ export const databaseRoomStore: RoomStore = {
   joinRoom: joinRoomInDatabase,
   getLobby: getRoomLobbyInDatabase,
   setReady: setRoomReadyInDatabase,
-  startGame: startGameInDatabase
+  startGame: startGameInDatabase,
+  applyCommand: applyGameplayCommandInDatabase
 };
