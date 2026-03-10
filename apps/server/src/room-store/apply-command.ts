@@ -1,4 +1,5 @@
 import { prisma } from "@forgetful-fish/database";
+import type { Prisma } from "@forgetful-fish/database";
 import {
   processCommand,
   Rng,
@@ -12,9 +13,30 @@ import { gameplayCommandSchema } from "@forgetful-fish/realtime-contract";
 import { fromPersistedGameState, toPersistedGameState } from "./state-persistence";
 import type { ApplyGameplayCommandResult } from "./types";
 
-function toEventMetadata(events: readonly GameEvent[]): Array<{ seq: number; eventType: string }> {
-  return events.map((event) => ({
-    seq: event.seq,
+function toPersistedEventPayload(event: GameEvent, persistedSeq: number): Prisma.InputJsonValue {
+  const payload = JSON.parse(JSON.stringify(event)) as Record<string, unknown>;
+  payload.seq = persistedSeq;
+
+  const payloadId = payload.id;
+
+  if (typeof payloadId === "string") {
+    const separatorIndex = payloadId.lastIndexOf(":");
+
+    if (separatorIndex > 0 && separatorIndex + 1 < payloadId.length) {
+      payload.id = `${payloadId.slice(0, separatorIndex + 1)}${persistedSeq}`;
+    }
+  }
+
+  const serialized: Prisma.InputJsonValue = JSON.parse(JSON.stringify(payload));
+  return serialized;
+}
+
+function toEventMetadata(
+  events: readonly GameEvent[],
+  firstPersistedSeq: number
+): Array<{ seq: number; eventType: string }> {
+  return events.map((event, index) => ({
+    seq: firstPersistedSeq + index,
     eventType: event.type
   }));
 }
@@ -186,10 +208,7 @@ export async function applyGameplayCommandInDatabase(
       },
       game: {
         select: {
-          id: true,
-          state: true,
-          stateVersion: true,
-          lastAppliedEventSeq: true
+          id: true
         }
       }
     }
@@ -201,6 +220,8 @@ export async function applyGameplayCommandInDatabase(
     };
   }
 
+  const roomGame = room.game;
+
   const isParticipant = room.participants.some((participant) => participant.userId === userId);
 
   if (!isParticipant) {
@@ -209,60 +230,84 @@ export async function applyGameplayCommandInDatabase(
     };
   }
 
-  let applied:
-    | {
-        nextState: GameState;
-        newEvents: GameEvent[];
-        pendingChoice: PendingChoice | null;
-      }
-    | undefined;
-
   try {
-    const currentState = fromPersistedGameState(room.game.state);
-    applied = applyCommandToState(currentState, command);
+    const result = await prisma.$transaction(async (tx): Promise<ApplyGameplayCommandResult> => {
+      const game = await tx.game.findUnique({
+        where: {
+          id: roomGame.id
+        },
+        select: {
+          id: true,
+          state: true,
+          stateVersion: true,
+          lastAppliedEventSeq: true
+        }
+      });
+
+      if (!game) {
+        return {
+          status: "not_found"
+        };
+      }
+
+      const currentState = fromPersistedGameState(game.state);
+      const applied = applyCommandToState(currentState, command);
+      const nextState = applied.nextState;
+      const emittedEvents = applied.newEvents;
+      const firstPersistedEventSeq = game.lastAppliedEventSeq + 1;
+      const nextStateVersion = game.stateVersion + 1;
+      const nextLastAppliedEventSeq = game.lastAppliedEventSeq + emittedEvents.length;
+      const persistedState = toPersistedGameState(nextState);
+
+      const updated = await tx.game.updateMany({
+        where: {
+          id: game.id,
+          stateVersion: game.stateVersion,
+          lastAppliedEventSeq: game.lastAppliedEventSeq
+        },
+        data: {
+          state: persistedState,
+          stateVersion: nextStateVersion,
+          lastAppliedEventSeq: nextLastAppliedEventSeq
+        }
+      });
+
+      if (updated.count !== 1) {
+        return {
+          status: "conflict"
+        };
+      }
+
+      if (emittedEvents.length > 0) {
+        await tx.gameEvent.createMany({
+          data: emittedEvents.map((event, index) => {
+            const persistedSeq = firstPersistedEventSeq + index;
+
+            return {
+              gameId: game.id,
+              seq: persistedSeq,
+              eventType: event.type,
+              payload: toPersistedEventPayload(event, persistedSeq),
+              schemaVersion: event.schemaVersion,
+              causedByUserId: userId
+            };
+          })
+        });
+      }
+
+      return {
+        status: "applied",
+        roomId: room.id,
+        gameId: game.id,
+        stateVersion: nextStateVersion,
+        lastAppliedEventSeq: nextLastAppliedEventSeq,
+        pendingChoice: toPersistedPendingChoice(applied.pendingChoice),
+        emittedEvents: toEventMetadata(emittedEvents, firstPersistedEventSeq)
+      };
+    });
+
+    return result;
   } catch (error) {
     return toInvalidCommandResult(error);
   }
-
-  const nextState = applied.nextState;
-  const emittedEvents = applied.newEvents;
-  const nextStateVersion = room.game.stateVersion + 1;
-  const nextLastAppliedEventSeq = room.game.lastAppliedEventSeq + emittedEvents.length;
-  const persistedState = toPersistedGameState(nextState);
-
-  await prisma.$transaction(async (tx) => {
-    await tx.game.update({
-      where: {
-        id: room.game!.id
-      },
-      data: {
-        state: persistedState,
-        stateVersion: nextStateVersion,
-        lastAppliedEventSeq: nextLastAppliedEventSeq
-      }
-    });
-
-    if (emittedEvents.length > 0) {
-      await tx.gameEvent.createMany({
-        data: emittedEvents.map((event, index) => ({
-          gameId: room.game!.id,
-          seq: room.game!.lastAppliedEventSeq + index + 1,
-          eventType: event.type,
-          payload: JSON.parse(JSON.stringify(event)),
-          schemaVersion: event.schemaVersion,
-          causedByUserId: userId
-        }))
-      });
-    }
-  });
-
-  return {
-    status: "applied",
-    roomId: room.id,
-    gameId: room.game.id,
-    stateVersion: nextStateVersion,
-    lastAppliedEventSeq: nextLastAppliedEventSeq,
-    pendingChoice: toPersistedPendingChoice(applied.pendingChoice),
-    emittedEvents: toEventMetadata(emittedEvents)
-  };
 }

@@ -75,6 +75,7 @@ export type ApplyGameplayCommandResult =
     }
   | { status: "not_found" }
   | { status: "forbidden" }
+  | { status: "conflict" }
   | { status: "invalid_command"; message: string };
 
 export type RoomStore = {

@@ -720,13 +720,13 @@ describe("server room routes", () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({
+    expect(response.json()).toEqual({
       roomId,
       gameId: startResponse.json().gameId,
       stateVersion: 2,
       lastAppliedEventSeq: 1,
       pendingChoice: null,
-      emittedEvents: [{ eventType: "PRIORITY_PASSED" }]
+      emittedEvents: [{ seq: 1, eventType: "PRIORITY_PASSED" }]
     });
 
     const roomAfter = roomStore.inspectRoom(roomId);
@@ -735,6 +735,39 @@ describe("server room routes", () => {
     expect(roomAfter?.gameEvents).toHaveLength(2);
     expect(roomAfter?.gameEvents[1]?.seq).toBe(1);
     expect(roomAfter?.gameEvents[1]?.eventType).toBe("PRIORITY_PASSED");
+
+    const persistedPayload = roomAfter?.gameEvents[1]?.payload;
+
+    if (
+      typeof persistedPayload === "object" &&
+      persistedPayload !== null &&
+      "seq" in persistedPayload
+    ) {
+      expect(persistedPayload.seq).toBe(1);
+    }
+  });
+
+  it("returns 409 when room store reports command conflict", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await createRoomAs(roomStore, "owner-1");
+    roomStore.setForceCommandConflict(true);
+
+    try {
+      const response = await injectAs(roomStore, "owner-1", {
+        method: "POST",
+        url: `/api/rooms/${roomId}/commands`,
+        payload: {
+          command: {
+            type: "PASS_PRIORITY"
+          }
+        }
+      });
+
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toEqual({ error: "conflict" });
+    } finally {
+      roomStore.setForceCommandConflict(false);
+    }
   });
 
   it("returns 403 when non-participant applies gameplay command", async () => {

@@ -30,8 +30,29 @@ export function createInMemoryRoomStore() {
   const rooms = new Map<string, RoomState>();
   let nextRoomIndex = 1;
   let nextGameIndex = 1;
+  let forceCommandConflict = false;
+
+  const toPersistedEventPayload = (event: GameEvent, persistedSeq: number): unknown => {
+    const payload = JSON.parse(JSON.stringify(event)) as Record<string, unknown>;
+    payload.seq = persistedSeq;
+
+    const payloadId = payload.id;
+
+    if (typeof payloadId === "string") {
+      const separatorIndex = payloadId.lastIndexOf(":");
+
+      if (separatorIndex > 0 && separatorIndex + 1 < payloadId.length) {
+        payload.id = `${payloadId.slice(0, separatorIndex + 1)}${persistedSeq}`;
+      }
+    }
+
+    return payload;
+  };
 
   return {
+    setForceCommandConflict(enabled: boolean) {
+      forceCommandConflict = enabled;
+    },
     async createRoom(ownerUserId: string) {
       const roomId = `00000000-0000-4000-8000-${String(nextRoomIndex).padStart(12, "0")}`;
       nextRoomIndex += 1;
@@ -268,6 +289,12 @@ export function createInMemoryRoomStore() {
       };
     },
     async applyCommand(roomId: string, userId: string, command: unknown) {
+      if (forceCommandConflict) {
+        return {
+          status: "conflict" as const
+        };
+      }
+
       const room = rooms.get(roomId);
 
       if (!room || room.gameId === null || room.gameState === null) {
@@ -323,7 +350,7 @@ export function createInMemoryRoomStore() {
           eventType: event.type,
           schemaVersion: event.schemaVersion,
           causedByUserId: userId,
-          payload: event
+          payload: toPersistedEventPayload(event, priorSeq + index + 1)
         }))
       );
 
@@ -334,8 +361,8 @@ export function createInMemoryRoomStore() {
         stateVersion: room.stateVersion,
         lastAppliedEventSeq: room.lastAppliedEventSeq,
         pendingChoice: result.pendingChoice,
-        emittedEvents: result.newEvents.map((event) => ({
-          seq: event.seq,
+        emittedEvents: result.newEvents.map((event, index) => ({
+          seq: priorSeq + index + 1,
           eventType: event.type
         }))
       };

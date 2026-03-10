@@ -577,6 +577,10 @@ export function buildServer({
         return reply.code(403).send({ error: "forbidden" });
       }
 
+      if (applyResult.status === "conflict") {
+        return reply.code(409).send({ error: "conflict" });
+      }
+
       if (applyResult.status === "invalid_command") {
         return reply.code(409).send({ error: "invalid_command", message: applyResult.message });
       }
