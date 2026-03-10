@@ -19,7 +19,7 @@
 
 ## Milestone 2 - Realtime Gameplay Skeleton
 
-- [x] Add room-scoped WebSocket endpoint: `GET /ws/rooms/:roomId`.
+- [x] Add room-scoped WebSocket endpoint: `GET /ws/rooms/:id`.
 - [x] Enforce auth/session and participant-only subscription at handshake.
 - [x] Define versioned WS envelopes (`type`, `schemaVersion`, `data`) and Zod-validated payloads.
 - [x] Broadcast authoritative room updates (`room_lobby_updated`, `game_started`) to both players.
@@ -31,7 +31,7 @@
 #### Phase A - Transport and Handshake
 
 - [x] Add Fastify WebSocket support in `apps/server`.
-- [x] Implement `GET /ws/rooms/:roomId` upgrade route.
+- [x] Implement `GET /ws/rooms/:id` upgrade route.
 - [x] Reuse existing session cookie parsing + session lookup for WS auth.
 - [x] Reject unauthorized sockets and non-participant room access.
 - [x] Return initial room snapshot immediately after successful connect.
@@ -91,7 +91,7 @@ while expanding browser coverage to include deterministic manual UI verification
 
 - [ ] Lock the initial gameplay transport contract for web clients:
   - [ ] HTTP command route: `POST /api/rooms/:id/commands`
-  - [ ] Room realtime channel: `GET /ws/rooms/:roomId`
+  - [ ] Room realtime channel: `GET /ws/rooms/:id`
   - [ ] Versioned message envelopes from `@forgetful-fish/realtime-contract`
 - [ ] Add a single web-side "game session adapter" in `apps/web/lib` that owns:
   - [ ] websocket connect/reconnect lifecycle

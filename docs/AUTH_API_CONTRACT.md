@@ -63,7 +63,7 @@ Auth routes are owned by Auth.js.
 
 ## Realtime WebSocket Contract (Milestone 2)
 
-- Endpoint: `GET /ws/rooms/:roomId`.
+- Endpoint: `GET /ws/rooms/:id`.
 - Source of truth for WS message schema/types: `packages/realtime-contract/src/index.ts`.
 - Auth: requires valid Auth.js session cookie on handshake.
 - Authorization: caller must be a room participant; non-participants are rejected.

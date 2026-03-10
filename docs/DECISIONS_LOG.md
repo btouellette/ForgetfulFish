@@ -56,7 +56,7 @@
 
 ## 2026-03-01 Realtime WebSocket Edge Routing
 
-- Keep browser realtime endpoint on apex host path: `wss://forgetfulfish.com/ws/rooms/:roomId`.
+- Keep browser realtime endpoint on apex host path: `wss://forgetfulfish.com/ws/rooms/:id`.
 - Route `/ws/*` at `nginx-proxy` via container env path split (`forgetful-fish-server` uses `VIRTUAL_PATH=/ws/`).
 - Do not proxy `/api/auth/*` to server; Auth.js routes remain on `forgetful-fish-web`.
 
