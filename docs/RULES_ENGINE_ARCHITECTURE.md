@@ -2,10 +2,10 @@
 
 ## Context
 
-`packages/game-engine` is currently a placeholder with only a minimal `GameState` type. The
-architecture document describes the intended pattern: `GameState` + `Command` + `Event` with
-deterministic server-side execution. This document specifies the full rules engine design —
-one that handles the complete Forgetful Fish card set now with no dead-ends as the game expands,
+`packages/game-engine` now includes implemented Phase 0-2 foundations (deterministic state,
+command processing, stack resolution, whiteboard/cursor, pending choices, and pipeline/replacement
+handling). This document remains the full target architecture for the complete rules engine —
+one that handles the complete Forgetful Fish card set with no dead-ends as the game expands,
 while remaining tractable for a small TypeScript team.
 
 The design synthesises lessons from XMage (authoritative server, continuous effects/layers,
