@@ -33,7 +33,7 @@ See `docs/NEXTJS_RULES.md` for strict web/server boundary rules.
 
 ## Realtime Room Channel (Milestone 2)
 
-- Endpoint: `GET /ws/rooms/:roomId`.
+- Endpoint: `GET /ws/rooms/:id`.
 - Handshake auth: same Auth.js session cookie lookup as protected HTTP routes.
 - Authorization: only room participants may subscribe.
 - Connection fanout uses an in-process room socket map in `apps/server`.
