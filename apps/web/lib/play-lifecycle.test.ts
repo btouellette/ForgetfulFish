@@ -47,6 +47,28 @@ describe("derivePlayLifecycleState", () => {
     ).toBe("resyncing");
   });
 
+  it("returns resyncing while lobby socket is still connecting after join", () => {
+    expect(
+      derivePlayLifecycleState({
+        isJoining: false,
+        hasError: false,
+        gameStatus: "not_started",
+        connectionStatus: "connecting"
+      })
+    ).toBe("resyncing");
+  });
+
+  it("returns resyncing while started game socket is still connecting", () => {
+    expect(
+      derivePlayLifecycleState({
+        isJoining: false,
+        hasError: false,
+        gameStatus: "started",
+        connectionStatus: "connecting"
+      })
+    ).toBe("resyncing");
+  });
+
   it("returns resyncing while lobby state is disconnected", () => {
     expect(
       derivePlayLifecycleState({

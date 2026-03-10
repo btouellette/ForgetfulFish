@@ -23,7 +23,11 @@ export function derivePlayLifecycleState({
     return "joining";
   }
 
-  if (connectionStatus === "reconnecting" || connectionStatus === "offline") {
+  if (
+    connectionStatus === "connecting" ||
+    connectionStatus === "reconnecting" ||
+    connectionStatus === "offline"
+  ) {
     return "resyncing";
   }
 
