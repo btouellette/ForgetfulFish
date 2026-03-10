@@ -2,22 +2,16 @@ import { cardRegistry } from "../cards";
 import type {
   ActivateAbilityCommand,
   CastSpellCommand,
-  ChoicePayload,
   Command,
   PlayLandCommand,
   Target
 } from "./command";
 import type { CardDefinition } from "../cards/cardDefinition";
-import type { ChoiceType } from "../choices/pendingChoice";
 import type { GameState } from "../state/gameState";
 import { zoneKey } from "../state/zones";
 
 function isMainPhase(state: Readonly<GameState>): boolean {
   return state.turnState.phase === "MAIN_1" || state.turnState.phase === "MAIN_2";
-}
-
-function assertNeverChoiceType(_choiceType: never): never {
-  throw new Error("Unhandled pending choice type");
 }
 
 function playerHandContains(state: Readonly<GameState>, playerId: string, cardId: string): boolean {
@@ -333,33 +327,12 @@ const EXPECTED_ACTIVATE_ABILITY_ERRORS = new Set([
 
 const EXPECTED_ACTIVATE_ABILITY_ERROR_PREFIXES = ["missing card definition '"];
 
-function defaultPayloadForPendingChoice(choiceType: ChoiceType): ChoicePayload {
-  switch (choiceType) {
-    case "CHOOSE_YES_NO":
-      return { type: "CHOOSE_YES_NO", accepted: true };
-    case "CHOOSE_CARDS":
-      return { type: "CHOOSE_CARDS", selected: [], min: 0, max: 0 };
-    case "ORDER_CARDS":
-      return { type: "ORDER_CARDS", ordered: [] };
-    case "NAME_CARD":
-      return { type: "NAME_CARD", cardName: "" };
-    case "CHOOSE_REPLACEMENT":
-      return { type: "CHOOSE_REPLACEMENT", replacementId: "" };
-    case "CHOOSE_MODE":
-      return { type: "CHOOSE_MODE", mode: { id: "" } };
-    case "CHOOSE_TARGET":
-      return { type: "CHOOSE_TARGET", target: { kind: "player", playerId: "" } };
-    case "ORDER_TRIGGERS":
-      return { type: "ORDER_TRIGGERS", triggerIds: [] };
-    default:
-      return assertNeverChoiceType(choiceType);
-  }
-}
-
 function legalChoiceCommands(state: Readonly<GameState>): Command[] {
   if (state.pendingChoice === null) {
     return [];
   }
+
+  const concedeCommand: Command = { type: "CONCEDE" };
 
   if (state.pendingChoice.type === "CHOOSE_YES_NO") {
     return [
@@ -370,16 +343,12 @@ function legalChoiceCommands(state: Readonly<GameState>): Command[] {
       {
         type: "MAKE_CHOICE",
         payload: { type: "CHOOSE_YES_NO", accepted: false }
-      }
+      },
+      concedeCommand
     ];
   }
 
-  return [
-    {
-      type: "MAKE_CHOICE",
-      payload: defaultPayloadForPendingChoice(state.pendingChoice.type)
-    }
-  ];
+  return [concedeCommand];
 }
 
 export function getLegalCommands(state: Readonly<GameState>): Command[] {
