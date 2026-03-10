@@ -7,9 +7,26 @@ import {
 } from "@forgetful-fish/game-engine";
 
 export function toPersistedGameState(state: GameState): Prisma.InputJsonValue {
-  return serializeGameStateForPersistence(state) as unknown as Prisma.InputJsonValue;
+  const serialized = serializeGameStateForPersistence(state);
+  return JSON.parse(JSON.stringify(serialized));
 }
 
-export function fromPersistedGameState(serialized: SerializedGameState): GameState {
+function isSerializedGameState(value: unknown): value is SerializedGameState {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  if (!("id" in value) || !("version" in value) || !("engineVersion" in value)) {
+    return false;
+  }
+
+  return true;
+}
+
+export function fromPersistedGameState(serialized: unknown): GameState {
+  if (!isSerializedGameState(serialized)) {
+    throw new Error("invalid persisted game state");
+  }
+
   return deserializeGameStateFromPersistence(serialized);
 }

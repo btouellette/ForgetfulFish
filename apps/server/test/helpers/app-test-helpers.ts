@@ -1,4 +1,12 @@
-import { createInitialGameStateFromDecks } from "@forgetful-fish/game-engine";
+import {
+  createInitialGameStateFromDecks,
+  processCommand,
+  Rng,
+  type GameEvent,
+  type GameState,
+  type PendingChoice
+} from "@forgetful-fish/game-engine";
+import { gameplayCommandSchema } from "@forgetful-fish/realtime-contract";
 
 import { buildServer } from "../../src/app";
 import { createGameplayDeckPreset } from "../../src/room-store/deck-preset";
@@ -7,7 +15,7 @@ export function createInMemoryRoomStore() {
   type RoomState = {
     participants: Map<"P1" | "P2", { userId: string; ready: boolean }>;
     gameId: string | null;
-    gameState: unknown | null;
+    gameState: GameState | null;
     stateVersion: number | null;
     lastAppliedEventSeq: number | null;
     gameEvents: Array<{
@@ -257,6 +265,79 @@ export function createInMemoryRoomStore() {
         roomId,
         gameId,
         gameStatus: "started" as const
+      };
+    },
+    async applyCommand(roomId: string, userId: string, command: unknown) {
+      const room = rooms.get(roomId);
+
+      if (!room || room.gameId === null || room.gameState === null) {
+        return {
+          status: "not_found" as const
+        };
+      }
+
+      const isParticipant = [...room.participants.values()].some(
+        (participant) => participant.userId === userId
+      );
+
+      if (!isParticipant) {
+        return {
+          status: "forbidden" as const
+        };
+      }
+
+      let result:
+        | {
+            nextState: GameState;
+            newEvents: GameEvent[];
+            pendingChoice: PendingChoice | null;
+          }
+        | undefined;
+
+      try {
+        const parsedCommand = gameplayCommandSchema.parse(command);
+        result = processCommand(room.gameState, parsedCommand, new Rng(room.gameState.rngSeed));
+      } catch (error) {
+        if (error instanceof Error) {
+          return {
+            status: "invalid_command" as const,
+            message: error.message
+          };
+        }
+
+        return {
+          status: "invalid_command" as const,
+          message: "invalid gameplay command"
+        };
+      }
+
+      room.gameState = result.nextState;
+      room.stateVersion = (room.stateVersion ?? 0) + 1;
+
+      const priorSeq = room.lastAppliedEventSeq ?? 0;
+      room.lastAppliedEventSeq = priorSeq + result.newEvents.length;
+
+      room.gameEvents.push(
+        ...result.newEvents.map((event, index) => ({
+          seq: priorSeq + index + 1,
+          eventType: event.type,
+          schemaVersion: event.schemaVersion,
+          causedByUserId: userId,
+          payload: event
+        }))
+      );
+
+      return {
+        status: "applied" as const,
+        roomId,
+        gameId: room.gameId,
+        stateVersion: room.stateVersion,
+        lastAppliedEventSeq: room.lastAppliedEventSeq,
+        pendingChoice: result.pendingChoice,
+        emittedEvents: result.newEvents.map((event) => ({
+          seq: event.seq,
+          eventType: event.type
+        }))
       };
     },
     inspectRoom(roomId: string) {

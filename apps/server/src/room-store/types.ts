@@ -60,10 +60,32 @@ export type StartGameResult =
   | { status: "forbidden" }
   | { status: "not_ready" };
 
+export type ApplyGameplayCommandResult =
+  | {
+      status: "applied";
+      roomId: string;
+      gameId: string;
+      stateVersion: number;
+      lastAppliedEventSeq: number;
+      pendingChoice: unknown | null;
+      emittedEvents: Array<{
+        seq: number;
+        eventType: string;
+      }>;
+    }
+  | { status: "not_found" }
+  | { status: "forbidden" }
+  | { status: "invalid_command"; message: string };
+
 export type RoomStore = {
   createRoom: (ownerUserId: string) => Promise<CreatedRoomPayload>;
   joinRoom: (roomId: string, userId: string) => Promise<JoinRoomResult>;
   getLobby: (roomId: string, userId: string) => Promise<GetRoomLobbyResult>;
   setReady: (roomId: string, userId: string, ready: boolean) => Promise<SetRoomReadyResult>;
   startGame: (roomId: string, userId: string) => Promise<StartGameResult>;
+  applyCommand: (
+    roomId: string,
+    userId: string,
+    command: unknown
+  ) => Promise<ApplyGameplayCommandResult>;
 };

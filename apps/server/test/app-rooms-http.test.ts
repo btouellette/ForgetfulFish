@@ -631,4 +631,155 @@ describe("server room routes", () => {
       await ownerReadyApp.close();
     }
   });
+
+  it("requires auth for gameplay command application", async () => {
+    const app = buildServer({
+      sessionLookup: async () => null
+    });
+
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/rooms/00000000-0000-4000-8000-000000000001/commands",
+        payload: {
+          command: {
+            type: "PASS_PRIORITY"
+          }
+        }
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.json()).toEqual({ error: "unauthorized" });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("returns 400 for invalid gameplay command payload", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await createRoomAs(roomStore, "owner-1");
+
+    const response = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/commands`,
+      payload: {
+        command: {
+          type: "MAKE_CHOICE"
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ error: "invalid_gameplay_command_payload" });
+  });
+
+  it("applies command for started game participant and persists state/event counters", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await createRoomAs(roomStore, "owner-1");
+
+    await injectAs(roomStore, "player-2", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/join`
+    });
+
+    await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      payload: {
+        ready: true
+      }
+    });
+
+    await injectAs(roomStore, "player-2", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      payload: {
+        ready: true
+      }
+    });
+
+    const startResponse = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/start`
+    });
+
+    expect(startResponse.statusCode).toBe(200);
+
+    const roomBefore = roomStore.inspectRoom(roomId);
+    expect(roomBefore?.stateVersion).toBe(1);
+    expect(roomBefore?.lastAppliedEventSeq).toBe(0);
+
+    const response = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/commands`,
+      payload: {
+        command: {
+          type: "PASS_PRIORITY"
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      roomId,
+      gameId: startResponse.json().gameId,
+      stateVersion: 2,
+      lastAppliedEventSeq: 1,
+      pendingChoice: null,
+      emittedEvents: [{ eventType: "PRIORITY_PASSED" }]
+    });
+
+    const roomAfter = roomStore.inspectRoom(roomId);
+    expect(roomAfter?.stateVersion).toBe(2);
+    expect(roomAfter?.lastAppliedEventSeq).toBe(1);
+    expect(roomAfter?.gameEvents).toHaveLength(2);
+    expect(roomAfter?.gameEvents[1]?.seq).toBe(1);
+    expect(roomAfter?.gameEvents[1]?.eventType).toBe("PRIORITY_PASSED");
+  });
+
+  it("returns 403 when non-participant applies gameplay command", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await createRoomAs(roomStore, "owner-1");
+
+    await injectAs(roomStore, "player-2", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/join`
+    });
+
+    await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      payload: {
+        ready: true
+      }
+    });
+
+    await injectAs(roomStore, "player-2", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      payload: {
+        ready: true
+      }
+    });
+
+    const startResponse = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/start`
+    });
+
+    expect(startResponse.statusCode).toBe(200);
+
+    const response = await injectAs(roomStore, "outsider-9", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/commands`,
+      payload: {
+        command: {
+          type: "PASS_PRIORITY"
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "forbidden" });
+  });
 });
