@@ -93,11 +93,11 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] HTTP command route: `POST /api/rooms/:id/commands`
   - [x] Room realtime channel: `GET /ws/rooms/:id`
   - [x] Versioned message envelopes from `@forgetful-fish/realtime-contract`
-- [ ] Add a single web-side "game session adapter" in `apps/web/lib` that owns:
+- [x] Add a single web-side "game session adapter" in `apps/web/lib` that owns:
   - [x] websocket connect/reconnect lifecycle
   - [x] command submission API
-  - [ ] server snapshot/event normalization into a UI view model
-  - [x] forward raw `RoomLobbySnapshot` / `RoomGameStarted` payloads to UI via callbacks (no normalization layer yet)
+  - [x] server snapshot/event normalization into a UI view model
+  - [x] forward raw `RoomLobbySnapshot` / `RoomGameStarted` payloads to UI via callbacks alongside normalized view-model updates
 - [ ] Keep server authoritative: no rules resolution in client code; client only renders projected state and submits legal intents.
 
 #### Phase A Detailed Workplan
@@ -106,7 +106,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] Pin canonical HTTP/WS payload shapes from `packages/realtime-contract/src/index.ts`.
   - [x] Add explicit contract docs for gameplay command outcomes (`stateVersion`, `lastAppliedEventSeq`, `pendingChoice`, `emittedEvents`) based on `apps/server/src/app.ts` and `apps/server/src/room-store/apply-command.ts`.
   - [x] Define forward-compatible envelope evolution rules (additive fields only, schema version bump policy).
-- [ ] Adapter boundary design (`apps/web/lib`)
+- [x] Adapter boundary design (`apps/web/lib`)
   - [x] Create `game-session-adapter.ts` as the single integration facade used by route components.
   - [x] Consolidate command invocation currently spread across `apps/web/lib/server-api.ts` and page handlers into adapter methods.
   - [x] Keep websocket event handling behind adapter-owned callbacks/state transitions (reuse reconnect behavior from `apps/web/lib/room-realtime.ts`).
@@ -114,7 +114,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] Track latest applied server version (`stateVersion`, `lastAppliedEventSeq`) in adapter state.
   - [x] Drop or quarantine stale/out-of-order updates before UI application.
   - [x] Define reconnect resync rule: `subscribed` snapshot is canonical reset point.
-- [ ] Phase A issue checkpoints (fail fast)
+- [x] Phase A issue checkpoints (fail fast)
   - [x] Checkpoint A1: command-response shape mismatch against `realtime-contract` schemas.
   - [x] Checkpoint A2: stale snapshot overwrite during reconnect.
   - [x] Checkpoint A3: unauthorized/session-expired responses not surfaced clearly in UI.
