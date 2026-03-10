@@ -85,7 +85,10 @@ export function createGameSessionAdapter({
       serverBaseUrl,
       webSocketFactory,
       onStatusChange,
-      onLobbySnapshot,
+      onLobbySnapshot: (snapshot) => {
+        latestAppliedVersion = null;
+        onLobbySnapshot(snapshot);
+      },
       onLobbyUpdated,
       onGameStarted,
       onGameUpdated: (payload) => {

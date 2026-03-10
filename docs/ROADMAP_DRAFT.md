@@ -113,7 +113,7 @@ while expanding browser coverage to include deterministic manual UI verification
 - [ ] Sequence and staleness guardrails
   - [x] Track latest applied server version (`stateVersion`, `lastAppliedEventSeq`) in adapter state.
   - [x] Drop or quarantine stale/out-of-order updates before UI application.
-  - [ ] Define reconnect resync rule: `subscribed` snapshot is canonical reset point.
+  - [x] Define reconnect resync rule: `subscribed` snapshot is canonical reset point.
 - [ ] Phase A issue checkpoints (fail fast)
   - [ ] Checkpoint A1: command-response shape mismatch against `realtime-contract` schemas.
   - [ ] Checkpoint A2: stale snapshot overwrite during reconnect.

@@ -7,6 +7,7 @@ type CreateRealtimeClient = NonNullable<
   Parameters<typeof createGameSessionAdapter>[0]["createRealtimeClient"]
 >;
 type CreateRealtimeClientOptions = Parameters<CreateRealtimeClient>[0];
+type LobbySnapshotHandler = CreateRealtimeClientOptions["onLobbySnapshot"];
 type GameUpdatedHandler = NonNullable<CreateRealtimeClientOptions["onGameUpdated"]>;
 
 describe("createGameSessionAdapter", () => {
@@ -204,6 +205,73 @@ describe("createGameSessionAdapter", () => {
     expect(adapter.getLatestAppliedVersion()).toEqual({
       stateVersion: 3,
       lastAppliedEventSeq: 7
+    });
+  });
+
+  it("treats subscribed snapshot as canonical reset point for version tracking", () => {
+    const onGameUpdated = vi.fn();
+    let lobbySnapshotHandler: LobbySnapshotHandler = () => {};
+    let gameUpdatedHandler: GameUpdatedHandler = () => {};
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      onGameUpdated,
+      createRealtimeClient: (options: CreateRealtimeClientOptions) => {
+        lobbySnapshotHandler = options.onLobbySnapshot;
+
+        if (options.onGameUpdated) {
+          gameUpdatedHandler = options.onGameUpdated;
+        }
+
+        return {
+          connect: vi.fn(),
+          disconnect: vi.fn()
+        };
+      },
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand: vi.fn()
+      }
+    });
+
+    adapter.connect();
+
+    gameUpdatedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      stateVersion: 5,
+      lastAppliedEventSeq: 11,
+      pendingChoice: null,
+      emittedEvents: []
+    });
+
+    lobbySnapshotHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      participants: [],
+      gameId: "10000000-0000-4000-8000-000000000001",
+      gameStatus: "started"
+    });
+
+    gameUpdatedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      stateVersion: 2,
+      lastAppliedEventSeq: 4,
+      pendingChoice: null,
+      emittedEvents: []
+    });
+
+    expect(onGameUpdated).toHaveBeenCalledTimes(2);
+    expect(adapter.getLatestAppliedVersion()).toEqual({
+      stateVersion: 2,
+      lastAppliedEventSeq: 4
     });
   });
 });
