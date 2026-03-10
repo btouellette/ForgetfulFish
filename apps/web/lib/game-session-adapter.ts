@@ -75,10 +75,25 @@ export function createGameSessionAdapter({
   }
 
   function trackAppliedVersion(response: GameplayCommandResponse) {
-    latestAppliedVersion = {
+    const incomingVersion = {
       stateVersion: response.stateVersion,
       lastAppliedEventSeq: response.lastAppliedEventSeq
     };
+
+    if (!latestAppliedVersion) {
+      latestAppliedVersion = incomingVersion;
+      return;
+    }
+
+    const current = latestAppliedVersion;
+    const isNewerStateVersion = incomingVersion.stateVersion > current.stateVersion;
+    const isSameStateVersion = incomingVersion.stateVersion === current.stateVersion;
+    const isNewerOrEqualEventSeq =
+      isSameStateVersion && incomingVersion.lastAppliedEventSeq >= current.lastAppliedEventSeq;
+
+    if (isNewerStateVersion || isNewerOrEqualEventSeq) {
+      latestAppliedVersion = incomingVersion;
+    }
   }
 
   return {

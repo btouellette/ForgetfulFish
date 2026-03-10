@@ -93,10 +93,11 @@ while expanding browser coverage to include deterministic manual UI verification
   - [ ] HTTP command route: `POST /api/rooms/:id/commands`
   - [ ] Room realtime channel: `GET /ws/rooms/:id`
   - [ ] Versioned message envelopes from `@forgetful-fish/realtime-contract`
-- [x] Add a single web-side "game session adapter" in `apps/web/lib` that owns:
+- [ ] Add a single web-side "game session adapter" in `apps/web/lib` that owns:
   - [x] websocket connect/reconnect lifecycle
   - [x] command submission API
-  - [x] server snapshot/event normalization into a UI view model
+  - [ ] server snapshot/event normalization into a UI view model
+  - [x] forward raw `RoomLobbySnapshot` / `RoomGameStarted` payloads to UI via callbacks (no normalization layer yet)
 - [ ] Keep server authoritative: no rules resolution in client code; client only renders projected state and submits legal intents.
 
 #### Phase A Detailed Workplan
