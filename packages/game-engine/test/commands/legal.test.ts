@@ -122,7 +122,7 @@ describe("commands/legal", () => {
     expect(commands).toEqual([{ type: "PASS_PRIORITY" }, { type: "CONCEDE" }]);
   });
 
-  it("pendingChoice state only returns MAKE_CHOICE", () => {
+  it("pending yes/no choice returns MAKE_CHOICE options and CONCEDE", () => {
     const base = createInitialGameState("p1", "p2", { id: "legal-3", rngSeed: "seed-legal-3" });
     const state: GameState = {
       ...base,
@@ -131,10 +131,11 @@ describe("commands/legal", () => {
 
     const commands = getLegalCommands(state);
 
-    expect(commands).toHaveLength(2);
+    expect(commands).toHaveLength(3);
     expect(commands).toEqual([
       { type: "MAKE_CHOICE", payload: { type: "CHOOSE_YES_NO", accepted: true } },
-      { type: "MAKE_CHOICE", payload: { type: "CHOOSE_YES_NO", accepted: false } }
+      { type: "MAKE_CHOICE", payload: { type: "CHOOSE_YES_NO", accepted: false } },
+      { type: "CONCEDE" }
     ]);
   });
 
@@ -160,7 +161,9 @@ describe("commands/legal", () => {
 
     const commands = getLegalCommands(state);
 
-    expect(commands).toEqual([]);
+    const makeChoiceCommands = commands.filter((command) => command.type === "MAKE_CHOICE");
+    expect(makeChoiceCommands).toEqual([]);
+    expect(commands).toContainEqual({ type: "CONCEDE" });
   });
 
   it("does not expose p1 card actions when p2 has priority", () => {

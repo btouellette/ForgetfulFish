@@ -332,6 +332,8 @@ function legalChoiceCommands(state: Readonly<GameState>): Command[] {
     return [];
   }
 
+  const concedeCommand: Command = { type: "CONCEDE" };
+
   if (state.pendingChoice.type === "CHOOSE_YES_NO") {
     return [
       {
@@ -341,11 +343,12 @@ function legalChoiceCommands(state: Readonly<GameState>): Command[] {
       {
         type: "MAKE_CHOICE",
         payload: { type: "CHOOSE_YES_NO", accepted: false }
-      }
+      },
+      concedeCommand
     ];
   }
 
-  return [];
+  return [concedeCommand];
 }
 
 export function getLegalCommands(state: Readonly<GameState>): Command[] {
