@@ -94,9 +94,10 @@ while expanding browser coverage to include deterministic manual UI verification
   - [ ] Room realtime channel: `GET /ws/rooms/:id`
   - [ ] Versioned message envelopes from `@forgetful-fish/realtime-contract`
 - [ ] Add a single web-side "game session adapter" in `apps/web/lib` that owns:
-  - [ ] websocket connect/reconnect lifecycle
-  - [ ] command submission API
+  - [x] websocket connect/reconnect lifecycle
+  - [x] command submission API
   - [ ] server snapshot/event normalization into a UI view model
+  - [x] forward raw `RoomLobbySnapshot` / `RoomGameStarted` payloads to UI via callbacks (no normalization layer yet)
 - [ ] Keep server authoritative: no rules resolution in client code; client only renders projected state and submits legal intents.
 
 #### Phase A Detailed Workplan
@@ -106,9 +107,9 @@ while expanding browser coverage to include deterministic manual UI verification
   - [ ] Add explicit contract docs for gameplay command outcomes (`stateVersion`, `lastAppliedEventSeq`, `pendingChoice`, `emittedEvents`) based on `apps/server/src/app.ts` and `apps/server/src/room-store/apply-command.ts`.
   - [ ] Define forward-compatible envelope evolution rules (additive fields only, schema version bump policy).
 - [ ] Adapter boundary design (`apps/web/lib`)
-  - [ ] Create `game-session-adapter.ts` as the single integration facade used by route components.
-  - [ ] Consolidate command invocation currently spread across `apps/web/lib/server-api.ts` and page handlers into adapter methods.
-  - [ ] Keep websocket event handling behind adapter-owned callbacks/state transitions (reuse reconnect behavior from `apps/web/lib/room-realtime.ts`).
+  - [x] Create `game-session-adapter.ts` as the single integration facade used by route components.
+  - [x] Consolidate command invocation currently spread across `apps/web/lib/server-api.ts` and page handlers into adapter methods.
+  - [x] Keep websocket event handling behind adapter-owned callbacks/state transitions (reuse reconnect behavior from `apps/web/lib/room-realtime.ts`).
 - [ ] Sequence and staleness guardrails
   - [ ] Track latest applied server version (`stateVersion`, `lastAppliedEventSeq`) in adapter state.
   - [ ] Drop or quarantine stale/out-of-order updates before UI application.
