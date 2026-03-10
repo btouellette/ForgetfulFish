@@ -67,14 +67,6 @@ export const wsInboundPingMessageSchema = z.object({
     .optional()
 });
 
-export const wsServerMessageSchema = z.discriminatedUnion("type", [
-  wsSubscribedMessageSchema,
-  wsRoomLobbyUpdatedMessageSchema,
-  wsGameStartedMessageSchema,
-  wsErrorMessageSchema,
-  wsPongMessageSchema
-]);
-
 const playerIdSchema = z.string().min(1);
 const objectIdSchema = z.string().min(1);
 
@@ -254,6 +246,21 @@ export const gameplayCommandResponseSchema = z
     emittedEvents: z.array(gameplayEmittedEventMetadataSchema)
   })
   .strict();
+
+export const wsRoomGameUpdatedMessageSchema = z.object({
+  type: z.literal("room_game_updated"),
+  schemaVersion: z.literal(roomWsMessageSchemaVersion),
+  data: gameplayCommandResponseSchema
+});
+
+export const wsServerMessageSchema = z.discriminatedUnion("type", [
+  wsSubscribedMessageSchema,
+  wsRoomLobbyUpdatedMessageSchema,
+  wsGameStartedMessageSchema,
+  wsRoomGameUpdatedMessageSchema,
+  wsErrorMessageSchema,
+  wsPongMessageSchema
+]);
 
 export type RoomLobbySnapshot = z.infer<typeof roomLobbySnapshotSchema>;
 export type RoomGameStarted = z.infer<typeof roomGameStartedSchema>;
