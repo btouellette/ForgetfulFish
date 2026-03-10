@@ -14,6 +14,7 @@ import {
   getRealtimeGuardrailMessage,
   shouldPollLobbyWhileDisconnected
 } from "../../../lib/room-guardrails";
+import { derivePlayLifecycleState } from "../../../lib/play-lifecycle";
 import type { RoomRealtimeStatus } from "../../../lib/room-realtime";
 import { ServerApiError } from "../../../lib/server-api";
 
@@ -35,6 +36,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
   const [gameId, setGameId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<RoomRealtimeStatus>("offline");
+  const [joinFailed, setJoinFailed] = useState(false);
   const sessionAdapterRef = useRef<ReturnType<typeof createGameSessionAdapter> | null>(null);
 
   function applyViewModel(viewModel: GameSessionViewModel) {
@@ -71,6 +73,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
       setRoomId(resolvedParams.roomId);
 
       try {
+        setJoinFailed(false);
         const sessionAdapter = createGameSessionAdapter({
           roomId: resolvedParams.roomId,
           onStatusChange: (nextStatus) => {
@@ -109,6 +112,8 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
         if (cancelled) {
           return;
         }
+
+        setJoinFailed(true);
 
         if (error instanceof ServerApiError) {
           if (error.status === 404) {
@@ -274,6 +279,12 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
 
   const viewer = participants.find((participant) => participant.userId === viewerId);
   const realtimeGuardrailMessage = getRealtimeGuardrailMessage(connectionStatus);
+  const lifecycleState = derivePlayLifecycleState({
+    isJoining: !viewerId && !joinFailed,
+    hasError: joinFailed,
+    gameStatus,
+    connectionStatus
+  });
   const canStart =
     gameStatus === "not_started" &&
     participants.length === 2 &&
@@ -284,6 +295,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
       <h1>Play Room</h1>
       <p>{roomId ? `Room: ${roomId}` : "Resolving room..."}</p>
       <p>Game: {gameStatus === "started" ? `started (${gameId})` : "not started"}</p>
+      <p>Lifecycle: {lifecycleState}</p>
       <p>Live connection: {connectionStatus}</p>
       {realtimeGuardrailMessage ? <p>{realtimeGuardrailMessage}</p> : null}
       <h2>Lobby</h2>

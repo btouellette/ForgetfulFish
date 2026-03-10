@@ -161,7 +161,7 @@ while expanding browser coverage to include deterministic manual UI verification
 - [ ] Route-level composition (`apps/web/app/play/[roomId]/page.tsx`)
   - [ ] Keep existing lobby and start flow operational while adding post-start gameplay panels.
   - [ ] Split current monolithic page logic into route container + presentational sections.
-  - [ ] Add explicit lifecycle states: `joining`, `lobby_ready`, `game_active`, `resyncing`, `error`.
+  - [x] Add explicit lifecycle states: `joining`, `lobby_ready`, `game_active`, `resyncing`, `error`.
 - [ ] Gameplay panel scaffolding (minimal but durable)
   - [ ] Zones summary panel (counts + key visibility constraints).
   - [ ] Priority/choice rail (active player, pending choice status, command lock states).
