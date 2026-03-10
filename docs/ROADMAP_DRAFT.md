@@ -117,7 +117,7 @@ while expanding browser coverage to include deterministic manual UI verification
 - [ ] Phase A issue checkpoints (fail fast)
   - [ ] Checkpoint A1: command-response shape mismatch against `realtime-contract` schemas.
   - [ ] Checkpoint A2: stale snapshot overwrite during reconnect.
-  - [ ] Checkpoint A3: unauthorized/session-expired responses not surfaced clearly in UI.
+  - [x] Checkpoint A3: unauthorized/session-expired responses not surfaced clearly in UI.
 
 ### Phase B - Frontend Stack Baseline for Arena-Style UX (Non-3D)
 
