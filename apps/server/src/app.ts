@@ -1,5 +1,6 @@
 import fastifyWebsocket from "@fastify/websocket";
 import {
+  type GameplayCommandResponse,
   roomLobbySnapshotSchema,
   roomWsMessageSchemaVersion,
   wsErrorMessageSchema,
@@ -175,14 +176,7 @@ export function buildServer({
     }
   }
 
-  function broadcastRoomGameUpdated(payload: {
-    roomId: string;
-    gameId: string;
-    stateVersion: number;
-    lastAppliedEventSeq: number;
-    pendingChoice: unknown | null;
-    emittedEvents: Array<{ seq: number; eventType: string }>;
-  }) {
+  function broadcastRoomGameUpdated(payload: GameplayCommandResponse) {
     const sockets = roomSockets.get(payload.roomId);
 
     if (!sockets || sockets.size === 0) {
