@@ -122,8 +122,8 @@ while expanding browser coverage to include deterministic manual UI verification
 
 - [ ] Keep Next.js + React as the product shell (routing, auth, deployment alignment).
 - [ ] Adopt a two-lane rendering strategy:
-  - [ ] Lane 1 (now): semantic DOM + CSS + motion primitives for lobby and gameplay scaffolding
-  - [ ] Lane 2 (later): optional canvas battlefield layer for high-density interaction zones only
+  - [ ] Lane 1 (now): hybrid DOM + canvas baseline (DOM shell/controls + canvas battlefield interactions)
+  - [ ] Lane 2 (later): advanced canvas effects/optimization layer for high-density board states
 - [ ] Pick an interaction state model optimized for rapid realtime updates and optimistic local affordances.
 - [ ] Define UX constraints now (target drag latency, animation budget, reconnect/resync behavior) and enforce them in tests.
 
