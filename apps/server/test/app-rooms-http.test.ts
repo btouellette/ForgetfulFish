@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  createInitialGameStateFromDecks,
-  createUniformDeckDefinition
-} from "@forgetful-fish/game-engine";
+import { createInitialGameStateFromDecks } from "@forgetful-fish/game-engine";
 
 import { buildServer } from "../src/app";
 import {
@@ -12,6 +9,7 @@ import {
   createRoomAs,
   injectAs
 } from "./helpers/app-test-helpers";
+import { createGameplayDeckPreset } from "../src/room-store/deck-preset";
 
 describe("server room routes", () => {
   it("requires auth for room creation", async () => {
@@ -500,8 +498,8 @@ describe("server room routes", () => {
       id: startedGameId,
       rngSeed: `seed-${startedGameId}`,
       decks: {
-        playerOne: createUniformDeckDefinition("island", 20),
-        playerTwo: createUniformDeckDefinition("island", 20)
+        playerOne: createGameplayDeckPreset(),
+        playerTwo: createGameplayDeckPreset()
       },
       openingDrawCount: 0
     });
