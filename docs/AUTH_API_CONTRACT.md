@@ -77,6 +77,9 @@ Auth routes are owned by Auth.js.
   - `error`: protocol-level recoverable error (`code`, `message`).
   - `pong`: heartbeat response to client `ping`.
 
+Gameplay transport-specific contract details are tracked in
+`docs/GAMEPLAY_TRANSPORT_CONTRACT.md`.
+
 ## Room Semantics (v1)
 
 - Room IDs are UUIDs and are shared via invite URLs in the form `/play/:roomId`.

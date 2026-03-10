@@ -89,10 +89,10 @@ while expanding browser coverage to include deterministic manual UI verification
 
 ### Phase A - Integration Contract Stabilization
 
-- [ ] Lock the initial gameplay transport contract for web clients:
-  - [ ] HTTP command route: `POST /api/rooms/:id/commands`
-  - [ ] Room realtime channel: `GET /ws/rooms/:id`
-  - [ ] Versioned message envelopes from `@forgetful-fish/realtime-contract`
+- [x] Lock the initial gameplay transport contract for web clients:
+  - [x] HTTP command route: `POST /api/rooms/:id/commands`
+  - [x] Room realtime channel: `GET /ws/rooms/:id`
+  - [x] Versioned message envelopes from `@forgetful-fish/realtime-contract`
 - [ ] Add a single web-side "game session adapter" in `apps/web/lib` that owns:
   - [x] websocket connect/reconnect lifecycle
   - [x] command submission API
@@ -102,10 +102,10 @@ while expanding browser coverage to include deterministic manual UI verification
 
 #### Phase A Detailed Workplan
 
-- [ ] Contract inventory and freeze
-  - [ ] Pin canonical HTTP/WS payload shapes from `packages/realtime-contract/src/index.ts`.
-  - [ ] Add explicit contract docs for gameplay command outcomes (`stateVersion`, `lastAppliedEventSeq`, `pendingChoice`, `emittedEvents`) based on `apps/server/src/app.ts` and `apps/server/src/room-store/apply-command.ts`.
-  - [ ] Define forward-compatible envelope evolution rules (additive fields only, schema version bump policy).
+- [x] Contract inventory and freeze
+  - [x] Pin canonical HTTP/WS payload shapes from `packages/realtime-contract/src/index.ts`.
+  - [x] Add explicit contract docs for gameplay command outcomes (`stateVersion`, `lastAppliedEventSeq`, `pendingChoice`, `emittedEvents`) based on `apps/server/src/app.ts` and `apps/server/src/room-store/apply-command.ts`.
+  - [x] Define forward-compatible envelope evolution rules (additive fields only, schema version bump policy).
 - [ ] Adapter boundary design (`apps/web/lib`)
   - [x] Create `game-session-adapter.ts` as the single integration facade used by route components.
   - [x] Consolidate command invocation currently spread across `apps/web/lib/server-api.ts` and page handlers into adapter methods.

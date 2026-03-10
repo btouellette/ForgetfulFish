@@ -8,6 +8,7 @@
 - `docs/RULES_ENGINE_PHASE2_COMPLETION_PLAN.md`: execution slices and PR chunking plan to complete Phase 2.
 - `docs/TECH_DECISIONS_DRAFT.md`: current stack and key rationale.
 - `docs/AUTH_API_CONTRACT.md`: auth strategy, route contract, and security controls.
+- `docs/GAMEPLAY_TRANSPORT_CONTRACT.md`: gameplay command HTTP/WS payload contracts and versioning policy.
 - `docs/ROADMAP_DRAFT.md`: phased delivery plan.
 - `docs/OPEN_QUESTIONS.md`: unresolved items only.
 - `docs/NEXTJS_RULES.md`: Next.js boundary rules.
