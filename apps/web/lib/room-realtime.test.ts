@@ -167,4 +167,33 @@ describe("createRoomRealtimeClient", () => {
 
     expect(FakeWebSocket.instances).toHaveLength(2);
   });
+
+  it("does not open a duplicate socket when connect is called while already connected", () => {
+    const statuses: string[] = [];
+    const client = createRoomRealtimeClient({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      serverBaseUrl: "http://localhost:4000",
+      webSocketFactory: (url: string) => new FakeWebSocket(url) as unknown as WebSocket,
+      onStatusChange: (status: RoomRealtimeStatus) => {
+        statuses.push(status);
+      },
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      onGameUpdated: () => {}
+    });
+
+    client.connect();
+    const firstSocket = FakeWebSocket.instances[0];
+
+    if (!firstSocket) {
+      throw new Error("expected first socket instance");
+    }
+
+    firstSocket.emitOpen();
+    client.connect();
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    expect(statuses.filter((status) => status === "connected")).toHaveLength(1);
+  });
 });
