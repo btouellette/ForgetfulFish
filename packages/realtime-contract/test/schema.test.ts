@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  gameplayCommandResponseSchema,
+  gameplayCommandSubmissionSchema,
   roomWsMessageSchemaVersion,
   wsServerMessageSchema,
   wsSubscribedMessageSchema
@@ -37,5 +39,38 @@ describe("realtime contract schemas", () => {
     });
 
     expect(parsed.success).toBe(false);
+  });
+
+  it("accepts gameplay command submissions with strict command DTOs", () => {
+    const parsed = gameplayCommandSubmissionSchema.parse({
+      command: {
+        type: "PASS_PRIORITY"
+      }
+    });
+
+    expect(parsed.command.type).toBe("PASS_PRIORITY");
+  });
+
+  it("rejects malformed gameplay commands", () => {
+    const parsed = gameplayCommandSubmissionSchema.safeParse({
+      command: {
+        type: "MAKE_CHOICE"
+      }
+    });
+
+    expect(parsed.success).toBe(false);
+  });
+
+  it("accepts gameplay command response payload shape", () => {
+    const parsed = gameplayCommandResponseSchema.parse({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      stateVersion: 2,
+      lastAppliedEventSeq: 1,
+      pendingChoice: null,
+      emittedEvents: [{ seq: 1, eventType: "PRIORITY_PASSED" }]
+    });
+
+    expect(parsed.emittedEvents).toHaveLength(1);
   });
 });

@@ -75,6 +75,190 @@ export const wsServerMessageSchema = z.discriminatedUnion("type", [
   wsPongMessageSchema
 ]);
 
+const playerIdSchema = z.string().min(1);
+const objectIdSchema = z.string().min(1);
+
+export const objectRefSchema = z
+  .object({
+    id: objectIdSchema,
+    zcc: z.number().int().min(0)
+  })
+  .strict();
+
+export const commandTargetSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("object"),
+      object: objectRefSchema
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("player"),
+      playerId: playerIdSchema
+    })
+    .strict()
+]);
+
+export const commandModeSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string().min(1).optional()
+  })
+  .strict();
+
+export const commandChoicePayloadSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("CHOOSE_CARDS"),
+      selected: z.array(objectIdSchema),
+      min: z.number().int().min(0),
+      max: z.number().int().min(0)
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("ORDER_CARDS"),
+      ordered: z.array(objectIdSchema)
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("NAME_CARD"),
+      cardName: z.string()
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("CHOOSE_REPLACEMENT"),
+      replacementId: z.string().min(1)
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("CHOOSE_MODE"),
+      mode: commandModeSchema
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("CHOOSE_TARGET"),
+      target: commandTargetSchema
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("CHOOSE_YES_NO"),
+      accepted: z.boolean()
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("ORDER_TRIGGERS"),
+      triggerIds: z.array(z.string().min(1))
+    })
+    .strict()
+]);
+
+export const gameplayCommandSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("CAST_SPELL"),
+      cardId: objectIdSchema,
+      targets: z.array(commandTargetSchema).optional(),
+      modePick: commandModeSchema.optional()
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("ACTIVATE_ABILITY"),
+      sourceId: objectIdSchema,
+      abilityIndex: z.number().int().min(0),
+      targets: z.array(commandTargetSchema).optional()
+    })
+    .strict(),
+  z.object({ type: z.literal("PASS_PRIORITY") }).strict(),
+  z
+    .object({
+      type: z.literal("MAKE_CHOICE"),
+      payload: commandChoicePayloadSchema
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("DECLARE_ATTACKERS"),
+      attackers: z.array(objectIdSchema)
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("DECLARE_BLOCKERS"),
+      assignments: z.array(
+        z
+          .object({
+            attackerId: objectIdSchema,
+            blockerIds: z.array(objectIdSchema)
+          })
+          .strict()
+      )
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("PLAY_LAND"),
+      cardId: objectIdSchema
+    })
+    .strict(),
+  z.object({ type: z.literal("CONCEDE") }).strict()
+]);
+
+export const gameplayCommandSubmissionSchema = z
+  .object({
+    command: gameplayCommandSchema
+  })
+  .strict();
+
+export const gameplayPendingChoiceSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.enum([
+      "CHOOSE_CARDS",
+      "CHOOSE_TARGET",
+      "CHOOSE_MODE",
+      "CHOOSE_YES_NO",
+      "ORDER_CARDS",
+      "ORDER_TRIGGERS",
+      "CHOOSE_REPLACEMENT",
+      "NAME_CARD"
+    ]),
+    forPlayer: playerIdSchema,
+    prompt: z.string(),
+    constraints: z.unknown()
+  })
+  .strict();
+
+export const gameplayEmittedEventMetadataSchema = z
+  .object({
+    seq: z.number().int().min(0),
+    eventType: z.string().min(1)
+  })
+  .strict();
+
+export const gameplayCommandResponseSchema = z
+  .object({
+    roomId: z.string().uuid(),
+    gameId: z.string().uuid(),
+    stateVersion: z.number().int().min(1),
+    lastAppliedEventSeq: z.number().int().min(0),
+    pendingChoice: gameplayPendingChoiceSchema.nullable(),
+    emittedEvents: z.array(gameplayEmittedEventMetadataSchema)
+  })
+  .strict();
+
 export type RoomLobbySnapshot = z.infer<typeof roomLobbySnapshotSchema>;
 export type RoomGameStarted = z.infer<typeof roomGameStartedSchema>;
 export type WsServerMessage = z.infer<typeof wsServerMessageSchema>;
+export type GameplayCommand = z.infer<typeof gameplayCommandSchema>;
+export type GameplayCommandSubmission = z.infer<typeof gameplayCommandSubmissionSchema>;
+export type GameplayPendingChoice = z.infer<typeof gameplayPendingChoiceSchema>;
+export type GameplayCommandResponse = z.infer<typeof gameplayCommandResponseSchema>;
