@@ -89,7 +89,12 @@ export function createGameSessionAdapter({
       onLobbyUpdated,
       onGameStarted,
       onGameUpdated: (payload) => {
-        trackAppliedVersion(payload);
+        const applied = trackAppliedVersion(payload);
+
+        if (!applied) {
+          return;
+        }
+
         onGameUpdated(payload);
       }
     });
@@ -105,7 +110,7 @@ export function createGameSessionAdapter({
 
     if (!latestAppliedVersion) {
       latestAppliedVersion = incomingVersion;
-      return;
+      return true;
     }
 
     const current = latestAppliedVersion;
@@ -116,7 +121,10 @@ export function createGameSessionAdapter({
 
     if (isNewerStateVersion || isNewerOrEqualEventSeq) {
       latestAppliedVersion = incomingVersion;
+      return true;
     }
+
+    return false;
   }
 
   return {
