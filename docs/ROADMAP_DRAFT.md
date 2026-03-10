@@ -111,8 +111,8 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] Consolidate command invocation currently spread across `apps/web/lib/server-api.ts` and page handlers into adapter methods.
   - [x] Keep websocket event handling behind adapter-owned callbacks/state transitions (reuse reconnect behavior from `apps/web/lib/room-realtime.ts`).
 - [ ] Sequence and staleness guardrails
-  - [ ] Track latest applied server version (`stateVersion`, `lastAppliedEventSeq`) in adapter state.
-  - [ ] Drop or quarantine stale/out-of-order updates before UI application.
+  - [x] Track latest applied server version (`stateVersion`, `lastAppliedEventSeq`) in adapter state.
+  - [x] Drop or quarantine stale/out-of-order updates before UI application.
   - [ ] Define reconnect resync rule: `subscribed` snapshot is canonical reset point.
 - [ ] Phase A issue checkpoints (fail fast)
   - [ ] Checkpoint A1: command-response shape mismatch against `realtime-contract` schemas.
