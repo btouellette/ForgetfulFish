@@ -3,20 +3,15 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { createGameSessionAdapter } from "../../../lib/game-session-adapter";
 import {
   disconnectedLobbyPollIntervalMs,
   getReadyUpdateStatusMessage,
   getRealtimeGuardrailMessage,
   shouldPollLobbyWhileDisconnected
 } from "../../../lib/room-guardrails";
-import { createRoomRealtimeClient, type RoomRealtimeStatus } from "../../../lib/room-realtime";
-import {
-  ServerApiError,
-  getRoomLobby,
-  joinRoom,
-  setRoomReady,
-  startRoomGame
-} from "../../../lib/server-api";
+import type { RoomRealtimeStatus } from "../../../lib/room-realtime";
+import { ServerApiError } from "../../../lib/server-api";
 
 type PlayRoomPageProps = {
   params: Promise<{
@@ -36,10 +31,16 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
   const [gameId, setGameId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<RoomRealtimeStatus>("offline");
-  const realtimeClientRef = useRef<ReturnType<typeof createRoomRealtimeClient> | null>(null);
+  const sessionAdapterRef = useRef<ReturnType<typeof createGameSessionAdapter> | null>(null);
 
-  async function refreshLobby(nextRoomId: string) {
-    const lobby = await getRoomLobby(nextRoomId);
+  async function refreshLobby() {
+    const sessionAdapter = sessionAdapterRef.current;
+
+    if (!sessionAdapter) {
+      return;
+    }
+
+    const lobby = await sessionAdapter.getRoomLobby();
 
     if (!isMountedRef.current) {
       return;
@@ -64,17 +65,8 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
       setRoomId(resolvedParams.roomId);
 
       try {
-        const joined = await joinRoom(resolvedParams.roomId);
-
-        if (cancelled) {
-          return;
-        }
-
-        setViewerId(joined.userId);
-        setStatus(`Joined room ${joined.roomId} as seat ${joined.seat}.`);
-
-        const realtimeClient = createRoomRealtimeClient({
-          roomId: joined.roomId,
+        const sessionAdapter = createGameSessionAdapter({
+          roomId: resolvedParams.roomId,
           onStatusChange: (nextStatus) => {
             if (!isMountedRef.current) {
               return;
@@ -111,8 +103,17 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
           }
         });
 
-        realtimeClientRef.current = realtimeClient;
-        realtimeClient.connect();
+        const joined = await sessionAdapter.joinRoom();
+
+        if (cancelled) {
+          return;
+        }
+
+        setViewerId(joined.userId);
+        setStatus(`Joined room ${joined.roomId} as seat ${joined.seat}.`);
+
+        sessionAdapterRef.current = sessionAdapter;
+        sessionAdapter.connect();
       } catch (error) {
         if (cancelled) {
           return;
@@ -140,8 +141,8 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
     return () => {
       cancelled = true;
       isMountedRef.current = false;
-      realtimeClientRef.current?.disconnect();
-      realtimeClientRef.current = null;
+      sessionAdapterRef.current?.disconnect();
+      sessionAdapterRef.current = null;
     };
   }, [params]);
 
@@ -154,7 +155,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
 
     const pollLobby = async () => {
       try {
-        await refreshLobby(roomId);
+        await refreshLobby();
       } catch {
         if (cancelled || !isMountedRef.current) {
           return;
@@ -188,7 +189,13 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
     setIsSubmitting(true);
 
     try {
-      const updated = await setRoomReady(roomId, !current.ready);
+      const sessionAdapter = sessionAdapterRef.current;
+
+      if (!sessionAdapter) {
+        return;
+      }
+
+      const updated = await sessionAdapter.setRoomReady(!current.ready);
 
       if (!isMountedRef.current) {
         return;
@@ -197,7 +204,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
       setStatus(getReadyUpdateStatusMessage(updated.ready, connectionStatus));
 
       try {
-        await refreshLobby(roomId);
+        await refreshLobby();
       } catch {
         if (!isMountedRef.current) {
           return;
@@ -226,7 +233,13 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
     setIsSubmitting(true);
 
     try {
-      const started = await startRoomGame(roomId);
+      const sessionAdapter = sessionAdapterRef.current;
+
+      if (!sessionAdapter) {
+        return;
+      }
+
+      const started = await sessionAdapter.startRoomGame();
 
       if (!isMountedRef.current) {
         return;
@@ -235,7 +248,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
       setStatus(`Game started: ${started.gameId}`);
       setGameStatus(started.gameStatus);
       setGameId(started.gameId);
-      await refreshLobby(roomId);
+      await refreshLobby();
     } catch (error) {
       if (!isMountedRef.current) {
         return;
