@@ -54,15 +54,7 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
       return;
     }
 
-    const lobby = await sessionAdapter.getRoomLobby();
-
-    if (!isMountedRef.current) {
-      return;
-    }
-
-    setParticipants(lobby.participants);
-    setGameStatus(lobby.gameStatus);
-    setGameId(lobby.gameId);
+    await sessionAdapter.getRoomLobby();
   }
 
   useEffect(() => {

@@ -49,6 +49,14 @@ export type GameSessionViewModel = {
   lastEventType: string | null;
 };
 
+function cloneViewModel(viewModel: GameSessionViewModel): GameSessionViewModel {
+  if (typeof structuredClone === "function") {
+    return structuredClone(viewModel);
+  }
+
+  return JSON.parse(JSON.stringify(viewModel)) as GameSessionViewModel;
+}
+
 type GameSessionAdapterOptions = {
   roomId: string;
   serverBaseUrl?: string;
@@ -102,7 +110,15 @@ export function createGameSessionAdapter({
       ...next,
       latestAppliedVersion
     };
-    onViewModelChange(viewModel);
+    onViewModelChange(cloneViewModel(viewModel));
+  }
+
+  function applyLobbyProjection(snapshot: RoomLobbySnapshot) {
+    updateViewModel({
+      participants: snapshot.participants,
+      gameId: snapshot.gameId,
+      gameStatus: snapshot.gameStatus
+    });
   }
 
   function applyGameplayUpdate(payload: GameplayCommandResponse) {
@@ -137,17 +153,16 @@ export function createGameSessionAdapter({
         onLobbySnapshot(snapshot);
       },
       onLobbyUpdated: (snapshot) => {
-        updateViewModel({
-          participants: snapshot.participants,
-          gameId: snapshot.gameId,
-          gameStatus: snapshot.gameStatus
-        });
+        applyLobbyProjection(snapshot);
         onLobbyUpdated(snapshot);
       },
       onGameStarted: (payload) => {
+        latestAppliedVersion = null;
         updateViewModel({
           gameId: payload.gameId,
-          gameStatus: payload.gameStatus
+          gameStatus: payload.gameStatus,
+          pendingChoice: null,
+          lastEventType: null
         });
         onGameStarted(payload);
       },
@@ -196,7 +211,10 @@ export function createGameSessionAdapter({
       return api.joinRoom(roomId);
     },
     getRoomLobby() {
-      return api.getRoomLobby(roomId);
+      return api.getRoomLobby(roomId).then((lobby) => {
+        applyLobbyProjection(lobby);
+        return lobby;
+      });
     },
     setRoomReady(ready: boolean) {
       return api.setRoomReady(roomId, ready);
@@ -215,7 +233,7 @@ export function createGameSessionAdapter({
       return latestAppliedVersion;
     },
     getViewModel() {
-      return viewModel;
+      return cloneViewModel(viewModel);
     },
     connect() {
       getRealtimeClient().connect();

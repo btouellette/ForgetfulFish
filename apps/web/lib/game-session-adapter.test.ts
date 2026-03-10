@@ -8,6 +8,8 @@ type CreateRealtimeClient = NonNullable<
 >;
 type CreateRealtimeClientOptions = Parameters<CreateRealtimeClient>[0];
 type LobbySnapshotHandler = CreateRealtimeClientOptions["onLobbySnapshot"];
+type LobbyUpdatedHandler = CreateRealtimeClientOptions["onLobbyUpdated"];
+type GameStartedHandler = CreateRealtimeClientOptions["onGameStarted"];
 type GameUpdatedHandler = NonNullable<CreateRealtimeClientOptions["onGameUpdated"]>;
 
 describe("createGameSessionAdapter", () => {
@@ -381,6 +383,200 @@ describe("createGameSessionAdapter", () => {
         stateVersion: 7,
         lastAppliedEventSeq: 19
       }
+    });
+  });
+
+  it("normalizes lobby updates into view model state", () => {
+    let lobbyUpdatedHandler: LobbyUpdatedHandler = () => {};
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      createRealtimeClient: (options: CreateRealtimeClientOptions) => {
+        lobbyUpdatedHandler = options.onLobbyUpdated;
+        return {
+          connect: vi.fn(),
+          disconnect: vi.fn()
+        };
+      },
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand: vi.fn()
+      }
+    });
+
+    adapter.connect();
+
+    lobbyUpdatedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      participants: [{ userId: "u-2", seat: "P2", ready: false }],
+      gameId: null,
+      gameStatus: "not_started"
+    });
+
+    expect(adapter.getViewModel()).toMatchObject({
+      participants: [{ userId: "u-2", seat: "P2", ready: false }],
+      gameStatus: "not_started"
+    });
+  });
+
+  it("resets gameplay projection fields when game start event arrives", () => {
+    let gameStartedHandler: GameStartedHandler = () => {};
+    let gameUpdatedHandler: GameUpdatedHandler = () => {};
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      createRealtimeClient: (options: CreateRealtimeClientOptions) => {
+        gameStartedHandler = options.onGameStarted;
+        if (options.onGameUpdated) {
+          gameUpdatedHandler = options.onGameUpdated;
+        }
+
+        return {
+          connect: vi.fn(),
+          disconnect: vi.fn()
+        };
+      },
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand: vi.fn()
+      }
+    });
+
+    adapter.connect();
+    gameUpdatedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      stateVersion: 5,
+      lastAppliedEventSeq: 9,
+      pendingChoice: {
+        id: "choice-before-start",
+        type: "CHOOSE_YES_NO",
+        forPlayer: "p1",
+        prompt: "Resolve?",
+        constraints: {}
+      },
+      emittedEvents: [{ seq: 9, eventType: "PRIORITY_PASSED" }]
+    });
+
+    gameStartedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "20000000-0000-4000-8000-000000000001",
+      gameStatus: "started"
+    });
+
+    expect(adapter.getViewModel()).toMatchObject({
+      gameId: "20000000-0000-4000-8000-000000000001",
+      gameStatus: "started",
+      pendingChoice: null,
+      lastEventType: null,
+      latestAppliedVersion: null
+    });
+  });
+
+  it("updates normalized view model when command submission response is applied", async () => {
+    const onViewModelChange = vi.fn();
+    const submitGameplayCommand = vi.fn().mockResolvedValue({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      stateVersion: 8,
+      lastAppliedEventSeq: 21,
+      pendingChoice: null,
+      emittedEvents: [{ seq: 21, eventType: "PRIORITY_PASSED" }]
+    });
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      onViewModelChange,
+      createRealtimeClient: () => ({
+        connect: vi.fn(),
+        disconnect: vi.fn()
+      }),
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand
+      }
+    });
+
+    await adapter.submitGameplayCommand({ type: "PASS_PRIORITY" });
+
+    expect(adapter.getViewModel()).toMatchObject({
+      gameId: "10000000-0000-4000-8000-000000000001",
+      gameStatus: "started",
+      lastEventType: "PRIORITY_PASSED",
+      latestAppliedVersion: {
+        stateVersion: 8,
+        lastAppliedEventSeq: 21
+      }
+    });
+    expect(onViewModelChange).toHaveBeenCalled();
+  });
+
+  it("returns an immutable snapshot from getViewModel", () => {
+    let gameUpdatedHandler: GameUpdatedHandler = () => {};
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      createRealtimeClient: (options: CreateRealtimeClientOptions) => {
+        if (options.onGameUpdated) {
+          gameUpdatedHandler = options.onGameUpdated;
+        }
+
+        return {
+          connect: vi.fn(),
+          disconnect: vi.fn()
+        };
+      },
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand: vi.fn()
+      }
+    });
+
+    adapter.connect();
+    gameUpdatedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      stateVersion: 4,
+      lastAppliedEventSeq: 7,
+      pendingChoice: null,
+      emittedEvents: []
+    });
+
+    const viewModelSnapshot = adapter.getViewModel();
+    viewModelSnapshot.gameId = null;
+    viewModelSnapshot.participants = [{ userId: "mutated", seat: "P1", ready: false }];
+
+    expect(adapter.getViewModel()).toMatchObject({
+      gameId: "10000000-0000-4000-8000-000000000001",
+      participants: []
     });
   });
 });
