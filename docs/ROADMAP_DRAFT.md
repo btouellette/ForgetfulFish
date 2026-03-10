@@ -252,8 +252,8 @@ while expanding browser coverage to include deterministic manual UI verification
 
 ### Current Gap Inventory (Verified In Repo)
 
-- [ ] Web command submission gap
-  - `apps/web/lib/server-api.ts` currently does not expose a client helper for `POST /api/rooms/:id/commands`.
+- [x] Web command submission gap
+  - `apps/web/lib/server-api.ts` now exposes a typed client helper for `POST /api/rooms/:id/commands`.
 - [ ] Realtime gameplay update gap
   - Current websocket contract in `packages/realtime-contract/src/index.ts` includes lobby/start lifecycle messages but no gameplay update broadcast message.
   - Server broadcasts in `apps/server/src/app.ts` currently cover lobby updates and game start, not applied gameplay command updates.
