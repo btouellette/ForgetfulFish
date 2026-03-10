@@ -138,6 +138,31 @@ describe("commands/legal", () => {
     ]);
   });
 
+  it("does not emit placeholder MAKE_CHOICE commands for constrained non-yes/no choices", () => {
+    const base = createInitialGameState("p1", "p2", {
+      id: "legal-non-yes-no-choice",
+      rngSeed: "seed-legal-non-yes-no-choice"
+    });
+    const state: GameState = {
+      ...base,
+      pendingChoice: {
+        id: "choice-cards",
+        type: "CHOOSE_CARDS",
+        forPlayer: "p1",
+        prompt: "Choose exactly one card",
+        constraints: {
+          candidates: ["obj-a", "obj-b"],
+          min: 1,
+          max: 1
+        }
+      }
+    };
+
+    const commands = getLegalCommands(state);
+
+    expect(commands).toEqual([]);
+  });
+
   it("does not expose p1 card actions when p2 has priority", () => {
     const state = createInitialGameState("p1", "p2", { id: "legal-4", rngSeed: "seed-legal-4" });
     state.turnState.phase = "MAIN_1";
