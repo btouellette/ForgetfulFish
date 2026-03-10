@@ -1,3 +1,5 @@
+import type { GameplayCommand, GameplayCommandResponse } from "@forgetful-fish/realtime-contract";
+
 const DEFAULT_SERVER_BASE_URL = (process.env.NEXT_PUBLIC_SERVER_BASE_URL ?? "").trim();
 
 type Actor = {
@@ -114,5 +116,15 @@ export function setRoomReady(roomId: string, ready: boolean) {
 export function startRoomGame(roomId: string) {
   return requestJson<RoomStarted>(`/api/rooms/${encodeURIComponent(roomId)}/start`, {
     method: "POST"
+  });
+}
+
+export function submitGameplayCommand(roomId: string, command: GameplayCommand) {
+  return requestJson<GameplayCommandResponse>(`/api/rooms/${encodeURIComponent(roomId)}/commands`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json"
+    },
+    body: JSON.stringify({ command })
   });
 }
