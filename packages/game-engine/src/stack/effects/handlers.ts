@@ -140,9 +140,14 @@ function resolveDrawChooseReturn(
         const drawnCards = libraryCards.slice(0, spec.drawAmount);
         const candidateCards = [...handCards, ...drawnCards];
 
-        enqueueDrawAction(stepContext, stackItem.controller, spec.drawAmount, "brainstorm-draw");
+        enqueueDrawAction(
+          stepContext,
+          stackItem.controller,
+          spec.drawAmount,
+          "draw-choose-return-draw"
+        );
 
-        const chooseChoiceId = `${stackItem.id}:brainstorm:choose-cards`;
+        const chooseChoiceId = `${stackItem.id}:draw-choose-return:choose-cards`;
         const choice: NonNullable<GameState["pendingChoice"]> = {
           id: chooseChoiceId,
           type: "CHOOSE_CARDS",
@@ -156,7 +161,7 @@ function resolveDrawChooseReturn(
         };
 
         return pauseWithChoiceAndScratch(stepContext, choice, {
-          brainstormChooseChoiceId: chooseChoiceId,
+          drawChooseReturnChooseChoiceId: chooseChoiceId,
           [`resumeStepIndex:${chooseChoiceId}`]: 0
         });
       }
@@ -167,19 +172,19 @@ function resolveDrawChooseReturn(
         const { stackItem } = stepContext;
         const payload = requireChoicePayload(
           stackItem,
-          "brainstormChooseChoiceId",
+          "drawChooseReturnChooseChoiceId",
           isChooseCardsPayload,
-          "missing Brainstorm CHOOSE_CARDS choice id in scratch state",
-          "missing Brainstorm CHOOSE_CARDS payload in scratch state"
+          "missing DRAW_CHOOSE_RETURN CHOOSE_CARDS choice id in scratch state",
+          "missing DRAW_CHOOSE_RETURN CHOOSE_CARDS payload in scratch state"
         );
 
         const selectedCards = [...payload.selected];
         requireUniqueIds(
           selectedCards,
-          "Brainstorm CHOOSE_CARDS payload must contain unique cards"
+          "DRAW_CHOOSE_RETURN CHOOSE_CARDS payload must contain unique cards"
         );
 
-        const orderChoiceId = `${stackItem.id}:brainstorm:order-cards`;
+        const orderChoiceId = `${stackItem.id}:draw-choose-return:order-cards`;
         const choice: NonNullable<GameState["pendingChoice"]> = {
           id: orderChoiceId,
           type: "ORDER_CARDS",
@@ -191,7 +196,7 @@ function resolveDrawChooseReturn(
         };
 
         return pauseWithChoiceAndScratch(stepContext, choice, {
-          brainstormOrderChoiceId: orderChoiceId,
+          drawChooseReturnOrderChoiceId: orderChoiceId,
           [`resumeStepIndex:${orderChoiceId}`]: 1
         });
       }
@@ -202,14 +207,17 @@ function resolveDrawChooseReturn(
         const { stackItem, state } = stepContext;
         const payload = requireChoicePayload(
           stackItem,
-          "brainstormOrderChoiceId",
+          "drawChooseReturnOrderChoiceId",
           isOrderCardsPayload,
-          "missing Brainstorm ORDER_CARDS choice id in scratch state",
-          "missing Brainstorm ORDER_CARDS payload in scratch state"
+          "missing DRAW_CHOOSE_RETURN ORDER_CARDS choice id in scratch state",
+          "missing DRAW_CHOOSE_RETURN ORDER_CARDS payload in scratch state"
         );
 
         const orderedCards = [...payload.ordered];
-        requireUniqueIds(orderedCards, "Brainstorm ORDER_CARDS payload must contain unique cards");
+        requireUniqueIds(
+          orderedCards,
+          "DRAW_CHOOSE_RETURN ORDER_CARDS payload must contain unique cards"
+        );
 
         const handZone = state.mode.resolveZone(state, "hand", stackItem.controller);
         const libraryZone = state.mode.resolveZone(state, "library", stackItem.controller);
@@ -221,7 +229,7 @@ function resolveDrawChooseReturn(
             cardId,
             handZone,
             libraryZone,
-            `brainstorm-put-back-${index}`,
+            `draw-choose-return-put-back-${index}`,
             index
           );
         }
@@ -341,7 +349,7 @@ function resolveNameMillDrawOnHit(
       matches: (stepIndex) => stepIndex === 0,
       execute: (stepContext) => {
         const { stackItem } = stepContext;
-        const nameChoiceId = `${stackItem.id}:predict:name-card`;
+        const nameChoiceId = `${stackItem.id}:name-mill-draw-on-hit:name-card`;
         const choice: NonNullable<GameState["pendingChoice"]> = {
           id: nameChoiceId,
           type: "NAME_CARD",
@@ -351,7 +359,7 @@ function resolveNameMillDrawOnHit(
         };
 
         return pauseWithChoiceAndScratch(stepContext, choice, {
-          predictNameChoiceId: nameChoiceId,
+          nameMillDrawOnHitChoiceId: nameChoiceId,
           [`resumeStepIndex:${nameChoiceId}`]: 0
         });
       }
@@ -362,10 +370,10 @@ function resolveNameMillDrawOnHit(
         const { stackItem, state, mutable } = stepContext;
         const payload = requireChoicePayload(
           stackItem,
-          "predictNameChoiceId",
+          "nameMillDrawOnHitChoiceId",
           isNameCardPayload,
-          "missing Predict NAME_CARD choice id in scratch state",
-          "missing Predict NAME_CARD payload in scratch state"
+          "missing NAME_MILL_DRAW_ON_HIT NAME_CARD choice id in scratch state",
+          "missing NAME_MILL_DRAW_ON_HIT NAME_CARD payload in scratch state"
         );
 
         const namedCardLower = payload.cardName.trim().toLowerCase();
@@ -399,9 +407,19 @@ function resolveNameMillDrawOnHit(
         }
 
         if (namedCardWasMilled) {
-          enqueueDrawAction(stepContext, stackItem.controller, spec.drawOnHitAmount, "predict-hit");
+          enqueueDrawAction(
+            stepContext,
+            stackItem.controller,
+            spec.drawOnHitAmount,
+            "name-mill-draw-on-hit-hit"
+          );
         } else {
-          enqueueDrawAction(stepContext, stackItem.controller, spec.missDrawAmount, "predict-miss");
+          enqueueDrawAction(
+            stepContext,
+            stackItem.controller,
+            spec.missDrawAmount,
+            "name-mill-draw-on-hit-miss"
+          );
         }
 
         return { kind: "continue" };
