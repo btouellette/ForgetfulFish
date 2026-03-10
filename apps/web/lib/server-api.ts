@@ -1,8 +1,5 @@
-import {
-  gameplayCommandResponseSchema,
-  type GameplayCommand,
-  type GameplayCommandResponse
-} from "@forgetful-fish/realtime-contract";
+import { gameplayCommandResponseSchema } from "@forgetful-fish/realtime-contract";
+import type { GameplayCommand, GameplayCommandResponse } from "@forgetful-fish/realtime-contract";
 
 const DEFAULT_SERVER_BASE_URL = (process.env.NEXT_PUBLIC_SERVER_BASE_URL ?? "").trim();
 
@@ -138,7 +135,9 @@ export async function submitGameplayCommand(
   const parsed = gameplayCommandResponseSchema.safeParse(response);
 
   if (!parsed.success) {
-    throw new Error("server response failed gameplay command schema validation");
+    throw new Error(
+      `server response failed gameplay command schema validation: ${parsed.error.message}`
+    );
   }
 
   return parsed.data;

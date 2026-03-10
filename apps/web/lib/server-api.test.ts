@@ -123,7 +123,7 @@ describe("submitGameplayCommand", () => {
         submitGameplayCommand("00000000-0000-4000-8000-000000000001", {
           type: "PASS_PRIORITY"
         })
-      ).rejects.toThrow("server response failed gameplay command schema validation");
+      ).rejects.toThrow(/server response failed gameplay command schema validation/);
     } finally {
       fetchSpy.mockRestore();
     }
