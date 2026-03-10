@@ -116,7 +116,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] Define reconnect resync rule: `subscribed` snapshot is canonical reset point.
 - [ ] Phase A issue checkpoints (fail fast)
   - [x] Checkpoint A1: command-response shape mismatch against `realtime-contract` schemas.
-  - [ ] Checkpoint A2: stale snapshot overwrite during reconnect.
+  - [x] Checkpoint A2: stale snapshot overwrite during reconnect.
   - [x] Checkpoint A3: unauthorized/session-expired responses not surfaced clearly in UI.
 
 ### Phase B - Frontend Stack Baseline for Arena-Style UX (Non-3D)
