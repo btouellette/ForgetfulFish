@@ -1,4 +1,8 @@
-import type { GameplayCommand, GameplayCommandResponse } from "@forgetful-fish/realtime-contract";
+import {
+  gameplayCommandResponseSchema,
+  type GameplayCommand,
+  type GameplayCommandResponse
+} from "@forgetful-fish/realtime-contract";
 
 const DEFAULT_SERVER_BASE_URL = (process.env.NEXT_PUBLIC_SERVER_BASE_URL ?? "").trim();
 
@@ -119,12 +123,23 @@ export function startRoomGame(roomId: string) {
   });
 }
 
-export function submitGameplayCommand(roomId: string, command: GameplayCommand) {
-  return requestJson<GameplayCommandResponse>(`/api/rooms/${encodeURIComponent(roomId)}/commands`, {
+export async function submitGameplayCommand(
+  roomId: string,
+  command: GameplayCommand
+): Promise<GameplayCommandResponse> {
+  const response = await requestJson<unknown>(`/api/rooms/${encodeURIComponent(roomId)}/commands`, {
     method: "POST",
     headers: {
       "content-type": "application/json"
     },
     body: JSON.stringify({ command })
   });
+
+  const parsed = gameplayCommandResponseSchema.safeParse(response);
+
+  if (!parsed.success) {
+    throw new Error("server response failed gameplay command schema validation");
+  }
+
+  return parsed.data;
 }
