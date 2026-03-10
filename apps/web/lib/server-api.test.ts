@@ -73,7 +73,7 @@ describe("submitGameplayCommand", () => {
       });
 
       expect(fetchSpy).toHaveBeenCalledWith(
-        "/api/rooms/00000000-0000-4000-8000-000000000001/commands",
+        buildServerApiUrl("/api/rooms/00000000-0000-4000-8000-000000000001/commands"),
         {
           method: "POST",
           headers: {
