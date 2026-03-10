@@ -98,4 +98,34 @@ describe("submitGameplayCommand", () => {
       fetchSpy.mockRestore();
     }
   });
+
+  it("rejects invalid gameplay command response payloads", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          roomId: "00000000-0000-4000-8000-000000000001",
+          gameId: "10000000-0000-4000-8000-000000000001",
+          stateVersion: 2,
+          pendingChoice: null,
+          emittedEvents: []
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json"
+          }
+        }
+      )
+    );
+
+    try {
+      await expect(
+        submitGameplayCommand("00000000-0000-4000-8000-000000000001", {
+          type: "PASS_PRIORITY"
+        })
+      ).rejects.toThrow(/server response failed gameplay command schema validation/);
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
 });

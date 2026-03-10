@@ -115,7 +115,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] Drop or quarantine stale/out-of-order updates before UI application.
   - [x] Define reconnect resync rule: `subscribed` snapshot is canonical reset point.
 - [ ] Phase A issue checkpoints (fail fast)
-  - [ ] Checkpoint A1: command-response shape mismatch against `realtime-contract` schemas.
+  - [x] Checkpoint A1: command-response shape mismatch against `realtime-contract` schemas.
   - [ ] Checkpoint A2: stale snapshot overwrite during reconnect.
   - [x] Checkpoint A3: unauthorized/session-expired responses not surfaced clearly in UI.
 
