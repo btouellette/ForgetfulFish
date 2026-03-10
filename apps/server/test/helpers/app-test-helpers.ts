@@ -1,9 +1,7 @@
-import {
-  createInitialGameStateFromDecks,
-  createUniformDeckDefinition
-} from "@forgetful-fish/game-engine";
+import { createInitialGameStateFromDecks } from "@forgetful-fish/game-engine";
 
 import { buildServer } from "../../src/app";
+import { createGameplayDeckPreset } from "../../src/room-store/deck-preset";
 
 export function createInMemoryRoomStore() {
   type RoomState = {
@@ -228,8 +226,8 @@ export function createInMemoryRoomStore() {
           id: gameId,
           rngSeed: `seed-${gameId}`,
           decks: {
-            playerOne: createUniformDeckDefinition("island", 20),
-            playerTwo: createUniformDeckDefinition("island", 20)
+            playerOne: createGameplayDeckPreset(),
+            playerTwo: createGameplayDeckPreset()
           },
           openingDrawCount: 0
         }

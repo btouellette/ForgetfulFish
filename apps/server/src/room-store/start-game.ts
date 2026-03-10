@@ -1,11 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import { prisma } from "@forgetful-fish/database";
-import {
-  createInitialGameStateFromDecks,
-  createUniformDeckDefinition
-} from "@forgetful-fish/game-engine";
+import { createInitialGameStateFromDecks } from "@forgetful-fish/game-engine";
 
+import { createGameplayDeckPreset } from "./deck-preset";
 import { toPersistedGameState } from "./state-persistence";
 import type { StartGameResult } from "./types";
 import { compareSeats, isUniqueConstraintError, normalizeRoomSeat } from "./utils";
@@ -92,8 +90,8 @@ export async function startGameInDatabase(
       id: gameId,
       rngSeed: randomUUID(),
       decks: {
-        playerOne: createUniformDeckDefinition("island", 20),
-        playerTwo: createUniformDeckDefinition("island", 20)
+        playerOne: createGameplayDeckPreset(),
+        playerTwo: createGameplayDeckPreset()
       },
       openingDrawCount: 0
     }

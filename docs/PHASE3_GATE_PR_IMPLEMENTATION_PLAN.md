@@ -10,6 +10,14 @@ This document defines the implementation plan for the five Phase 3 gate items id
 - Public boundary remains `@forgetful-fish/game-engine` exports only.
 - Validation for each PR includes targeted tests, typecheck, and build for touched packages.
 
+## Phase task status
+
+- [ ] PR 1 - Command-Application Boundary + Cross-Boundary Contract Test
+- [x] PR 2 - Mixed Deck Bootstrap for E2E Coverage
+- [ ] PR 3 - Realtime/API Gameplay Contract Schemas
+- [ ] PR 4 - Pending-Choice Legal Command Output Fix
+- [ ] PR 5 - Scaling Improvements (Hot-Path)
+
 ## PR 1 - Command-Application Boundary + Cross-Boundary Contract Test
 
 ### Goal
