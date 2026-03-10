@@ -124,9 +124,11 @@ export function createRoomRealtimeClient({
     };
 
     socket.onclose = () => {
-      if (currentSocket === socket) {
-        currentSocket = null;
+      if (currentSocket !== socket) {
+        return;
       }
+
+      currentSocket = null;
 
       if (manuallyStopped) {
         onStatusChange("offline");

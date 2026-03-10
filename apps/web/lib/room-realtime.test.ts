@@ -196,4 +196,42 @@ describe("createRoomRealtimeClient", () => {
     expect(FakeWebSocket.instances).toHaveLength(1);
     expect(statuses.filter((status) => status === "connected")).toHaveLength(1);
   });
+
+  it("ignores stale close events from superseded sockets", () => {
+    vi.useFakeTimers();
+
+    const client = createRoomRealtimeClient({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      serverBaseUrl: "http://localhost:4000",
+      webSocketFactory: (url: string) => new FakeWebSocket(url) as unknown as WebSocket,
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      onGameUpdated: () => {}
+    });
+
+    client.connect();
+    const firstSocket = FakeWebSocket.instances[0];
+
+    if (!firstSocket) {
+      throw new Error("expected first socket instance");
+    }
+
+    firstSocket.emitOpen();
+    firstSocket.emitClose(1006);
+    vi.advanceTimersByTime(500);
+
+    const secondSocket = FakeWebSocket.instances[1];
+
+    if (!secondSocket) {
+      throw new Error("expected second socket instance");
+    }
+
+    secondSocket.emitOpen();
+    firstSocket.emitClose(1006);
+    vi.advanceTimersByTime(500);
+
+    expect(FakeWebSocket.instances).toHaveLength(2);
+  });
 });
