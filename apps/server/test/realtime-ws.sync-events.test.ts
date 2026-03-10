@@ -254,4 +254,87 @@ describe("room websocket sync", () => {
     await closeSocket(ownerSocket);
     await app.close();
   });
+
+  it("broadcasts room_game_updated after applied gameplay commands", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await bootstrapRoom(roomStore);
+    const app = buildServer({
+      sessionLookup: createSessionLookup({ owner: "owner-1", second: "player-2" }),
+      roomStore
+    });
+
+    await app.listen({ port: 0, host: "127.0.0.1" });
+    const address = app.server.address();
+
+    if (!address || typeof address === "string") {
+      throw new Error("server did not expose an address");
+    }
+
+    const ownerSocket = await connectSocket(
+      `ws://127.0.0.1:${address.port}/ws/rooms/${roomId}`,
+      "owner"
+    );
+    const secondSocket = await connectSocket(
+      `ws://127.0.0.1:${address.port}/ws/rooms/${roomId}`,
+      "second"
+    );
+
+    await waitForMessage(ownerSocket);
+    await waitForMessage(secondSocket);
+
+    await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      headers: { cookie: "authjs.session-token=owner" },
+      payload: { ready: true }
+    });
+    await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      headers: { cookie: "authjs.session-token=second" },
+      payload: { ready: true }
+    });
+    await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/start`,
+      headers: { cookie: "authjs.session-token=owner" }
+    });
+
+    const ownerGameUpdatedPromise = waitForMessageType(ownerSocket, "room_game_updated");
+    const secondGameUpdatedPromise = waitForMessageType(secondSocket, "room_game_updated");
+
+    const commandResponse = await app.inject({
+      method: "POST",
+      url: `/api/rooms/${roomId}/commands`,
+      headers: { cookie: "authjs.session-token=owner" },
+      payload: {
+        command: {
+          type: "PASS_PRIORITY"
+        }
+      }
+    });
+
+    expect(commandResponse.statusCode).toBe(200);
+    const commandPayload = commandResponse.json();
+
+    const [ownerGameUpdated, secondGameUpdated] = await Promise.all([
+      ownerGameUpdatedPromise,
+      secondGameUpdatedPromise
+    ]);
+
+    expect(ownerGameUpdated).toMatchObject({
+      type: "room_game_updated",
+      schemaVersion: 1,
+      data: commandPayload
+    });
+    expect(secondGameUpdated).toMatchObject({
+      type: "room_game_updated",
+      schemaVersion: 1,
+      data: commandPayload
+    });
+
+    await closeSocket(ownerSocket);
+    await closeSocket(secondSocket);
+    await app.close();
+  });
 });

@@ -68,6 +68,7 @@ describe("createRoomRealtimeClient", () => {
     const statuses: string[] = [];
     const snapshots: unknown[] = [];
     const starts: unknown[] = [];
+    const gameUpdates: unknown[] = [];
 
     const client = createRoomRealtimeClient({
       roomId: "00000000-0000-4000-8000-000000000001",
@@ -82,6 +83,9 @@ describe("createRoomRealtimeClient", () => {
       onLobbyUpdated: () => {},
       onGameStarted: (payload: unknown) => {
         starts.push(payload);
+      },
+      onGameUpdated: (payload: unknown) => {
+        gameUpdates.push(payload);
       }
     });
 
@@ -112,10 +116,23 @@ describe("createRoomRealtimeClient", () => {
         gameStatus: "started"
       }
     });
+    socket.emitMessage({
+      type: "room_game_updated",
+      schemaVersion: 1,
+      data: {
+        roomId: "00000000-0000-4000-8000-000000000001",
+        gameId: "10000000-0000-4000-8000-000000000001",
+        stateVersion: 2,
+        lastAppliedEventSeq: 1,
+        pendingChoice: null,
+        emittedEvents: [{ seq: 1, eventType: "PRIORITY_PASSED" }]
+      }
+    });
 
     expect(statuses).toContain("connected");
     expect(snapshots).toHaveLength(1);
     expect(starts).toHaveLength(1);
+    expect(gameUpdates).toHaveLength(1);
   });
 
   it("reconnects after unexpected close", () => {
@@ -131,7 +148,8 @@ describe("createRoomRealtimeClient", () => {
       },
       onLobbySnapshot: () => {},
       onLobbyUpdated: () => {},
-      onGameStarted: () => {}
+      onGameStarted: () => {},
+      onGameUpdated: () => {}
     });
 
     client.connect();

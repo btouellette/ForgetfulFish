@@ -1,7 +1,11 @@
 import { wsServerMessageSchema } from "@forgetful-fish/realtime-contract";
 
 import { buildServerApiUrl } from "./server-api";
-import type { RoomGameStarted, RoomLobbySnapshot } from "@forgetful-fish/realtime-contract";
+import type {
+  GameplayCommandResponse,
+  RoomGameStarted,
+  RoomLobbySnapshot
+} from "@forgetful-fish/realtime-contract";
 
 export type RoomRealtimeStatus = "connecting" | "connected" | "reconnecting" | "offline";
 
@@ -13,6 +17,7 @@ type RoomRealtimeOptions = {
   onLobbySnapshot: (snapshot: RoomLobbySnapshot) => void;
   onLobbyUpdated: (snapshot: RoomLobbySnapshot) => void;
   onGameStarted: (payload: RoomGameStarted) => void;
+  onGameUpdated?: (payload: GameplayCommandResponse) => void;
 };
 
 const reconnectBackoffMs = [500, 1000, 2000, 5000];
@@ -61,7 +66,8 @@ export function createRoomRealtimeClient({
   onStatusChange,
   onLobbySnapshot,
   onLobbyUpdated,
-  onGameStarted
+  onGameStarted,
+  onGameUpdated = () => {}
 }: RoomRealtimeOptions) {
   const createSocket = webSocketFactory ?? ((url: string) => new WebSocket(url));
 
@@ -109,6 +115,11 @@ export function createRoomRealtimeClient({
 
       if (message.type === "game_started") {
         onGameStarted(message.data);
+        return;
+      }
+
+      if (message.type === "room_game_updated") {
+        onGameUpdated(message.data);
       }
     };
 

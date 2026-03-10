@@ -6,6 +6,7 @@ import {
   wsGameStartedMessageSchema,
   wsInboundPingMessageSchema,
   wsPongMessageSchema,
+  wsRoomGameUpdatedMessageSchema,
   wsRoomLobbyUpdatedMessageSchema,
   wsSubscribedMessageSchema
 } from "@forgetful-fish/realtime-contract";
@@ -168,6 +169,39 @@ export function buildServer({
         app.log.warn(
           { event: "ws_game_started_broadcast_failed", roomId: payload.roomId, err: error },
           "ws game_started broadcast failed"
+        );
+        removeRoomSocket(payload.roomId, socket);
+      }
+    }
+  }
+
+  function broadcastRoomGameUpdated(payload: {
+    roomId: string;
+    gameId: string;
+    stateVersion: number;
+    lastAppliedEventSeq: number;
+    pendingChoice: unknown | null;
+    emittedEvents: Array<{ seq: number; eventType: string }>;
+  }) {
+    const sockets = roomSockets.get(payload.roomId);
+
+    if (!sockets || sockets.size === 0) {
+      return;
+    }
+
+    const message = wsRoomGameUpdatedMessageSchema.parse({
+      type: "room_game_updated",
+      schemaVersion: roomWsMessageSchemaVersion,
+      data: payload
+    });
+
+    for (const socket of sockets) {
+      try {
+        sendRoomMessage(socket, message);
+      } catch (error) {
+        app.log.warn(
+          { event: "ws_room_game_updated_broadcast_failed", roomId: payload.roomId, err: error },
+          "ws room_game_updated broadcast failed"
         );
         removeRoomSocket(payload.roomId, socket);
       }
@@ -585,7 +619,7 @@ export function buildServer({
         return reply.code(409).send({ error: "invalid_command", message: applyResult.message });
       }
 
-      return gameplayCommandRouteResponseSchema.parse({
+      const responsePayload = gameplayCommandRouteResponseSchema.parse({
         roomId: applyResult.roomId,
         gameId: applyResult.gameId,
         stateVersion: applyResult.stateVersion,
@@ -593,6 +627,9 @@ export function buildServer({
         pendingChoice: applyResult.pendingChoice,
         emittedEvents: applyResult.emittedEvents
       });
+
+      broadcastRoomGameUpdated(responsePayload);
+      return responsePayload;
     }
   );
 

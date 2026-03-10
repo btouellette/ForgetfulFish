@@ -47,6 +47,7 @@ type GameSessionAdapterOptions = {
   onLobbySnapshot: (snapshot: RoomLobbySnapshot) => void;
   onLobbyUpdated: (snapshot: RoomLobbySnapshot) => void;
   onGameStarted: (payload: RoomGameStarted) => void;
+  onGameUpdated?: (payload: GameplayCommandResponse) => void;
   api?: GameSessionAdapterApi;
   createRealtimeClient?: typeof createRoomRealtimeClient;
 };
@@ -67,6 +68,7 @@ export function createGameSessionAdapter({
   onLobbySnapshot,
   onLobbyUpdated,
   onGameStarted,
+  onGameUpdated = () => {},
   api = defaultApi,
   createRealtimeClient = createRoomRealtimeClient
 }: GameSessionAdapterOptions) {
@@ -85,7 +87,11 @@ export function createGameSessionAdapter({
       onStatusChange,
       onLobbySnapshot,
       onLobbyUpdated,
-      onGameStarted
+      onGameStarted,
+      onGameUpdated: (payload) => {
+        trackAppliedVersion(payload);
+        onGameUpdated(payload);
+      }
     });
 
     return realtimeClient;
