@@ -255,9 +255,9 @@ while expanding browser coverage to include deterministic manual UI verification
 
 - [x] Web command submission gap
   - `apps/web/lib/server-api.ts` now exposes a typed client helper for `POST /api/rooms/:id/commands`.
-- [ ] Realtime gameplay update gap
-  - Current websocket contract in `packages/realtime-contract/src/index.ts` includes lobby/start lifecycle messages but no gameplay update broadcast message.
-  - Server broadcasts in `apps/server/src/app.ts` currently cover lobby updates and game start, not applied gameplay command updates.
+- [x] Realtime gameplay update gap
+  - `packages/realtime-contract/src/index.ts` now includes a versioned `room_game_updated` websocket message for gameplay command application updates.
+  - `apps/server/src/app.ts` now broadcasts applied gameplay command updates to subscribed room sockets.
 - [ ] Route-level gameplay wiring gap
   - `apps/web/app/play/[roomId]/page.tsx` currently wires lobby/start sync but does not yet implement gameplay command + gameplay-state rendering loop.
 - [ ] Horizontal scale fanout gap
