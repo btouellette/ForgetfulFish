@@ -60,18 +60,18 @@ export class Rng {
   }
 
   public shuffle<T>(arr: T[]): T[] {
-    const pool = [...arr];
-    const shuffled: T[] = [];
+    const shuffled = [...arr];
 
-    while (pool.length > 0) {
-      const pickIndex = this.nextInt(0, pool.length - 1);
-      const picked = pool.splice(pickIndex, 1);
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swapIndex = this.nextInt(0, index);
 
-      if (picked.length !== 1) {
-        throw new Error("Shuffle index out of bounds");
+      if (swapIndex === index) {
+        continue;
       }
 
-      shuffled.push(...picked);
+      const current = shuffled[index]!;
+      shuffled[index] = shuffled[swapIndex]!;
+      shuffled[swapIndex] = current;
     }
 
     return shuffled;

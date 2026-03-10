@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { Rng } from "../../src/rng/rng";
 
@@ -54,6 +54,30 @@ describe("rng/rng", () => {
     expect(shuffled.filter((value) => value === undefined)).toHaveLength(1);
     expect(shuffled.filter((value) => value === 1)).toHaveLength(1);
     expect(shuffled.filter((value) => value === 2)).toHaveLength(1);
+  });
+
+  it("shuffle advances RNG state like Fisher-Yates (n-1 draws)", () => {
+    const shuffledRng = new Rng("seed-fisher-yates");
+    shuffledRng.shuffle(["a", "b", "c", "d"]);
+
+    const baselineRng = new Rng("seed-fisher-yates");
+    for (let index = 3; index > 0; index -= 1) {
+      baselineRng.nextInt(0, index);
+    }
+
+    expect(shuffledRng.getSeed()).toBe(baselineRng.getSeed());
+  });
+
+  it("shuffle does not rely on splice-based removal", () => {
+    const rng = new Rng("seed-no-splice");
+    const spliceSpy = vi.spyOn(Array.prototype, "splice");
+
+    try {
+      rng.shuffle(["a", "b", "c", "d"]);
+      expect(spliceSpy).not.toHaveBeenCalled();
+    } finally {
+      spliceSpy.mockRestore();
+    }
   });
 
   it("next() always stays in [0,1) over repeated calls", () => {

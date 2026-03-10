@@ -369,10 +369,26 @@ export function applyActions(
         const key = zoneKey(action.zone);
         const zone = next.zones.get(key) ?? [];
         const shuffled = rng.shuffle(zone);
-        const finalOrder =
-          action.topObjectId === undefined || !shuffled.includes(action.topObjectId)
-            ? shuffled
-            : [action.topObjectId, ...shuffled.filter((cardId) => cardId !== action.topObjectId)];
+        let finalOrder = shuffled;
+
+        if (action.topObjectId !== undefined) {
+          let foundTopObject = false;
+          const rest: string[] = [];
+
+          for (const cardId of shuffled) {
+            if (!foundTopObject && cardId === action.topObjectId) {
+              foundTopObject = true;
+              continue;
+            }
+
+            rest.push(cardId);
+          }
+
+          if (foundTopObject) {
+            finalOrder = [action.topObjectId, ...rest];
+          }
+        }
+
         next.zones.set(key, finalOrder);
         emit?.({
           type: "SHUFFLED",
