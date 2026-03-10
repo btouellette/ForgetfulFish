@@ -274,6 +274,115 @@ describe("createGameSessionAdapter", () => {
       lastAppliedEventSeq: 4
     });
   });
+
+  it("normalizes lobby snapshots into view model state", () => {
+    const onViewModelChange = vi.fn();
+    let lobbySnapshotHandler: LobbySnapshotHandler = () => {};
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      onViewModelChange,
+      createRealtimeClient: (options: CreateRealtimeClientOptions) => {
+        lobbySnapshotHandler = options.onLobbySnapshot;
+        return {
+          connect: vi.fn(),
+          disconnect: vi.fn()
+        };
+      },
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand: vi.fn()
+      }
+    });
+
+    adapter.connect();
+
+    lobbySnapshotHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      participants: [{ userId: "u-1", seat: "P1", ready: true }],
+      gameId: null,
+      gameStatus: "not_started"
+    });
+
+    expect(adapter.getViewModel()).toMatchObject({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      participants: [{ userId: "u-1", seat: "P1", ready: true }],
+      gameId: null,
+      gameStatus: "not_started",
+      pendingChoice: null,
+      lastEventType: null,
+      latestAppliedVersion: null
+    });
+    expect(onViewModelChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("normalizes gameplay updates into view model state", () => {
+    let gameUpdatedHandler: GameUpdatedHandler = () => {};
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      createRealtimeClient: (options: CreateRealtimeClientOptions) => {
+        if (options.onGameUpdated) {
+          gameUpdatedHandler = options.onGameUpdated;
+        }
+
+        return {
+          connect: vi.fn(),
+          disconnect: vi.fn()
+        };
+      },
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand: vi.fn()
+      }
+    });
+
+    adapter.connect();
+
+    gameUpdatedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      stateVersion: 7,
+      lastAppliedEventSeq: 19,
+      pendingChoice: {
+        id: "choice-1",
+        type: "CHOOSE_MODE",
+        forPlayer: "p1",
+        prompt: "Choose a mode",
+        constraints: {}
+      },
+      emittedEvents: [{ seq: 19, eventType: "PRIORITY_PASSED" }]
+    });
+
+    expect(adapter.getViewModel()).toMatchObject({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      gameStatus: "started",
+      pendingChoice: {
+        id: "choice-1",
+        type: "CHOOSE_MODE"
+      },
+      lastEventType: "PRIORITY_PASSED",
+      latestAppliedVersion: {
+        stateVersion: 7,
+        lastAppliedEventSeq: 19
+      }
+    });
+  });
 });
 
 describe("toSessionStatusMessage", () => {

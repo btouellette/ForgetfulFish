@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   createGameSessionAdapter,
+  type GameSessionViewModel,
   toSessionStatusMessage
 } from "../../../lib/game-session-adapter";
 import {
@@ -35,6 +36,16 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<RoomRealtimeStatus>("offline");
   const sessionAdapterRef = useRef<ReturnType<typeof createGameSessionAdapter> | null>(null);
+
+  function applyViewModel(viewModel: GameSessionViewModel) {
+    if (!isMountedRef.current) {
+      return;
+    }
+
+    setParticipants(viewModel.participants);
+    setGameStatus(viewModel.gameStatus);
+    setGameId(viewModel.gameId);
+  }
 
   async function refreshLobby() {
     const sessionAdapter = sessionAdapterRef.current;
@@ -77,32 +88,17 @@ export default function PlayRoomPage({ params }: PlayRoomPageProps) {
 
             setConnectionStatus(nextStatus);
           },
-          onLobbySnapshot: (snapshot) => {
-            if (!isMountedRef.current) {
-              return;
-            }
-
-            setParticipants(snapshot.participants);
-            setGameStatus(snapshot.gameStatus);
-            setGameId(snapshot.gameId);
-          },
-          onLobbyUpdated: (snapshot) => {
-            if (!isMountedRef.current) {
-              return;
-            }
-
-            setParticipants(snapshot.participants);
-            setGameStatus(snapshot.gameStatus);
-            setGameId(snapshot.gameId);
-          },
+          onLobbySnapshot: () => {},
+          onLobbyUpdated: () => {},
           onGameStarted: (started) => {
             if (!isMountedRef.current) {
               return;
             }
 
-            setGameStatus(started.gameStatus);
-            setGameId(started.gameId);
             setStatus(`Game started: ${started.gameId}`);
+          },
+          onViewModelChange: (viewModel) => {
+            applyViewModel(viewModel);
           }
         });
 
