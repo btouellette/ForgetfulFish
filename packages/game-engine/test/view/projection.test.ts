@@ -122,23 +122,6 @@ function createStateWithVisibleAndHiddenObjects(): GameState {
   return state;
 }
 
-function getZoneCount(
-  state: ReturnType<typeof projectPlayerView>,
-  zone: ZoneRef
-): number | undefined {
-  return state.zones.find((entry) => {
-    if (entry.zoneRef.kind !== zone.kind || entry.zoneRef.scope !== zone.scope) {
-      return false;
-    }
-
-    if (zone.scope === "player" && entry.zoneRef.scope === "player") {
-      return entry.zoneRef.playerId === zone.playerId;
-    }
-
-    return true;
-  })?.count;
-}
-
 describe("view/projection", () => {
   it("shows the viewer their own hand card details", () => {
     const view = projectPlayerView(createStateWithVisibleAndHiddenObjects(), "p1");
