@@ -1,5 +1,12 @@
-import { gameplayCommandResponseSchema } from "@forgetful-fish/realtime-contract";
-import type { GameplayCommand, GameplayCommandResponse } from "@forgetful-fish/realtime-contract";
+import {
+  gameplayCommandResponseSchema,
+  playerGameViewSchema
+} from "@forgetful-fish/realtime-contract";
+import type {
+  GameplayCommand,
+  GameplayCommandResponse,
+  PlayerGameView
+} from "@forgetful-fish/realtime-contract";
 
 const DEFAULT_SERVER_BASE_URL = (process.env.NEXT_PUBLIC_SERVER_BASE_URL ?? "").trim();
 
@@ -102,6 +109,19 @@ export function joinRoom(roomId: string) {
 
 export function getRoomLobby(roomId: string) {
   return requestJson<RoomLobby>(`/api/rooms/${encodeURIComponent(roomId)}`);
+}
+
+export async function getGameState(roomId: string): Promise<PlayerGameView> {
+  const response = await requestJson<unknown>(`/api/rooms/${encodeURIComponent(roomId)}/game`);
+  const parsed = playerGameViewSchema.safeParse(response);
+
+  if (!parsed.success) {
+    throw new Error(
+      `server response failed player game view schema validation: ${parsed.error.message}`
+    );
+  }
+
+  return parsed.data;
 }
 
 export function setRoomReady(roomId: string, ready: boolean) {
