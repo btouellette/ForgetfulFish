@@ -303,7 +303,7 @@ while expanding browser coverage to include deterministic manual UI verification
 - [x] `GET /api/rooms/:id/game` now exposes participant-scoped projected state; clients still receive gameplay command metadata from `POST /api/rooms/:id/commands`.
 - [ ] `room_game_updated` currently carries only `{ roomId, gameId, stateVersion, lastAppliedEventSeq, pendingChoice, emittedEvents }`; it does not carry full projected state.
 - [x] `subscribed` still provides only lobby snapshot data, so reconnect during active games now triggers an HTTP game-state fetch.
-- [ ] `apps/web/app/play/[roomId]/page.tsx` is still the route-level integration hotspot and should stay behaviorally stable while being decomposed.
+- [x] `apps/web/app/play/[roomId]/page.tsx` is now a thin server entrypoint, and the route-level integration logic lives in `PlayRoomContainer`.
 - [x] `zustand` and `framer-motion` are now part of the `apps/web` dependency baseline on `main`.
 - [x] `apps/web/components/play/` and `apps/web/components/play/renderer/` now exist as app-level component roots; do not create shared package abstractions for this milestone.
 
@@ -313,7 +313,7 @@ while expanding browser coverage to include deterministic manual UI verification
 - [ ] Client code remains render-only: no rules resolution, no legality inference, no optimistic authoritative state, no app-layer card/rules branching.
 - [ ] Keep the gameplay renderer intentionally minimal: DOM shell + Canvas 2D rectangles; no PixiJS, Three.js, drag-and-drop engine, or high-frequency animation framework usage.
 - [ ] Use CSS Modules for all new play-route components; do not grow `globals.css` except for narrow cleanup during page split.
-- [ ] Store design is per-page-instance only; do not create a global gameplay singleton.
+- [x] Store design is per-page-instance only; no global gameplay singleton is used.
 
 #### Required Store Contract
 
@@ -425,7 +425,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: tests for adapter reactivity, command delegation, error handling, pending-choice extraction, and load-state flags; capture `task-7-store-viewmodel-reactivity.txt`, `task-7-pass-priority-delegation.txt`, `task-7-error-state.txt`, `task-7-pending-choice-extraction.txt`
   - Commit target: `Add Zustand game store factory`
 
-- [ ] T8. Route extraction and context boundary
+- [x] T8. Route extraction and context boundary
   - Files: `apps/web/app/play/[roomId]/page.tsx`, `apps/web/components/play/PlayRoomContainer.tsx`, `apps/web/components/play/GameStoreContext.tsx`
   - Depends on: T5, T6, T7
   - Deliverables: route becomes a thin server component; all adapter lifecycle logic moves into `PlayRoomContainer`; `GameStoreProvider` and `useGameStore(selector)` created
