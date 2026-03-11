@@ -771,6 +771,26 @@ describe("server room routes", () => {
     expect(response.body).not.toContain(gameId);
   });
 
+  it("returns the persisted room stateVersion in projected game-state fetches", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const { roomId } = await startGameForTwoPlayers(roomStore);
+    const room = roomStore.inspectRoom(roomId);
+
+    if (!room) {
+      throw new Error("expected started room to exist");
+    }
+
+    room.stateVersion = 9;
+
+    const response = await injectAs(roomStore, "owner-1", {
+      method: "GET",
+      url: `/api/rooms/${roomId}/game`
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(playerGameViewSchema.parse(response.json()).stateVersion).toBe(9);
+  });
+
   it("returns 400 for invalid gameplay command payload", async () => {
     const roomStore = createInMemoryRoomStore();
     const roomId = await createRoomAs(roomStore, "owner-1");

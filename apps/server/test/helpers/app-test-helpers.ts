@@ -169,9 +169,14 @@ export function createInMemoryRoomStore() {
         };
       }
 
+      const projected = projectPlayerView(room.gameState, userId);
+
       return {
         status: "ok" as const,
-        payload: projectPlayerView(room.gameState, userId)
+        payload: {
+          ...projected,
+          stateVersion: room.stateVersion ?? projected.stateVersion
+        }
       };
     },
     async setReady(roomId: string, userId: string, ready: boolean) {
