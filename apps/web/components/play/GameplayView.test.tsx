@@ -77,4 +77,24 @@ describe("GameplayView", () => {
     expect(html).toContain("Events");
     expect(html).toContain("Canvas placeholder");
   });
+
+  it("falls back to the waiting placeholder when gameView is missing", () => {
+    const html = renderToStaticMarkup(
+      <GameplayView
+        gameView={null}
+        recentEvents={[]}
+        pendingChoice={null}
+        isSubmittingCommand={false}
+        error={null}
+        onPassPriority={vi.fn()}
+        onConcede={vi.fn()}
+        onMakeChoice={vi.fn()}
+        onClearError={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("Waiting for projected game state...");
+    expect(html).not.toContain("Status");
+    expect(html).not.toContain("Commands");
+  });
 });

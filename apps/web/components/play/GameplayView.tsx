@@ -62,7 +62,7 @@ export function GameplayView({
           error={error}
           onPassPriority={onPassPriority}
           onConcede={onConcede}
-          onMakeChoice={(payload) => onMakeChoice(payload)}
+          onMakeChoice={onMakeChoice}
           onClearError={onClearError}
         />
         <ZonesSummaryPanel viewerPlayerId={gameView.viewerPlayerId} zones={gameView.zones} />
