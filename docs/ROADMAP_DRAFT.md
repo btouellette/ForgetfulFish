@@ -481,7 +481,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: all-panels render, PlayRoomView integration, canvas placeholder presence; capture `task-14-all-panels.txt`, `task-14-playroomview-integration.txt`, `task-14-canvas-placeholder.txt`
   - Commit target: `Wire GameplayView shell with all panels`
 
-- [ ] T15. CanvasHost
+- [x] T15. CanvasHost
   - Files: `apps/web/components/play/renderer/CanvasHost.tsx`, `apps/web/components/play/renderer/CanvasHost.module.css`, tests
   - Depends on: T14
   - Deliverables: parent-filling `<canvas>`, forwarded or callback ref exposure for T17, `ResizeObserver`, cleanup on unmount, real pixel-size updates, optional DPR scaling
