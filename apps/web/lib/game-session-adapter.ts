@@ -112,6 +112,9 @@ export function createGameSessionAdapter({
   let realtimeClient: ReturnType<typeof createRoomRealtimeClient> | null = null;
   let latestAppliedVersion: { stateVersion: number; lastAppliedEventSeq: number } | null = null;
   let gameView: PlayerGameView | null = null;
+  let refreshRequestId = 0;
+  let refreshInFlight: Promise<void> | null = null;
+  let queuedRefresh = false;
   let viewModel: GameSessionViewModel = {
     roomId,
     participants: [],
@@ -160,10 +163,44 @@ export function createGameSessionAdapter({
     return nextGameView;
   }
 
+  async function refreshGameStateInternal(expectedGameId: string | null, requestId: number) {
+    const nextGameView = await api.getGameState(roomId);
+
+    if (
+      requestId !== refreshRequestId ||
+      viewModel.gameStatus !== "started" ||
+      viewModel.gameId !== expectedGameId
+    ) {
+      return;
+    }
+
+    setGameView(nextGameView);
+  }
+
   function refreshGameState() {
-    void fetchGameStateInternal().catch((error) => {
-      onGameStateError(error);
-    });
+    refreshRequestId += 1;
+    const requestId = refreshRequestId;
+    const expectedGameId = viewModel.gameId;
+
+    if (refreshInFlight) {
+      queuedRefresh = true;
+      return;
+    }
+
+    refreshInFlight = refreshGameStateInternal(expectedGameId, requestId)
+      .catch((error) => {
+        onGameStateError(error);
+      })
+      .finally(() => {
+        refreshInFlight = null;
+
+        if (!queuedRefresh) {
+          return;
+        }
+
+        queuedRefresh = false;
+        refreshGameState();
+      });
   }
 
   function getRealtimeClient() {

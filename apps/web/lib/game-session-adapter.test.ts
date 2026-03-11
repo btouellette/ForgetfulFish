@@ -754,6 +754,161 @@ describe("createGameSessionAdapter", () => {
     expect(getGameState).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000001");
     expect(onGameViewChange).toHaveBeenCalledWith(createPlayerGameView());
   });
+
+  it("ignores stale game-state fetches after the adapter resets back to lobby state", async () => {
+    const onGameViewChange = vi.fn();
+    let resolveGameState: ((value: ReturnType<typeof createPlayerGameView>) => void) | undefined;
+    const getGameState = vi.fn().mockImplementation(
+      () =>
+        new Promise<ReturnType<typeof createPlayerGameView>>((resolve) => {
+          resolveGameState = resolve;
+        })
+    );
+    let gameStartedHandler: GameStartedHandler = () => {};
+    let lobbySnapshotHandler: LobbySnapshotHandler = () => {};
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      onGameViewChange,
+      createRealtimeClient: (options: CreateRealtimeClientOptions) => {
+        gameStartedHandler = options.onGameStarted;
+        lobbySnapshotHandler = options.onLobbySnapshot;
+
+        return {
+          connect: vi.fn(),
+          disconnect: vi.fn()
+        };
+      },
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        getGameState,
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand: vi.fn()
+      }
+    });
+
+    adapter.connect();
+    gameStartedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      gameStatus: "started"
+    });
+    lobbySnapshotHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      participants: [],
+      gameId: null,
+      gameStatus: "not_started"
+    });
+
+    if (!resolveGameState) {
+      throw new Error("expected deferred game-state resolver");
+    }
+
+    resolveGameState(createPlayerGameView());
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(onGameViewChange).toHaveBeenCalledWith(null);
+    expect(onGameViewChange).not.toHaveBeenCalledWith(createPlayerGameView());
+    expect(adapter.getGameView()).toBeNull();
+  });
+
+  it("coalesces rapid realtime refresh requests into one follow-up fetch", async () => {
+    const createDeferred = <T>() => {
+      let resolve: ((value: T) => void) | undefined;
+      const promise = new Promise<T>((resolver) => {
+        resolve = resolver;
+      });
+
+      if (!resolve) {
+        throw new Error("expected deferred resolver");
+      }
+
+      return { promise, resolve };
+    };
+
+    const firstFetch = createDeferred<ReturnType<typeof createPlayerGameView>>();
+    const secondFetch = createDeferred<ReturnType<typeof createPlayerGameView>>();
+    const getGameState = vi
+      .fn()
+      .mockImplementationOnce(() => firstFetch.promise)
+      .mockImplementationOnce(() => secondFetch.promise);
+    let gameUpdatedHandler: GameUpdatedHandler = () => {};
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      createRealtimeClient: (options: CreateRealtimeClientOptions) => {
+        if (options.onGameUpdated) {
+          gameUpdatedHandler = options.onGameUpdated;
+        }
+
+        return {
+          connect: vi.fn(),
+          disconnect: vi.fn()
+        };
+      },
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        getGameState,
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand: vi.fn()
+      }
+    });
+
+    adapter.connect();
+    gameUpdatedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      stateVersion: 3,
+      lastAppliedEventSeq: 7,
+      pendingChoice: null,
+      emittedEvents: [{ seq: 7, eventType: "PRIORITY_PASSED" }]
+    });
+    gameUpdatedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      stateVersion: 4,
+      lastAppliedEventSeq: 8,
+      pendingChoice: null,
+      emittedEvents: [{ seq: 8, eventType: "PRIORITY_PASSED" }]
+    });
+    gameUpdatedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      stateVersion: 5,
+      lastAppliedEventSeq: 9,
+      pendingChoice: null,
+      emittedEvents: [{ seq: 9, eventType: "PRIORITY_PASSED" }]
+    });
+
+    expect(getGameState).toHaveBeenCalledTimes(1);
+
+    firstFetch.resolve(createPlayerGameView());
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(getGameState).toHaveBeenCalledTimes(2);
+
+    secondFetch.resolve(createPlayerGameView());
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(getGameState).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("toSessionStatusMessage", () => {
