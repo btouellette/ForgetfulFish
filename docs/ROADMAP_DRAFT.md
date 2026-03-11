@@ -304,7 +304,7 @@ while expanding browser coverage to include deterministic manual UI verification
 - [ ] `room_game_updated` currently carries only `{ roomId, gameId, stateVersion, lastAppliedEventSeq, pendingChoice, emittedEvents }`; it does not carry full projected state.
 - [x] `subscribed` still provides only lobby snapshot data, so reconnect during active games now triggers an HTTP game-state fetch.
 - [ ] `apps/web/app/play/[roomId]/page.tsx` is still the route-level integration hotspot and should stay behaviorally stable while being decomposed.
-- [ ] `zustand` and `framer-motion` are not part of the original `apps/web` dependency baseline on `main` and must be added explicitly.
+- [x] `zustand` and `framer-motion` are now part of the `apps/web` dependency baseline on `main`.
 - [ ] `apps/web/components/play/` and `apps/web/components/play/renderer/` are new app-level component roots; do not create shared package abstractions for this milestone.
 
 #### Mandatory Guardrails For Remaining Execution
@@ -401,7 +401,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: adapter tests for fetch-on-events and server-api tests for validation failure; capture `task-4-adapter-game-started-fetch.txt`, `task-4-zod-validation.txt`
   - Commit target: `Add game state client API and adapter fetch`
 
-- [ ] T5. Web dependencies
+- [x] T5. Web dependencies
   - Files: `apps/web/package.json`, `pnpm-lock.yaml`
   - Depends on: Wave 0 complete
   - Deliverables: install `zustand` and `framer-motion` only; do not use Framer Motion yet
