@@ -317,16 +317,16 @@ while expanding browser coverage to include deterministic manual UI verification
 
 #### Required Store Contract
 
-- [ ] `apps/web/lib/stores/game-store.ts` must define a single state contract that all new play components read from:
-  - [ ] `viewModel: GameSessionViewModel | null`
-  - [ ] `gameView: PlayerGameView | null`
-  - [ ] `lifecycleState: PlayLifecycleState`
-  - [ ] `lobbySnapshot: { participants, gameId, gameStatus } | null`
-  - [ ] `pendingChoice: PendingChoice | null`
-  - [ ] `recentEvents: { seq: number; eventType: string }[]`
-  - [ ] `isSubmittingCommand: boolean`
-  - [ ] `isLoadingGameState: boolean`
-  - [ ] `error: string | null`
+- [x] `apps/web/lib/stores/game-store.ts` now defines a single state contract that all new play components can read from:
+  - [x] `viewModel: GameSessionViewModel | null`
+  - [x] `gameView: PlayerGameView | null`
+  - [x] `lifecycleState: PlayLifecycleState`
+  - [x] `lobbySnapshot: { participants, gameId, gameStatus } | null`
+  - [x] `pendingChoice: PendingChoice | null`
+  - [x] `recentEvents: { seq: number; eventType: string }[]`
+  - [x] `isSubmittingCommand: boolean`
+  - [x] `isLoadingGameState: boolean`
+  - [x] `error: string | null`
 - [ ] UI consumption stays explicit:
   - [ ] `PlayRoomView` reads `lifecycleState`
   - [ ] `LobbyView` reads `lobbySnapshot`
@@ -350,7 +350,7 @@ while expanding browser coverage to include deterministic manual UI verification
 #### Approved Wave Order
 
 - [x] Wave 0: T1 -> T2 -> T3 -> T4
-- [ ] Wave 1: (T5 || T6) -> T7
+- [x] Wave 1: (T5 || T6) -> T7
 - [ ] Wave 2: T8 -> T9
 - [ ] Wave 3: (T10 || T11 || T12 || T13) -> T14
 - [ ] Wave 4: (T15 || T16) -> T17
@@ -417,7 +417,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: build + directory existence checks; capture `task-6-css-module-build.txt`, `task-6-directory-structure.txt`
   - Commit target: `Add CSS Module infrastructure for play components`
 
-- [ ] T7. Per-page Zustand store factory
+- [x] T7. Per-page Zustand store factory
   - Files: `apps/web/lib/stores/game-store.ts`, `apps/web/lib/stores/game-store.test.ts`
   - Depends on: T4, T5
   - Deliverables: full store contract above, adapter-driven updates, store actions `passPriority`, `makeChoice`, `concede`, `fetchGameState`, `clearError`
