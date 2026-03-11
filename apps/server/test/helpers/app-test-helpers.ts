@@ -1,6 +1,7 @@
 import {
   createInitialGameStateFromDecks,
   processCommand,
+  projectPlayerView,
   Rng,
   type GameEvent,
   type GameState,
@@ -141,6 +142,36 @@ export function createInMemoryRoomStore() {
           gameId: room.gameId,
           gameStatus: room.gameId ? ("started" as const) : ("not_started" as const)
         }
+      };
+    },
+    async getGameState(roomId: string, userId: string) {
+      const room = rooms.get(roomId);
+
+      if (!room) {
+        return {
+          status: "not_found" as const
+        };
+      }
+
+      const isParticipant = [...room.participants.values()].some(
+        (participant) => participant.userId === userId
+      );
+
+      if (!isParticipant) {
+        return {
+          status: "forbidden" as const
+        };
+      }
+
+      if (room.gameState === null) {
+        return {
+          status: "not_found" as const
+        };
+      }
+
+      return {
+        status: "ok" as const,
+        payload: projectPlayerView(room.gameState, userId)
       };
     },
     async setReady(roomId: string, userId: string, ready: boolean) {

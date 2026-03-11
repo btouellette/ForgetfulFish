@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { playerGameViewSchema } from "@forgetful-fish/realtime-contract";
+
 import { createInitialGameStateFromDecks } from "@forgetful-fish/game-engine";
 
 import { buildServer } from "../src/app";
@@ -12,6 +14,43 @@ import {
 import { createGameplayDeckPreset } from "../src/room-store/deck-preset";
 
 describe("server room routes", () => {
+  async function startGameForTwoPlayers(roomStore: ReturnType<typeof createInMemoryRoomStore>) {
+    const roomId = await createRoomAs(roomStore, "owner-1");
+
+    await injectAs(roomStore, "player-2", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/join`
+    });
+
+    await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      payload: {
+        ready: true
+      }
+    });
+
+    await injectAs(roomStore, "player-2", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/ready`,
+      payload: {
+        ready: true
+      }
+    });
+
+    const startResponse = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/start`
+    });
+
+    expect(startResponse.statusCode).toBe(200);
+
+    return {
+      roomId,
+      gameId: startResponse.json().gameId as string
+    };
+  }
+
   it("requires auth for room creation", async () => {
     const app = buildServer({
       sessionLookup: async () => null
@@ -653,6 +692,83 @@ describe("server room routes", () => {
     } finally {
       await app.close();
     }
+  });
+
+  it("requires auth for projected game-state fetch", async () => {
+    const app = buildServer({
+      sessionLookup: async () => null
+    });
+
+    try {
+      const response = await app.inject({
+        method: "GET",
+        url: "/api/rooms/00000000-0000-4000-8000-000000000001/game"
+      });
+
+      expect(response.statusCode).toBe(401);
+      expect(response.json()).toEqual({ error: "unauthorized" });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("returns 404 when fetching projected game state before a room has started", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const roomId = await createRoomAs(roomStore, "owner-1");
+
+    const response = await injectAs(roomStore, "owner-1", {
+      method: "GET",
+      url: `/api/rooms/${roomId}/game`
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "game_not_found" });
+  });
+
+  it("returns 403 when non-participant fetches projected game state", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const { roomId } = await startGameForTwoPlayers(roomStore);
+
+    const response = await injectAs(roomStore, "outsider-9", {
+      method: "GET",
+      url: `/api/rooms/${roomId}/game`
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "forbidden" });
+  });
+
+  it("returns a participant-scoped projected game view without leaking hidden state", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const { roomId, gameId } = await startGameForTwoPlayers(roomStore);
+
+    const response = await injectAs(roomStore, "owner-1", {
+      method: "GET",
+      url: `/api/rooms/${roomId}/game`
+    });
+
+    expect(response.statusCode).toBe(200);
+
+    const parsed = playerGameViewSchema.parse(response.json());
+    const hiddenLibrary = parsed.zones.find(
+      (zone) => zone.zoneRef.kind === "library" && zone.objectIds === undefined
+    );
+
+    expect(parsed.viewerPlayerId).toBe("owner-1");
+    expect(parsed.stateVersion).toBe(1);
+    expect(parsed.viewer.id).toBe("owner-1");
+    expect(parsed.opponent.id).toBe("player-2");
+    expect(parsed.viewer.hand).toEqual([]);
+    expect(parsed.opponent.handCount).toBeGreaterThanOrEqual(0);
+    expect(parsed.pendingChoice).toBeNull();
+    expect(parsed.stack).toEqual([]);
+    expect(parsed.zones.length).toBeGreaterThan(0);
+    expect(hiddenLibrary).toMatchObject({ count: expect.any(Number) });
+    expect(response.body).not.toContain("rngSeed");
+    expect(response.body).not.toContain("engineVersion");
+    expect(response.body).not.toContain("lkiStore");
+    expect(response.body).not.toContain("triggerQueue");
+    expect(response.body).not.toContain(gameId);
   });
 
   it("returns 400 for invalid gameplay command payload", async () => {
