@@ -37,6 +37,15 @@ function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
 
   const lobbySnapshot = useGameStore((state) => state.lobbySnapshot);
   const lifecycleState = useGameStore((state) => state.lifecycleState);
+  const gameView = useGameStore((state) => state.gameView);
+  const recentEvents = useGameStore((state) => state.recentEvents);
+  const pendingChoice = useGameStore((state) => state.pendingChoice);
+  const isSubmittingCommand = useGameStore((state) => state.isSubmittingCommand);
+  const error = useGameStore((state) => state.error);
+  const passPriority = useGameStore((state) => state.passPriority);
+  const makeChoice = useGameStore((state) => state.makeChoice);
+  const concede = useGameStore((state) => state.concede);
+  const clearError = useGameStore((state) => state.clearError);
   const store = useGameStoreApi();
   const participants = lobbySnapshot?.participants ?? emptyParticipants;
   const gameStatus = lobbySnapshot?.gameStatus ?? "not_started";
@@ -301,8 +310,23 @@ function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
       participants={participants}
       viewerId={viewerId}
       isSubmittingLobbyAction={isSubmittingLobbyAction}
+      gameView={gameView}
+      recentEvents={recentEvents}
+      pendingChoice={pendingChoice}
+      isSubmittingCommand={isSubmittingCommand}
+      error={error}
       onReadyToggle={handleReadyToggle}
       onStartGame={handleStartGame}
+      onPassPriority={() => {
+        void passPriority();
+      }}
+      onConcede={() => {
+        void concede();
+      }}
+      onMakeChoice={(payload) => {
+        void makeChoice(payload);
+      }}
+      onClearError={clearError}
     />
   );
 }

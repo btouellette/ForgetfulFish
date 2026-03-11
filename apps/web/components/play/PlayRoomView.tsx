@@ -1,9 +1,15 @@
 import React from "react";
 import Link from "next/link";
 import type { RoomLobbySnapshot } from "@forgetful-fish/realtime-contract";
+import type {
+  GameplayCommand,
+  GameplayPendingChoice,
+  PlayerGameView
+} from "@forgetful-fish/realtime-contract";
 
 import type { PlayLifecycleState } from "../../lib/play-lifecycle";
 import type { RoomRealtimeStatus } from "../../lib/room-realtime";
+import { GameplayView } from "./GameplayView";
 import { LobbyView } from "./LobbyView";
 import styles from "./PlayRoom.module.css";
 
@@ -20,8 +26,17 @@ type PlayRoomViewProps = {
   participants: LobbyParticipant[];
   viewerId: string;
   isSubmittingLobbyAction: boolean;
+  gameView: PlayerGameView | null;
+  recentEvents: Array<{ seq: number; eventType: string }>;
+  pendingChoice: GameplayPendingChoice | null;
+  isSubmittingCommand: boolean;
+  error: string | null;
   onReadyToggle: () => void;
   onStartGame: () => void;
+  onPassPriority: () => void;
+  onConcede: () => void;
+  onMakeChoice: (payload: Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"]) => void;
+  onClearError: () => void;
 };
 
 export function PlayRoomView({
@@ -35,8 +50,17 @@ export function PlayRoomView({
   participants,
   viewerId,
   isSubmittingLobbyAction,
+  gameView,
+  recentEvents,
+  pendingChoice,
+  isSubmittingCommand,
+  error,
   onReadyToggle,
-  onStartGame
+  onStartGame,
+  onPassPriority,
+  onConcede,
+  onMakeChoice,
+  onClearError
 }: PlayRoomViewProps) {
   return (
     <main className={styles.playRoom}>
@@ -54,10 +78,17 @@ export function PlayRoomView({
       <p>Live connection: {connectionStatus}</p>
       {realtimeGuardrailMessage ? <p>{realtimeGuardrailMessage}</p> : null}
       {lifecycleState === "game_active" ? (
-        <section className={styles.gameplayView} data-testid="game-active-placeholder">
-          <h2>Gameplay shell placeholder</h2>
-          <p>Gameplay presentation stays intentionally minimal until T14 lands.</p>
-        </section>
+        <GameplayView
+          gameView={gameView}
+          recentEvents={recentEvents}
+          pendingChoice={pendingChoice}
+          isSubmittingCommand={isSubmittingCommand}
+          error={error}
+          onPassPriority={onPassPriority}
+          onConcede={onConcede}
+          onMakeChoice={onMakeChoice}
+          onClearError={onClearError}
+        />
       ) : (
         <LobbyView
           participants={participants}
