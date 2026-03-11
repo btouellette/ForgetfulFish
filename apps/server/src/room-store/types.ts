@@ -1,3 +1,5 @@
+import type { PlayerGameView } from "@forgetful-fish/realtime-contract";
+
 export type RoomSeat = "P1" | "P2";
 
 export type CreatedRoomPayload = {
@@ -35,6 +37,11 @@ export type RoomLobbyPayload = {
 
 export type GetRoomLobbyResult =
   | { status: "ok"; payload: RoomLobbyPayload }
+  | { status: "not_found" }
+  | { status: "forbidden" };
+
+export type GetRoomGameStateResult =
+  | { status: "ok"; payload: PlayerGameView }
   | { status: "not_found" }
   | { status: "forbidden" };
 
@@ -82,6 +89,7 @@ export type RoomStore = {
   createRoom: (ownerUserId: string) => Promise<CreatedRoomPayload>;
   joinRoom: (roomId: string, userId: string) => Promise<JoinRoomResult>;
   getLobby: (roomId: string, userId: string) => Promise<GetRoomLobbyResult>;
+  getGameState: (roomId: string, userId: string) => Promise<GetRoomGameStateResult>;
   setReady: (roomId: string, userId: string, ready: boolean) => Promise<SetRoomReadyResult>;
   startGame: (roomId: string, userId: string) => Promise<StartGameResult>;
   applyCommand: (

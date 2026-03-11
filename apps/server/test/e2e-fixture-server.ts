@@ -1,4 +1,15 @@
+import {
+  createInitialGameStateFromDecks,
+  processCommand,
+  projectPlayerView,
+  Rng,
+  type GameEvent,
+  type PendingChoice
+} from "@forgetful-fish/game-engine";
+import { gameplayCommandSchema } from "@forgetful-fish/realtime-contract";
+
 import { buildServer } from "../src/app";
+import { createGameplayDeckPreset } from "../src/room-store/deck-preset";
 
 type RoomSeat = "P1" | "P2";
 
@@ -11,11 +22,38 @@ function createInMemoryRoomStore() {
   type RoomState = {
     participants: Map<RoomSeat, Participant>;
     gameId: string | null;
+    gameState: ReturnType<typeof createInitialGameStateFromDecks> | null;
+    stateVersion: number | null;
+    lastAppliedEventSeq: number | null;
+    gameEvents: Array<{
+      seq: number;
+      eventType: string;
+      schemaVersion: number;
+      causedByUserId: string;
+      payload: unknown;
+    }>;
   };
 
   const rooms = new Map<string, RoomState>();
   let nextRoomIndex = 1;
   let nextGameIndex = 1;
+
+  const toPersistedEventPayload = (event: GameEvent, persistedSeq: number): unknown => {
+    const payload = JSON.parse(JSON.stringify(event)) as Record<string, unknown>;
+    payload.seq = persistedSeq;
+
+    const payloadId = payload.id;
+
+    if (typeof payloadId === "string") {
+      const separatorIndex = payloadId.lastIndexOf(":");
+
+      if (separatorIndex > 0 && separatorIndex + 1 < payloadId.length) {
+        payload.id = `${payloadId.slice(0, separatorIndex + 1)}${persistedSeq}`;
+      }
+    }
+
+    return payload;
+  };
 
   return {
     async createRoom(ownerUserId: string) {
@@ -24,7 +62,11 @@ function createInMemoryRoomStore() {
 
       rooms.set(roomId, {
         participants: new Map([["P1", { userId: ownerUserId, ready: false }]]),
-        gameId: null
+        gameId: null,
+        gameState: null,
+        stateVersion: null,
+        lastAppliedEventSeq: null,
+        gameEvents: []
       });
 
       return {
@@ -86,6 +128,35 @@ function createInMemoryRoomStore() {
         }
       };
     },
+    async getGameState(roomId: string, userId: string) {
+      const room = rooms.get(roomId);
+
+      if (!room) {
+        return { status: "not_found" as const };
+      }
+
+      const isParticipant = [...room.participants.values()].some(
+        (participant) => participant.userId === userId
+      );
+
+      if (!isParticipant) {
+        return { status: "forbidden" as const };
+      }
+
+      if (room.gameState === null) {
+        return { status: "not_found" as const };
+      }
+
+      const projected = projectPlayerView(room.gameState, userId);
+
+      return {
+        status: "ok" as const,
+        payload: {
+          ...projected,
+          stateVersion: room.stateVersion ?? projected.stateVersion
+        }
+      };
+    },
     async setReady(roomId: string, userId: string, ready: boolean) {
       const room = rooms.get(roomId);
 
@@ -142,12 +213,125 @@ function createInMemoryRoomStore() {
 
       room.gameId = `10000000-0000-4000-8000-${String(nextGameIndex).padStart(12, "0")}`;
       nextGameIndex += 1;
+      const participantEntries = [...room.participants.entries()].sort(([left], [right]) => {
+        if (left === right) {
+          return 0;
+        }
+
+        return left === "P1" ? -1 : 1;
+      });
+      const firstParticipant = participantEntries[0];
+      const secondParticipant = participantEntries[1];
+
+      if (!firstParticipant || !secondParticipant || !room.gameId) {
+        return { status: "not_ready" as const };
+      }
+
+      room.gameState = createInitialGameStateFromDecks(
+        firstParticipant[1].userId,
+        secondParticipant[1].userId,
+        {
+          id: room.gameId,
+          rngSeed: `seed-${room.gameId}`,
+          decks: {
+            playerOne: createGameplayDeckPreset(),
+            playerTwo: createGameplayDeckPreset()
+          },
+          openingDrawCount: 0
+        }
+      );
+      room.stateVersion = 1;
+      room.lastAppliedEventSeq = 0;
+      room.gameEvents = [
+        {
+          seq: 0,
+          eventType: "game_initialized",
+          schemaVersion: room.stateVersion,
+          causedByUserId: userId,
+          payload: {
+            stateVersion: room.stateVersion,
+            state: room.gameState,
+            playersBySeat: participantEntries.map(([seat, participant]) => ({
+              seat,
+              userId: participant.userId
+            }))
+          }
+        }
+      ];
 
       return {
         status: "started" as const,
         roomId,
         gameId: room.gameId,
         gameStatus: "started" as const
+      };
+    },
+    async applyCommand(roomId: string, userId: string, command: unknown) {
+      const room = rooms.get(roomId);
+
+      if (!room || room.gameId === null || room.gameState === null) {
+        return { status: "not_found" as const };
+      }
+
+      const isParticipant = [...room.participants.values()].some(
+        (participant) => participant.userId === userId
+      );
+
+      if (!isParticipant) {
+        return { status: "forbidden" as const };
+      }
+
+      let result:
+        | {
+            nextState: ReturnType<typeof createInitialGameStateFromDecks>;
+            newEvents: GameEvent[];
+            pendingChoice: PendingChoice | null;
+          }
+        | undefined;
+
+      try {
+        const parsedCommand = gameplayCommandSchema.parse(command);
+        result = processCommand(room.gameState, parsedCommand, new Rng(room.gameState.rngSeed));
+      } catch (error) {
+        if (error instanceof Error) {
+          return {
+            status: "invalid_command" as const,
+            message: error.message
+          };
+        }
+
+        return {
+          status: "invalid_command" as const,
+          message: "invalid gameplay command"
+        };
+      }
+
+      room.gameState = result.nextState;
+      room.stateVersion = (room.stateVersion ?? 0) + 1;
+
+      const priorSeq = room.lastAppliedEventSeq ?? 0;
+      room.lastAppliedEventSeq = priorSeq + result.newEvents.length;
+      room.gameEvents.push(
+        ...result.newEvents.map((event, index) => ({
+          seq: priorSeq + index + 1,
+          eventType: event.type,
+          schemaVersion: event.schemaVersion,
+          causedByUserId: userId,
+          payload: toPersistedEventPayload(event, priorSeq + index + 1)
+        }))
+      );
+
+      return {
+        status: "applied" as const,
+        roomId,
+        gameId: room.gameId,
+        stateVersion: room.stateVersion,
+        lastAppliedEventSeq: room.lastAppliedEventSeq,
+        pendingChoice: result.pendingChoice,
+        emittedEvents: result.newEvents.map((event, index) => ({
+          seq: priorSeq + index + 1,
+          eventType: event.type
+        }))
       };
     }
   };

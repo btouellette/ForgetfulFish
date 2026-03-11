@@ -1,7 +1,8 @@
 import { z } from "zod";
 import {
   gameplayCommandResponseSchema,
-  gameplayCommandSubmissionSchema
+  gameplayCommandSubmissionSchema,
+  playerGameViewSchema
 } from "@forgetful-fish/realtime-contract";
 
 export const meResponseSchema = z.object({
@@ -57,5 +58,6 @@ export const gameStartedResponseSchema = z.object({
 
 export const gameplayCommandBodySchema = gameplayCommandSubmissionSchema;
 export const gameplayCommandRouteResponseSchema = gameplayCommandResponseSchema;
+export const roomGameStateResponseSchema = playerGameViewSchema;
 
 export type GameStartedPayload = z.infer<typeof gameStartedResponseSchema>;

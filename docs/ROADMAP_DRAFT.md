@@ -300,7 +300,7 @@ while expanding browser coverage to include deterministic manual UI verification
 
 #### Verified Preconditions And Repo Realities
 
-- [ ] The current server does not expose `GET /api/rooms/:id/game`; clients only receive gameplay command metadata from `POST /api/rooms/:id/commands`.
+- [x] `GET /api/rooms/:id/game` now exposes participant-scoped projected state; clients still receive gameplay command metadata from `POST /api/rooms/:id/commands`.
 - [ ] `room_game_updated` currently carries only `{ roomId, gameId, stateVersion, lastAppliedEventSeq, pendingChoice, emittedEvents }`; it does not carry full projected state.
 - [ ] `subscribed` still provides only lobby snapshot data, so reconnect during active games must trigger an HTTP game-state fetch.
 - [ ] `apps/web/app/play/[roomId]/page.tsx` is still the route-level integration hotspot and should stay behaviorally stable while being decomposed.
@@ -342,7 +342,7 @@ while expanding browser coverage to include deterministic manual UI verification
 - [ ] `pnpm --filter @forgetful-fish/server test` passes with game-state endpoint coverage.
 - [ ] `pnpm --filter @forgetful-fish/web test` passes with store, component, and route integration coverage.
 - [ ] `pnpm lint` and `pnpm typecheck` pass before merge for every slice.
-- [ ] `GET /api/rooms/:id/game` returns projected state with player-specific hidden-info filtering.
+- [x] `GET /api/rooms/:id/game` returns projected state with player-specific hidden-info filtering.
 - [ ] The play route transitions from lobby to gameplay without losing reconnect/resync behavior.
 - [ ] The command panel can submit pass-priority, make-choice, and concede through the adapter/store path.
 - [ ] The battlefield canvas renders deterministic placeholder cards from projected battlefield objects.
@@ -384,7 +384,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: focused Vitest redaction cases for opponent hand, library, stripped secret fields; capture `task-2-opponent-hand-redaction.txt`, `task-2-secrets-stripped.txt`, `task-2-library-redaction.txt`
   - Commit target: `Add player-view projection function`
 
-- [ ] T3. Authenticated game-state endpoint
+- [x] T3. Authenticated game-state endpoint
   - Files: `apps/server/src/room-store/get-game-state.ts`, `apps/server/src/room-store/types.ts`, `apps/server/src/room-store/index.ts`, `apps/server/src/app.ts`, `apps/server/src/schemas.ts`, `apps/server/test/e2e-fixture-server.ts`, server endpoint tests
   - Depends on: T1, T2
   - Deliverables: `GET /api/rooms/:id/game` guarded by `authorizeRequest`, participant check, active-game check, projection via `projectPlayerView`
