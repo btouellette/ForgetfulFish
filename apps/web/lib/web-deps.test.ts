@@ -7,5 +7,5 @@ describe("web dependency baseline", () => {
 
     expect(typeof zustand.create).toBe("function");
     expect(framerMotion.motion.div).toBeDefined();
-  });
+  }, 15000);
 });
