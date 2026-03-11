@@ -24,13 +24,24 @@ export function CommandPanel({
 }: CommandPanelProps) {
   const canRenderYesNo = pendingChoice?.type === "CHOOSE_YES_NO";
 
+  function handleConcede() {
+    if (typeof window === "undefined") {
+      onConcede();
+      return;
+    }
+
+    if (window.confirm("Concede the game?")) {
+      onConcede();
+    }
+  }
+
   return (
     <section className={styles.commandPanel}>
       <h3>Commands</h3>
       {error ? (
         <div className={styles.errorBanner}>
           <span>{error}</span>
-          <button type="button" onClick={onClearError} disabled={isSubmitting}>
+          <button type="button" onClick={onClearError}>
             Dismiss
           </button>
         </div>
@@ -68,7 +79,7 @@ export function CommandPanel({
         <button
           type="button"
           className={styles.dangerButton}
-          onClick={onConcede}
+          onClick={handleConcede}
           disabled={isSubmitting}
         >
           Concede game

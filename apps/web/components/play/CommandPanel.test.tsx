@@ -55,7 +55,7 @@ describe("CommandPanel", () => {
     expect(html).not.toContain("select");
   });
 
-  it("disables actions while submitting and shows a dismissible error state", () => {
+  it("disables gameplay actions while keeping the error banner dismissible", () => {
     const html = renderToStaticMarkup(
       <CommandPanel
         pendingChoice={createPendingChoice()}
@@ -69,7 +69,8 @@ describe("CommandPanel", () => {
     );
 
     expect(html).toContain("Priority pass failed");
-    expect(html).toContain("Dismiss");
+    expect(html).toMatch(/<button[^>]*>Dismiss<\/button>/);
+    expect(html).not.toMatch(/<button[^>]*disabled[^>]*>Dismiss<\/button>/);
     expect(html).toContain("disabled");
   });
 });
