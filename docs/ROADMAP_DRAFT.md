@@ -473,7 +473,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: populated list and empty state; capture `task-13-event-list.txt`, `task-13-empty-events.txt`
   - Commit target: `Add EventRail component`
 
-- [ ] T14. Gameplay shell composition
+- [x] T14. Gameplay shell composition
   - Files: `apps/web/components/play/GameplayView.tsx`, `apps/web/components/play/PlayRoomView.tsx`, tests
   - Depends on: T10, T11, T12, T13
   - Deliverables: CSS-grid shell with `StatusRail`, `CommandPanel`, `ZonesSummaryPanel`, `EventRail`, and a canvas placeholder area
