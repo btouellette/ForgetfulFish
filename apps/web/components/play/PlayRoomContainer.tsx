@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import type { RoomLobbySnapshot, GameplayCommand } from "@forgetful-fish/realtime-contract";
 import {
   createGameSessionAdapter,
   type GameSessionViewModel,
@@ -15,17 +15,16 @@ import {
   shouldPollLobbyWhileDisconnected
 } from "../../lib/room-guardrails";
 import type { RoomRealtimeStatus } from "../../lib/room-realtime";
-import type { GameplayCommand } from "@forgetful-fish/realtime-contract";
 import { ServerApiError } from "../../lib/server-api";
 import { createGameStore } from "../../lib/stores/game-store";
 import { GameStoreProvider, useGameStore, useGameStoreApi } from "./GameStoreContext";
-import styles from "./PlayRoom.module.css";
+import { PlayRoomView } from "./PlayRoomView";
 
 type PlayRoomContainerProps = {
   roomId: string;
 };
 
-const emptyParticipants: Array<{ userId: string; seat: "P1" | "P2"; ready: boolean }> = [];
+const emptyParticipants: RoomLobbySnapshot["participants"] = [];
 
 function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
   const isMountedRef = useRef(true);
@@ -288,47 +287,23 @@ function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
     }
   }
 
-  const viewer = participants.find((participant) => participant.userId === viewerId);
   const realtimeGuardrailMessage = getRealtimeGuardrailMessage(connectionStatus);
-  const canStart =
-    gameStatus === "not_started" &&
-    participants.length === 2 &&
-    participants.every((participant) => participant.ready);
 
   return (
-    <main className={styles.playRoom}>
-      <h1>Play Room</h1>
-      <p>{`Room: ${roomId}`}</p>
-      <p>Game: {gameStatus === "started" ? `started (${gameId})` : "not started"}</p>
-      <p>Lifecycle: {joinFailed ? "error" : lifecycleState}</p>
-      <p>Live connection: {connectionStatus}</p>
-      {realtimeGuardrailMessage ? <p>{realtimeGuardrailMessage}</p> : null}
-      <h2>Lobby</h2>
-      {participants.length === 0 ? <p>No participants loaded.</p> : null}
-      {participants.map((participant) => (
-        <p key={participant.userId}>
-          {participant.seat}: {participant.userId} ({participant.ready ? "ready" : "not ready"})
-        </p>
-      ))}
-      <button
-        type="button"
-        onClick={handleReadyToggle}
-        disabled={!viewer || gameStatus === "started" || isSubmittingLobbyAction}
-      >
-        {viewer?.ready ? "Mark not ready" : "Mark ready"}
-      </button>
-      <button
-        type="button"
-        onClick={handleStartGame}
-        disabled={!canStart || isSubmittingLobbyAction}
-      >
-        Start game
-      </button>
-      <p>{status}</p>
-      <p>
-        <Link href="/auth/verify">Back to verification</Link>
-      </p>
-    </main>
+    <PlayRoomView
+      roomId={roomId}
+      status={status}
+      gameStatus={gameStatus}
+      gameId={gameId}
+      lifecycleState={joinFailed ? "error" : lifecycleState}
+      connectionStatus={connectionStatus}
+      realtimeGuardrailMessage={realtimeGuardrailMessage}
+      participants={participants}
+      viewerId={viewerId}
+      isSubmittingLobbyAction={isSubmittingLobbyAction}
+      onReadyToggle={handleReadyToggle}
+      onStartGame={handleStartGame}
+    />
   );
 }
 

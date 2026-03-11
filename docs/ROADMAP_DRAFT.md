@@ -433,7 +433,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: line-count/hook grep check, no-regression tests, missing-provider error test; capture `task-8-page-minimal.txt`, `task-8-no-regressions.txt`, `task-8-context-null-guard.txt`
   - Commit target: `Extract PlayRoomContainer from page.tsx`
 
-- [ ] T9. Presentational lobby/gameplay shell
+- [x] T9. Presentational lobby/gameplay shell
   - Files: `apps/web/components/play/PlayRoomView.tsx`, `apps/web/components/play/LobbyView.tsx`, related tests
   - Depends on: T6, T8
   - Deliverables: lifecycle switch for `joining`, `lobby_ready`, `game_active`, `resyncing`, `error`; extract lobby presentation from the old route; keep gameplay branch as placeholder until T14
