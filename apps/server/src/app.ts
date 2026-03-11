@@ -22,6 +22,7 @@ import {
   gameStartedResponseSchema,
   joinRoomParamsSchema,
   meResponseSchema,
+  roomGameStateResponseSchema,
   roomCreatedResponseSchema,
   roomJoinedResponseSchema,
   roomLobbyResponseSchema,
@@ -491,6 +492,31 @@ export function buildServer({
       );
 
       return reply.code(201).send(payload);
+    }
+  );
+
+  app.get(
+    "/api/rooms/:id/game",
+    {
+      preHandler: authorizeRequest
+    },
+    async (request, reply) => {
+      if (!request.actor) {
+        return reply.code(401).send({ error: "unauthorized" });
+      }
+
+      const params = joinRoomParamsSchema.parse(request.params);
+      const gameStateResult = await roomStore.getGameState(params.id, request.actor.userId);
+
+      if (gameStateResult.status === "not_found") {
+        return reply.code(404).send({ error: "game_not_found" });
+      }
+
+      if (gameStateResult.status === "forbidden") {
+        return reply.code(403).send({ error: "forbidden" });
+      }
+
+      return roomGameStateResponseSchema.parse(gameStateResult.payload);
     }
   );
 
