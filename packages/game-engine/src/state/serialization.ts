@@ -7,7 +7,7 @@ import type {
   TriggeredAbility,
   TurnState
 } from "./gameState";
-import type { GameObject, GameObjectBase, GameObjectView } from "./gameObject";
+import type { DerivedGameObjectView, GameObject, GameObjectBase } from "./gameObject";
 import type { LKISnapshot } from "./lki";
 import type { ObjectId } from "./objectRef";
 import type { ZoneKey, ZoneRef } from "./zones";
@@ -31,7 +31,7 @@ export type SerializedGameObjectBase = Omit<GameObjectBase, "counters"> & {
   counters: NumberMap;
 };
 
-export type SerializedGameObjectView = Omit<GameObjectView, "counters"> & {
+export type SerializedGameObjectView = Omit<DerivedGameObjectView, "counters"> & {
   counters: NumberMap;
 };
 

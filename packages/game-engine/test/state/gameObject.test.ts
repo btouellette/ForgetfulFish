@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AbilityAst } from "../../src/cards/abilityAst";
-import type { GameObjectBase, GameObjectView } from "../../src/state/gameObject";
+import type { DerivedGameObjectView, GameObjectBase } from "../../src/state/gameObject";
 
 describe("state/gameObject", () => {
   it("constructs GameObjectBase with all required fields", () => {
@@ -65,7 +65,7 @@ describe("state/gameObject", () => {
     expect(object.attachments).toHaveLength(0);
   });
 
-  it("GameObjectView is assignable from GameObjectBase", () => {
+  it("DerivedGameObjectView is assignable from GameObjectBase", () => {
     const base: GameObjectBase = {
       id: "obj-5",
       zcc: 0,
@@ -81,7 +81,7 @@ describe("state/gameObject", () => {
       zone: { kind: "library", scope: "shared" }
     };
 
-    const view: GameObjectView = base;
+    const view: DerivedGameObjectView = base;
     expect(view.id).toBe("obj-5");
   });
 

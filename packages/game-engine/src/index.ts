@@ -35,3 +35,5 @@ export * from "./state/objectRef";
 export * from "./state/priorityState";
 export * from "./state/serialization";
 export * from "./state/zones";
+export * from "./view/projection";
+export * from "./view/types";

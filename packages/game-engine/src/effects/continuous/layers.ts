@@ -1,5 +1,5 @@
 import type { ConditionAst, Duration } from "../../cards/abilityAst";
-import type { GameObjectView } from "../../state/gameObject";
+import type { DerivedGameObjectView } from "../../state/gameObject";
 import type { GameState } from "../../state/gameState";
 import type { ObjectRef } from "../../state/objectRef";
 
@@ -48,7 +48,7 @@ export type ContinuousEffect = {
 
 export function matchesEffectTarget(
   target: Readonly<EffectTarget>,
-  view: Readonly<GameObjectView>,
+  view: Readonly<DerivedGameObjectView>,
   _state: Readonly<GameState>
 ): boolean {
   switch (target.kind) {

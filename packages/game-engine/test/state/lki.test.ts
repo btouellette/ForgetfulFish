@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { GameObject, GameObjectView } from "../../src/state/gameObject";
+import type { DerivedGameObjectView, GameObject } from "../../src/state/gameObject";
 import { captureSnapshot, lkiKey, lookupLKI, type LKISnapshot } from "../../src/state/lki";
 import type { ZoneRef } from "../../src/state/zones";
 
@@ -24,7 +24,7 @@ function createObject(id: string, zcc: number): GameObject {
 describe("state/lki", () => {
   it("captureSnapshot creates a snapshot from a game object", () => {
     const object = createObject("obj-1", 0);
-    const derivedView: GameObjectView = { ...object };
+    const derivedView: DerivedGameObjectView = { ...object };
     const zone: ZoneRef = { kind: "battlefield", scope: "shared" };
 
     const snapshot = captureSnapshot(object, derivedView, zone);
@@ -77,7 +77,7 @@ describe("state/lki", () => {
 
   it("snapshot stores identical base and derived views initially", () => {
     const object = createObject("obj-5", 4);
-    const derivedView: GameObjectView = { ...object };
+    const derivedView: DerivedGameObjectView = { ...object };
     const snapshot = captureSnapshot(object, derivedView, { kind: "library", scope: "shared" });
 
     expect(snapshot.base).toEqual(snapshot.derived);
