@@ -97,7 +97,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] websocket connect/reconnect lifecycle
   - [x] command submission API
   - [x] server snapshot/event normalization into a UI view model
-  - [x] forward raw `RoomLobbySnapshot` / `RoomGameStarted` payloads to UI via callbacks alongside normalized view-model updates
+  - [x] forward raw `RoomLobbySnapshot` / `RoomGameStarted` payloads to UI callbacks for metadata only; fetch `PlayerGameView` over HTTP when per-player projected state is required
 - [ ] Keep server authoritative: no rules resolution in client code; client only renders projected state and submits legal intents.
 
 #### Phase A Detailed Workplan
@@ -126,7 +126,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [ ] Lane 1 (now): hybrid DOM + canvas baseline (DOM shell/controls + canvas battlefield interactions)
   - [ ] Lane 2 (later): advanced canvas effects/optimization layer for high-density board states
 - [ ] Pick an interaction state model optimized for rapid realtime updates and optimistic local affordances.
-- [ ] Define UX constraints now (target drag latency, animation budget, reconnect/resync behavior) and enforce them in tests.
+- [ ] Define reconnect/resync and authoritative-state behavior now; defer formal performance budgets and instrumentation to later milestone work.
 
 #### Phase B Detailed Workplan
 
@@ -137,11 +137,11 @@ while expanding browser coverage to include deterministic manual UI verification
 - [ ] Rendering architecture
   - [ ] Keep React/DOM for HUD, controls, status rails, overlays, and accessibility semantics.
   - [ ] Add canvas battlefield surface with deterministic draw order and card-object identity mapping.
-  - [ ] Use Framer Motion only for discrete DOM transitions (modals, rail updates, panel transitions), not per-frame pointer updates.
+  - [ ] Install `framer-motion` for later use but do not apply it in this milestone.
 - [ ] Performance and resilience budgets
-  - [ ] Document target frame budget and input latency thresholds for local drag/target flows.
-  - [ ] Coalesce server-driven state application to avoid excessive React commit rates.
-  - [ ] Add instrumentation counters (store update rate, ws message rate, reconnect attempts).
+  - [ ] Keep server-driven state application narrow enough to avoid obvious React commit storms in the gameplay shell.
+  - [ ] Defer formal frame budgets, latency targets, and instrumentation counters until after the basic gameplay loop is functional.
+  - [ ] Keep canvas scope intentionally simple: deterministic draw order, labeled rectangles, and no interaction system yet.
 - [ ] Phase B issue checkpoints (fail fast)
   - [ ] Checkpoint B1: React rerender storms caused by broad selectors.
   - [ ] Checkpoint B2: canvas frame drops under representative board density.
@@ -169,8 +169,8 @@ while expanding browser coverage to include deterministic manual UI verification
   - [ ] Event/debug rail for deterministic troubleshooting during development.
 - [ ] Canvas battlefield integration
   - [ ] Map stable server object identity to canvas node identity for animation continuity.
-  - [ ] Add pointer interaction adapters (hover/drag/target preview) using refs and RAF.
-  - [ ] Ensure keyboard/action alternatives exist for critical actions to maintain accessibility path.
+  - [ ] Defer pointer interaction adapters (hover/drag/target preview) until after the gameplay state/rendering loop is stable.
+  - [ ] Keep critical actions available through DOM controls while canvas remains read-only.
 - [ ] Phase C issue checkpoints (fail fast)
   - [ ] Checkpoint C1: UI can enter illegal local state not representable by server data.
   - [ ] Checkpoint C2: object identity churn breaks animation continuity.
@@ -182,11 +182,10 @@ while expanding browser coverage to include deterministic manual UI verification
   - [ ] command submission roundtrip updates both clients consistently
   - [ ] reconnect during pending choice rehydrates canonical server state
   - [ ] invalid/expired session behavior remains safe and user-visible
-- [ ] Add a manual verification test pack in `e2e/manual/` with deterministic fixtures:
-  - [ ] two-browser local script for observer-driven interaction checks
-  - [ ] documented pass/fail checklist for UX-critical flows
-  - [ ] artifact capture (trace/video/screenshots) for regression review
-- [ ] Keep all manual scenarios reproducible from one command and fixed test users/seed data.
+- [ ] Use the final manual QA wave below instead of creating a separate `e2e/manual/` pack in this milestone:
+  - [ ] capture screenshots/traces/videos under `.sisyphus/evidence/final-qa/`
+  - [ ] keep the manual scenarios tied to the final verification checklist rather than a parallel documentation track
+- [ ] Keep manual QA reproducible from the same deterministic room/auth fixture path used by automated tests.
 
 #### Phase D Detailed Workplan
 
@@ -202,12 +201,10 @@ while expanding browser coverage to include deterministic manual UI verification
   - [ ] Two-client command roundtrip sync with gameplay command endpoint.
   - [ ] Reconnect during pending choice and canonical state recovery assertions.
   - [ ] Session expiration and auth failure UX validation while in gameplay route.
-- [ ] Manual verification pack (`e2e/manual/`)
-  - [ ] Add deterministic fixture launcher script reusing `apps/server/test/e2e-fixture-server.ts` pattern with fixed users/tokens.
-  - [ ] Add scenario checklist markdown (preconditions, steps, expected outcomes, failure signatures).
-  - [ ] Define artifact capture command profiles:
-    - [ ] default: failure-only traces/video/screenshots
-    - [ ] debug: always-on traces/video/screenshots
+- [ ] Manual verification approach
+  - [ ] do not add `e2e/manual/` docs or scripts in this milestone
+  - [ ] keep artifact capture under `.sisyphus/evidence/final-qa/`
+  - [ ] use Playwright-driven manual verification directly against deterministic fixture state when F3 runs
 - [ ] Phase D issue checkpoints (fail fast)
   - [ ] Checkpoint D1: non-deterministic fixture behavior across reruns.
   - [ ] Checkpoint D2: flaky cross-browser timing around reconnect assertions.
@@ -227,7 +224,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [ ] PR2: canvas battlefield shell + interaction refs/RAF bridge.
   - [ ] PR3: gameplay panel wiring + command flows.
   - [ ] PR4: automated test expansion.
-  - [ ] PR5: manual verification pack and runbook-level docs.
+  - [ ] PR5: final verification wave evidence, cleanup, and milestone-close checks.
 - [ ] Verification gate per PR
   - [ ] `pnpm --filter @forgetful-fish/web test`
   - [ ] `pnpm --filter @forgetful-fish/server test`
@@ -263,11 +260,11 @@ while expanding browser coverage to include deterministic manual UI verification
 - [ ] Horizontal scale fanout gap
   - `apps/server/src/app.ts` uses in-process room socket registry; multi-instance websocket fanout needs external pub/sub when scaling beyond single instance.
 
-### Milestone 2.5 Exit Criteria
+### Milestone 2.5 Exit Criteria (target once T3/T4 land)
 
 - [ ] Web client can render authoritative gameplay session state from server transport without full page refresh.
 - [ ] Two-client command/action sync is covered by automated browser tests.
-- [ ] Manual UI test pack exists, is documented, and is runnable by contributors.
+- [ ] Manual QA flow is documented through the final verification wave and reproducible by contributors.
 - [ ] Integration architecture is ready for higher-fidelity interaction work without rewrites.
 
 ### Decision Gates Before Implementation
@@ -289,6 +286,245 @@ while expanding browser coverage to include deterministic manual UI verification
   - keep drag/hover/targeting and visual FX in refs + RAF (non-persistent presentation lane)
 - Keep Framer Motion as the initial motion system for DOM-layer transitions.
 - Keep manual test artifacts on failure by default (trace/video/screenshots), with optional debug runs for always-on capture.
+
+### Approved Execution Slices (2026-03-11)
+
+- [ ] The detailed task reference below supersedes the earlier high-level Phase B-D bullets whenever there is any ambiguity.
+- [ ] Execute Milestone 2.5 through small PR slices on top of updated `main`; do not batch Phase B+C into one branch.
+- [ ] Keep roadmap and execution aligned with the approved scope defaults:
+  - [ ] Minimal player projection only for this milestone: own hand objects, opponent hand count, zone counts/visible objects, turn state, life totals, mana pools, pending choice, stack summary.
+  - [ ] Use HTTP fetches for projected game state on `game_started`, active-game `subscribed`, and `room_game_updated`; do not expand WS payloads to per-player game projections in this milestone.
+  - [ ] Command panel scope stays limited to `PASS_PRIORITY`, `MAKE_CHOICE`, and `CONCEDE`; do not add a broader legal-actions manifest yet.
+  - [ ] `viewerPlayerId` must be present in the projected game-state payload.
+  - [ ] Target transport for per-player projected state is `PlayerGameView` only; until T3/T4 land, adapters must still fetch projected state over HTTP because WS events do not carry full `PlayerGameView` payloads.
+
+#### Verified Preconditions And Repo Realities
+
+- [ ] The current server does not expose `GET /api/rooms/:id/game`; clients only receive gameplay command metadata from `POST /api/rooms/:id/commands`.
+- [ ] `room_game_updated` currently carries only `{ roomId, gameId, stateVersion, lastAppliedEventSeq, pendingChoice, emittedEvents }`; it does not carry full projected state.
+- [ ] `subscribed` still provides only lobby snapshot data, so reconnect during active games must trigger an HTTP game-state fetch.
+- [ ] `apps/web/app/play/[roomId]/page.tsx` is still the route-level integration hotspot and should stay behaviorally stable while being decomposed.
+- [ ] `zustand` and `framer-motion` are not part of the original `apps/web` dependency baseline on `main` and must be added explicitly.
+- [ ] `apps/web/components/play/` and `apps/web/components/play/renderer/` are new app-level component roots; do not create shared package abstractions for this milestone.
+
+#### Mandatory Guardrails For Remaining Execution
+
+- [ ] Hidden information stays hidden: no opponent hand identities, no library order, no `rngSeed`, no `lkiStore`, no `triggerQueue`, no `continuousEffects`, no raw engine internals in client-visible payloads.
+- [ ] Client code remains render-only: no rules resolution, no legality inference, no optimistic authoritative state, no app-layer card/rules branching.
+- [ ] Keep the gameplay renderer intentionally minimal: DOM shell + Canvas 2D rectangles; no PixiJS, Three.js, drag-and-drop engine, or high-frequency animation framework usage.
+- [ ] Use CSS Modules for all new play-route components; do not grow `globals.css` except for narrow cleanup during page split.
+- [ ] Store design is per-page-instance only; do not create a global gameplay singleton.
+
+#### Required Store Contract
+
+- [ ] `apps/web/lib/stores/game-store.ts` must define a single state contract that all new play components read from:
+  - [ ] `viewModel: GameSessionViewModel | null`
+  - [ ] `gameView: PlayerGameView | null`
+  - [ ] `lifecycleState: PlayLifecycleState`
+  - [ ] `lobbySnapshot: { participants, gameId, gameStatus } | null`
+  - [ ] `pendingChoice: PendingChoice | null`
+  - [ ] `recentEvents: { seq: number; eventType: string }[]`
+  - [ ] `isSubmittingCommand: boolean`
+  - [ ] `isLoadingGameState: boolean`
+  - [ ] `error: string | null`
+- [ ] UI consumption stays explicit:
+  - [ ] `PlayRoomView` reads `lifecycleState`
+  - [ ] `LobbyView` reads `lobbySnapshot`
+  - [ ] `CommandPanel` reads `pendingChoice`, `isSubmittingCommand`, `error`
+  - [ ] `StatusRail` reads `gameView.turnState`, `gameView.viewer.life`, `gameView.opponent.life`, `gameView.viewerPlayerId`
+  - [ ] `ZonesSummaryPanel` reads `gameView.zones`
+  - [ ] `EventRail` reads `recentEvents`
+  - [ ] Canvas wiring reads `gameView.objectPool`
+
+#### Definition Of Done For Phase B+C
+
+- [ ] `pnpm --filter @forgetful-fish/game-engine test` passes with the projection test suite.
+- [ ] `pnpm --filter @forgetful-fish/server test` passes with game-state endpoint coverage.
+- [ ] `pnpm --filter @forgetful-fish/web test` passes with store, component, and route integration coverage.
+- [ ] `pnpm lint` and `pnpm typecheck` pass before merge for every slice.
+- [ ] `GET /api/rooms/:id/game` returns projected state with player-specific hidden-info filtering.
+- [ ] The play route transitions from lobby to gameplay without losing reconnect/resync behavior.
+- [ ] The command panel can submit pass-priority, make-choice, and concede through the adapter/store path.
+- [ ] The battlefield canvas renders deterministic placeholder cards from projected battlefield objects.
+
+#### Approved Wave Order
+
+- [ ] Wave 0: T1 -> T2 -> T3 -> T4
+- [ ] Wave 1: (T5 || T6) -> T7
+- [ ] Wave 2: T8 -> T9
+- [ ] Wave 3: (T10 || T11 || T12 || T13) -> T14
+- [ ] Wave 4: (T15 || T16) -> T17
+- [ ] Final Wave: F1 || F2 || F3 || F4
+
+#### PR Loop Requirements For These Slices
+
+- [ ] Every slice starts with a failing test before implementation.
+- [ ] Every slice opens as a feature-branch PR; do not push direct commits to `main`.
+- [ ] Every slice must pass `pnpm --filter @forgetful-fish/game-engine test`, `pnpm --filter @forgetful-fish/server test` when server code changes, `pnpm --filter @forgetful-fish/web test` when web code changes, plus `pnpm lint` and `pnpm typecheck` before merge.
+- [ ] Every PR waits for strict CI green and Copilot review triage before merge.
+- [ ] Hidden-information checks are mandatory in engine and server tests before any gameplay UI panel work is considered complete.
+
+#### Detailed Task Reference (Execution Source Of Truth)
+
+- [ ] T1. Player game view contract
+  - Files: `packages/game-engine/src/view/types.ts`, `packages/game-engine/test/view/types.test.ts`, `packages/game-engine/src/index.ts`, `packages/realtime-contract/src/index.ts`, `packages/realtime-contract/test/schema.test.ts`
+  - Deliverables: `PlayerGameView`, `PlayerView`, `OpponentView`, `GameObjectView`, `ZoneView`, `StackItemView`, `playerGameViewSchema`
+  - Contract details: `PlayerView` and `OpponentView` both include `life` and `manaPool`; only the viewer receives full hand object details
+  - Non-negotiable shape notes: JSON-safe `objectPool` record, no `abilities`, no `rngSeed`, no `lkiStore`, no `triggerQueue`, no opponent hand identities, no library identities/order
+  - Acceptance: root export exists; schema validates well-formed view; schema rejects leaked secret fields
+  - QA and evidence: `pnpm --filter @forgetful-fish/game-engine test`, `pnpm --filter @forgetful-fish/realtime-contract test`; capture `task-1-zod-schema-validation.txt`, `task-1-typecheck.txt`
+  - Commit target: `Add PlayerGameView types and runtime schemas`
+
+- [ ] T2. Player-view projection
+  - Files: `packages/game-engine/src/view/projection.ts`, `packages/game-engine/test/view/projection.test.ts`, `packages/game-engine/test/view/projection-redaction.test.ts`, `packages/game-engine/src/index.ts`
+  - Depends on: T1
+  - Deliverables: `projectPlayerView(state, viewerPlayerId)` projecting viewer hand, opponent hand count, public zones, stack summary, `pendingChoice`, turn-state view, and both players' `manaPool`
+  - Hidden-info rules: opponent hand stays count-only; shared library stays count-only; `rngSeed`, `lkiStore`, `triggerQueue`, `continuousEffects`, `engineVersion`, and mode internals stay out
+  - Acceptance: battlefield/graveyard/exile/stack objects visible; viewer hand visible; opponent hand/library hidden; pending choice scoped to acting player
+  - QA and evidence: focused Vitest redaction cases for opponent hand, library, stripped secret fields; capture `task-2-opponent-hand-redaction.txt`, `task-2-secrets-stripped.txt`, `task-2-library-redaction.txt`
+  - Commit target: `Add player-view projection function`
+
+- [ ] T3. Authenticated game-state endpoint
+  - Files: `apps/server/src/room-store/get-game-state.ts`, `apps/server/src/room-store/types.ts`, `apps/server/src/room-store/index.ts`, `apps/server/src/app.ts`, `apps/server/src/schemas.ts`, `apps/server/test/e2e-fixture-server.ts`, server endpoint tests
+  - Depends on: T1, T2
+  - Deliverables: `GET /api/rooms/:id/game` guarded by `authorizeRequest`, participant check, active-game check, projection via `projectPlayerView`
+  - Status codes: `401` unauthenticated, `403` non-participant, `404` no active game, `200` projected `PlayerGameView`
+  - Acceptance: route registered; room-store interface updated; response validated against `playerGameViewSchema`; no raw persisted game state returned
+  - QA and evidence: curl or server-integration coverage for participant success, unauthenticated `401`, outsider `403`, hidden-info assertions; capture `task-3-authenticated-game-state.json`, `task-3-unauth-401.txt`, `task-3-non-participant-403.txt`
+  - Commit target: `Add GET /api/rooms/:id/game endpoint`
+
+- [ ] T4. Client game-state fetch wiring
+  - Files: `apps/web/lib/server-api.ts`, `apps/web/lib/server-api.test.ts`, `apps/web/lib/game-session-adapter.ts`, `apps/web/lib/game-session-adapter.test.ts`
+  - Depends on: T1, T3
+  - Deliverables: `getGameState(roomId)` with Zod validation; adapter `fetchGameState()` plus hooks on `game_started`, active-game `subscribed`, and `room_game_updated`
+  - Acceptance: parsed `PlayerGameView` stored in adapter-side callbacks; invalid response shape rejected; refresh hooks cover initial game, reconnect, and subsequent updates
+  - QA and evidence: adapter tests for fetch-on-events and server-api tests for validation failure; capture `task-4-adapter-game-started-fetch.txt`, `task-4-zod-validation.txt`
+  - Commit target: `Add game state client API and adapter fetch`
+
+- [ ] T5. Web dependencies
+  - Files: `apps/web/package.json`, `pnpm-lock.yaml`
+  - Depends on: Wave 0 complete
+  - Deliverables: install `zustand` and `framer-motion` only; do not use Framer Motion yet
+  - Acceptance: packages listed in `apps/web`; existing web tests and typecheck stay green
+  - QA and evidence: package listing plus no-regression web test run; capture `task-5-deps-installed.txt`, `task-5-no-regressions.txt`
+  - Commit target: `Install zustand and framer-motion`
+
+- [ ] T6. Play CSS module infrastructure
+  - Files: `apps/web/components/play/`, `apps/web/components/play/renderer/`, `apps/web/components/play/PlayRoom.module.css`
+  - Depends on: Wave 0 complete
+  - Deliverables: structural layout classes only: `playRoom`, `lobbyView`, `gameplayView`, `statusRail`, `commandPanel`, `sidebar`, `canvasArea`
+  - Acceptance: directories exist; CSS Module compiles; no framework/Tailwind introduction; global CSS only trimmed later for `.home` migration
+  - QA and evidence: build + directory existence checks; capture `task-6-css-module-build.txt`, `task-6-directory-structure.txt`
+  - Commit target: `Add CSS Module infrastructure for play components`
+
+- [ ] T7. Per-page Zustand store factory
+  - Files: `apps/web/lib/stores/game-store.ts`, `apps/web/lib/stores/game-store.test.ts`
+  - Depends on: T4, T5
+  - Deliverables: full store contract above, adapter-driven updates, store actions `passPriority`, `makeChoice`, `concede`, `fetchGameState`, `clearError`
+  - Acceptance: no global singleton; transport delegated to adapter; store derives `lifecycleState`, `lobbySnapshot`, `pendingChoice`, and `recentEvents`
+  - QA and evidence: tests for adapter reactivity, command delegation, error handling, pending-choice extraction, and load-state flags; capture `task-7-store-viewmodel-reactivity.txt`, `task-7-pass-priority-delegation.txt`, `task-7-error-state.txt`, `task-7-pending-choice-extraction.txt`
+  - Commit target: `Add Zustand game store factory`
+
+- [ ] T8. Route extraction and context boundary
+  - Files: `apps/web/app/play/[roomId]/page.tsx`, `apps/web/components/play/PlayRoomContainer.tsx`, `apps/web/components/play/GameStoreContext.tsx`
+  - Depends on: T5, T6, T7
+  - Deliverables: route becomes a thin server component; all adapter lifecycle logic moves into `PlayRoomContainer`; `GameStoreProvider` and `useGameStore(selector)` created
+  - Acceptance: `page.tsx` drops hooks and becomes minimal; provider null-guard exists; `.home` usage migrates to module class without changing behavior
+  - QA and evidence: line-count/hook grep check, no-regression tests, missing-provider error test; capture `task-8-page-minimal.txt`, `task-8-no-regressions.txt`, `task-8-context-null-guard.txt`
+  - Commit target: `Extract PlayRoomContainer from page.tsx`
+
+- [ ] T9. Presentational lobby/gameplay shell
+  - Files: `apps/web/components/play/PlayRoomView.tsx`, `apps/web/components/play/LobbyView.tsx`, related tests
+  - Depends on: T6, T8
+  - Deliverables: lifecycle switch for `joining`, `lobby_ready`, `game_active`, `resyncing`, `error`; extract lobby presentation from the old route; keep gameplay branch as placeholder until T14
+  - Acceptance: lifecycle rendering covered; lobby data comes from store only; no new lobby features added
+  - QA and evidence: lifecycle tests for lobby, active-game placeholder, and resyncing state; capture `task-9-lobby-rendering.txt`, `task-9-game-active-placeholder.txt`, `task-9-resyncing-state.txt`
+  - Commit target: `Create PlayRoomView and LobbyView presentational components`
+
+- [ ] T10. CommandPanel
+  - Files: `apps/web/components/play/CommandPanel.tsx`, `apps/web/components/play/CommandPanel.module.css`, tests
+  - Depends on: T8, T9
+  - Deliverables: always-visible pass-priority button, always-visible concede with confirmation, pending-choice UI, loading disable state, dismissible error state
+  - Acceptance: no client legality inference; no advanced choice widgets; no motion wiring yet
+  - QA and evidence: pass-priority dispatch, pending-choice rendering, disabled submission state; capture `task-10-pass-priority.txt`, `task-10-choice-ui.txt`, `task-10-disabled-state.txt`
+  - Commit target: `Add CommandPanel component`
+
+- [ ] T11. StatusRail
+  - Files: `apps/web/components/play/StatusRail.tsx`, `apps/web/components/play/StatusRail.module.css`, tests
+  - Depends on: T8, T9
+  - Deliverables: phase label, active-player indicator, priority indicator, life totals
+  - Acceptance: read-only UI, no mana pool or motion work in this slice
+  - QA and evidence: phase display must cover all supported phase-name mappings, plus opponent-turn and life-total cases; capture `task-11-phase-display.txt`, `task-11-opponent-turn.txt`, `task-11-life-totals.txt`
+  - Commit target: `Add StatusRail component`
+
+- [ ] T12. ZonesSummaryPanel
+  - Files: `apps/web/components/play/ZonesSummaryPanel.tsx`, `apps/web/components/play/ZonesSummaryPanel.module.css`, tests
+  - Depends on: T8, T9
+  - Deliverables: grouped zone counts for viewer and shared/opponent zones; counts only, no content drill-in
+  - Acceptance: empty zones still render as `0`; no click/expand behavior added
+  - QA and evidence: populated counts and empty-zone handling; capture `task-12-zone-counts.txt`, `task-12-empty-zones.txt`
+  - Commit target: `Add ZonesSummaryPanel component`
+
+- [ ] T13. EventRail
+  - Files: `apps/web/components/play/EventRail.tsx`, `apps/web/components/play/EventRail.module.css`, tests
+  - Depends on: T8, T9
+  - Deliverables: recent event list from store with sequence + type, compact debug-oriented empty state, bottom-appending behavior
+  - Acceptance: no search, filtering, or detail expansion
+  - QA and evidence: populated list and empty state; capture `task-13-event-list.txt`, `task-13-empty-events.txt`
+  - Commit target: `Add EventRail component`
+
+- [ ] T14. Gameplay shell composition
+  - Files: `apps/web/components/play/GameplayView.tsx`, `apps/web/components/play/PlayRoomView.tsx`, tests
+  - Depends on: T10, T11, T12, T13
+  - Deliverables: CSS-grid shell with `StatusRail`, `CommandPanel`, `ZonesSummaryPanel`, `EventRail`, and a canvas placeholder area
+  - Acceptance: `PlayRoomView` swaps the `game_active` placeholder for `GameplayView`; no real canvas rendering yet
+  - QA and evidence: all-panels render, PlayRoomView integration, canvas placeholder presence; capture `task-14-all-panels.txt`, `task-14-playroomview-integration.txt`, `task-14-canvas-placeholder.txt`
+  - Commit target: `Wire GameplayView shell with all panels`
+
+- [ ] T15. CanvasHost
+  - Files: `apps/web/components/play/renderer/CanvasHost.tsx`, `apps/web/components/play/renderer/CanvasHost.module.css`, tests
+  - Depends on: T14
+  - Deliverables: parent-filling `<canvas>`, forwarded or callback ref exposure for T17, `ResizeObserver`, cleanup on unmount, real pixel-size updates, optional DPR scaling
+  - Acceptance: mount point only; no drawing, interactions, or canvas library imports
+  - QA and evidence: mount observer, unmount cleanup, resize updates; capture `task-15-canvas-mount.txt`, `task-15-canvas-unmount.txt`, `task-15-canvas-resize.txt`
+  - Commit target: `Add CanvasHost component`
+
+- [ ] T16. Battlefield 2D renderer
+  - Files: `apps/web/lib/renderer/battlefield-renderer.ts`, `apps/web/lib/renderer/battlefield-renderer.test.ts`
+  - Depends on: T14
+  - Deliverables: pure `renderBattlefield(ctx, objects, width, height)` function with clear, grid layout, labeled rectangles, tapped distinction, owner distinction, empty-battlefield placeholder
+  - Acceptance: battlefield-only rendering, no interactions, no image work, no canvas abstraction libraries
+  - QA and evidence: empty battlefield, labeled objects, tapped distinction, and viewer-vs-opponent owner distinction; capture `task-16-empty-battlefield.txt`, `task-16-object-rendering.txt`, `task-16-tapped-visual.txt`
+  - Commit target: `Add battlefield canvas 2D renderer`
+
+- [ ] T17. Canvas/store integration
+  - Files: `apps/web/components/play/GameplayView.tsx`, tests
+  - Depends on: T15, T16
+  - Deliverables: replace placeholder with `CanvasHost`, filter battlefield objects from `gameView.objectPool`, drive `renderBattlefield()` through `requestAnimationFrame`, cancel pending frame on cleanup
+  - Acceptance: render-on-store-update only; no interaction handlers, no dirty-checking, no sync draws
+  - QA and evidence: store wiring, animation cleanup, rerender on state change; capture `task-17-canvas-store-wiring.txt`, `task-17-animation-cleanup.txt`, `task-17-re-render-on-change.txt`
+  - Commit target: `Wire canvas into GameplayView and connect to store`
+
+- [ ] Final verification wave
+  - [ ] F1. Plan compliance audit: verify every Must Have and Must Not Have against the built code and captured evidence; output `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT`
+  - [ ] F2. Code quality review: run `pnpm typecheck`, `pnpm lint`, `pnpm test`; search for `as any`, `@ts-ignore`, empty catches, commented-out code, stray `console.log`, and CSS-module violations; output `Build | Lint | Tests | Files | VERDICT`
+  - [ ] F3. Real manual QA with Playwright: create room, join/start with two players, verify lobby->game transition, panels, pass-priority roundtrip, reconnect recovery, and save screenshots under `.sisyphus/evidence/final-qa/`; output `Scenarios | Integration | Edge Cases | VERDICT`
+  - [ ] F4. Scope fidelity check: compare each implemented slice with its task card and guardrails, flag any missing or out-of-scope work; output `Tasks | Contamination | Unaccounted | VERDICT`
+
+#### Verification Commands And Evidence Targets
+
+- [ ] Core command set for every remaining slice:
+  - [ ] `pnpm --filter @forgetful-fish/game-engine test`
+  - [ ] `pnpm --filter @forgetful-fish/server test`
+  - [ ] `pnpm --filter @forgetful-fish/web test`
+  - [ ] `pnpm typecheck`
+  - [ ] `pnpm lint`
+- [ ] Endpoint spot checks once T3/T4 land:
+  - [ ] `curl -s -b "$SESSION_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq '.viewerPlayerId'`
+  - [ ] `curl -s -b "$P1_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq '.opponent.handCount'`
+  - [ ] `curl -s -b "$SESSION_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq 'has("rngSeed")'`
+  - [ ] `curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/api/rooms/$ROOM_ID/game`
+- [ ] Evidence naming stays task-scoped under `.sisyphus/evidence/` and final manual QA under `.sisyphus/evidence/final-qa/`.
 
 ## Milestone 3 - Core Rules Loop
 
