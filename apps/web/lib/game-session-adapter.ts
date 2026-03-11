@@ -1,6 +1,8 @@
+import { playerGameViewSchema } from "@forgetful-fish/realtime-contract";
 import type {
   GameplayCommand,
   GameplayCommandResponse,
+  PlayerGameView,
   RoomGameStarted,
   RoomLobbySnapshot
 } from "@forgetful-fish/realtime-contract";
@@ -8,6 +10,7 @@ import type {
 import { createRoomRealtimeClient, type RoomRealtimeStatus } from "./room-realtime";
 import {
   ServerApiError,
+  getGameState,
   getRoomLobby,
   joinRoom,
   setRoomReady,
@@ -34,6 +37,7 @@ export function toSessionStatusMessage(error: unknown) {
 type GameSessionAdapterApi = {
   joinRoom: typeof joinRoom;
   getRoomLobby: typeof getRoomLobby;
+  getGameState: typeof getGameState;
   setRoomReady: typeof setRoomReady;
   startRoomGame: typeof startRoomGame;
   submitGameplayCommand: typeof submitGameplayCommand;
@@ -66,6 +70,8 @@ type GameSessionAdapterOptions = {
   onLobbyUpdated: (snapshot: RoomLobbySnapshot) => void;
   onGameStarted: (payload: RoomGameStarted) => void;
   onGameUpdated?: (payload: GameplayCommandResponse) => void;
+  onGameViewChange?: (gameView: PlayerGameView | null) => void;
+  onGameStateError?: (error: unknown) => void;
   onViewModelChange?: (viewModel: GameSessionViewModel) => void;
   api?: GameSessionAdapterApi;
   createRealtimeClient?: typeof createRoomRealtimeClient;
@@ -74,10 +80,19 @@ type GameSessionAdapterOptions = {
 const defaultApi: GameSessionAdapterApi = {
   joinRoom,
   getRoomLobby,
+  getGameState,
   setRoomReady,
   startRoomGame,
   submitGameplayCommand
 };
+
+function cloneGameView(gameView: PlayerGameView): PlayerGameView {
+  if (typeof structuredClone === "function") {
+    return structuredClone(gameView);
+  }
+
+  return playerGameViewSchema.parse(JSON.parse(JSON.stringify(gameView)));
+}
 
 export function createGameSessionAdapter({
   roomId,
@@ -88,12 +103,18 @@ export function createGameSessionAdapter({
   onLobbyUpdated,
   onGameStarted,
   onGameUpdated = () => {},
+  onGameViewChange = () => {},
+  onGameStateError = () => {},
   onViewModelChange = () => {},
   api = defaultApi,
   createRealtimeClient = createRoomRealtimeClient
 }: GameSessionAdapterOptions) {
   let realtimeClient: ReturnType<typeof createRoomRealtimeClient> | null = null;
   let latestAppliedVersion: { stateVersion: number; lastAppliedEventSeq: number } | null = null;
+  let gameView: PlayerGameView | null = null;
+  let refreshRequestId = 0;
+  let refreshInFlight: Promise<void> | null = null;
+  let queuedRefresh = false;
   let viewModel: GameSessionViewModel = {
     roomId,
     participants: [],
@@ -113,6 +134,11 @@ export function createGameSessionAdapter({
     onViewModelChange(cloneViewModel(viewModel));
   }
 
+  function setGameView(nextGameView: PlayerGameView | null) {
+    gameView = nextGameView === null ? null : cloneGameView(nextGameView);
+    onGameViewChange(gameView === null ? null : cloneGameView(gameView));
+  }
+
   function applyLobbyProjection(snapshot: RoomLobbySnapshot) {
     updateViewModel({
       participants: snapshot.participants,
@@ -129,6 +155,52 @@ export function createGameSessionAdapter({
       pendingChoice: payload.pendingChoice,
       lastEventType: latestEvent?.eventType ?? null
     });
+  }
+
+  async function fetchGameStateInternal() {
+    const nextGameView = await api.getGameState(roomId);
+    setGameView(nextGameView);
+    return nextGameView;
+  }
+
+  async function refreshGameStateInternal(expectedGameId: string | null, requestId: number) {
+    const nextGameView = await api.getGameState(roomId);
+
+    if (
+      requestId !== refreshRequestId ||
+      viewModel.gameStatus !== "started" ||
+      viewModel.gameId !== expectedGameId
+    ) {
+      return;
+    }
+
+    setGameView(nextGameView);
+  }
+
+  function refreshGameState() {
+    refreshRequestId += 1;
+    const requestId = refreshRequestId;
+    const expectedGameId = viewModel.gameId;
+
+    if (refreshInFlight) {
+      queuedRefresh = true;
+      return;
+    }
+
+    refreshInFlight = refreshGameStateInternal(expectedGameId, requestId)
+      .catch((error) => {
+        onGameStateError(error);
+      })
+      .finally(() => {
+        refreshInFlight = null;
+
+        if (!queuedRefresh) {
+          return;
+        }
+
+        queuedRefresh = false;
+        refreshGameState();
+      });
   }
 
   function getRealtimeClient() {
@@ -150,6 +222,11 @@ export function createGameSessionAdapter({
           pendingChoice: null,
           lastEventType: null
         });
+        if (snapshot.gameStatus === "started" && snapshot.gameId !== null) {
+          refreshGameState();
+        } else {
+          setGameView(null);
+        }
         onLobbySnapshot(snapshot);
       },
       onLobbyUpdated: (snapshot) => {
@@ -164,6 +241,8 @@ export function createGameSessionAdapter({
           pendingChoice: null,
           lastEventType: null
         });
+        setGameView(null);
+        refreshGameState();
         onGameStarted(payload);
       },
       onGameUpdated: (payload) => {
@@ -174,6 +253,7 @@ export function createGameSessionAdapter({
         }
 
         applyGameplayUpdate(payload);
+        refreshGameState();
         onGameUpdated(payload);
       }
     });
@@ -216,6 +296,9 @@ export function createGameSessionAdapter({
         return lobby;
       });
     },
+    fetchGameState() {
+      return fetchGameStateInternal();
+    },
     setRoomReady(ready: boolean) {
       return api.setRoomReady(roomId, ready);
     },
@@ -234,6 +317,9 @@ export function createGameSessionAdapter({
     },
     getViewModel() {
       return cloneViewModel(viewModel);
+    },
+    getGameView() {
+      return gameView === null ? null : cloneGameView(gameView);
     },
     connect() {
       getRealtimeClient().connect();
