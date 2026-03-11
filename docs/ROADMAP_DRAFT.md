@@ -441,7 +441,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: lifecycle tests for lobby, active-game placeholder, and resyncing state; capture `task-9-lobby-rendering.txt`, `task-9-game-active-placeholder.txt`, `task-9-resyncing-state.txt`
   - Commit target: `Create PlayRoomView and LobbyView presentational components`
 
-- [ ] T10. CommandPanel
+- [x] T10. CommandPanel
   - Files: `apps/web/components/play/CommandPanel.tsx`, `apps/web/components/play/CommandPanel.module.css`, tests
   - Depends on: T8, T9
   - Deliverables: always-visible pass-priority button, always-visible concede with confirmation, pending-choice UI, loading disable state, dismissible error state
