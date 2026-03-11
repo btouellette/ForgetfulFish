@@ -293,16 +293,16 @@ while expanding browser coverage to include deterministic manual UI verification
 - [ ] Execute Milestone 2.5 through small PR slices on top of updated `main`; do not batch Phase B+C into one branch.
 - [ ] Keep roadmap and execution aligned with the approved scope defaults:
   - [ ] Minimal player projection only for this milestone: own hand objects, opponent hand count, zone counts/visible objects, turn state, life totals, mana pools, pending choice, stack summary.
-  - [ ] Use HTTP fetches for projected game state on `game_started`, active-game `subscribed`, and `room_game_updated`; do not expand WS payloads to per-player game projections in this milestone.
+  - [x] Use HTTP fetches for projected game state on `game_started`, active-game `subscribed`, and `room_game_updated`; do not expand WS payloads to per-player game projections in this milestone.
   - [ ] Command panel scope stays limited to `PASS_PRIORITY`, `MAKE_CHOICE`, and `CONCEDE`; do not add a broader legal-actions manifest yet.
   - [ ] `viewerPlayerId` must be present in the projected game-state payload.
-  - [ ] Target transport for per-player projected state is `PlayerGameView` only; until T3/T4 land, adapters must still fetch projected state over HTTP because WS events do not carry full `PlayerGameView` payloads.
+  - [x] Target transport for per-player projected state is `PlayerGameView` only, and adapters fetch it over HTTP because WS events still do not carry full `PlayerGameView` payloads.
 
 #### Verified Preconditions And Repo Realities
 
 - [x] `GET /api/rooms/:id/game` now exposes participant-scoped projected state; clients still receive gameplay command metadata from `POST /api/rooms/:id/commands`.
 - [ ] `room_game_updated` currently carries only `{ roomId, gameId, stateVersion, lastAppliedEventSeq, pendingChoice, emittedEvents }`; it does not carry full projected state.
-- [ ] `subscribed` still provides only lobby snapshot data, so reconnect during active games must trigger an HTTP game-state fetch.
+- [x] `subscribed` still provides only lobby snapshot data, so reconnect during active games now triggers an HTTP game-state fetch.
 - [ ] `apps/web/app/play/[roomId]/page.tsx` is still the route-level integration hotspot and should stay behaviorally stable while being decomposed.
 - [ ] `zustand` and `framer-motion` are not part of the original `apps/web` dependency baseline on `main` and must be added explicitly.
 - [ ] `apps/web/components/play/` and `apps/web/components/play/renderer/` are new app-level component roots; do not create shared package abstractions for this milestone.
@@ -349,7 +349,7 @@ while expanding browser coverage to include deterministic manual UI verification
 
 #### Approved Wave Order
 
-- [ ] Wave 0: T1 -> T2 -> T3 -> T4
+- [x] Wave 0: T1 -> T2 -> T3 -> T4
 - [ ] Wave 1: (T5 || T6) -> T7
 - [ ] Wave 2: T8 -> T9
 - [ ] Wave 3: (T10 || T11 || T12 || T13) -> T14
@@ -393,7 +393,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: curl or server-integration coverage for participant success, unauthenticated `401`, outsider `403`, hidden-info assertions; capture `task-3-authenticated-game-state.json`, `task-3-unauth-401.txt`, `task-3-non-participant-403.txt`
   - Commit target: `Add GET /api/rooms/:id/game endpoint`
 
-- [ ] T4. Client game-state fetch wiring
+- [x] T4. Client game-state fetch wiring
   - Files: `apps/web/lib/server-api.ts`, `apps/web/lib/server-api.test.ts`, `apps/web/lib/game-session-adapter.ts`, `apps/web/lib/game-session-adapter.test.ts`
   - Depends on: T1, T3
   - Deliverables: `getGameState(roomId)` with Zod validation; adapter `fetchGameState()` plus hooks on `game_started`, active-game `subscribed`, and `room_game_updated`
