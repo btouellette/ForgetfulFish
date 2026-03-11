@@ -8,8 +8,8 @@ type ZonesSummaryPanelProps = {
   zones: PlayerGameView["zones"];
 };
 
-const viewerZoneKinds = ["battlefield", "graveyard", "exile"] as const;
-const sharedZoneKinds = ["library", "stack"] as const;
+const playerZoneKinds = ["hand"] as const;
+const sharedZoneKinds = ["battlefield", "graveyard", "exile", "library", "stack"] as const;
 
 function toLabel(kind: string) {
   return kind.charAt(0).toUpperCase() + kind.slice(1).replace(/_/g, " ");
@@ -62,12 +62,12 @@ export function ZonesSummaryPanel({ viewerPlayerId, zones }: ZonesSummaryPanelPr
   const opponentPlayerId =
     opponentZone?.zoneRef.scope === "player" ? opponentZone.zoneRef.playerId : null;
 
-  const viewerRows = viewerZoneKinds.map((kind) => ({
+  const viewerRows = playerZoneKinds.map((kind) => ({
     label: toLabel(kind),
     count: countZone(zones, { scope: "player", playerId: viewerPlayerId }, kind)
   }));
 
-  const opponentRows = viewerZoneKinds.map((kind) => ({
+  const opponentRows = playerZoneKinds.map((kind) => ({
     label: toLabel(kind),
     count: opponentPlayerId
       ? countZone(zones, { scope: "player", playerId: opponentPlayerId }, kind)
