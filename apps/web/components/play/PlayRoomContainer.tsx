@@ -15,14 +15,17 @@ import {
   shouldPollLobbyWhileDisconnected
 } from "../../lib/room-guardrails";
 import type { RoomRealtimeStatus } from "../../lib/room-realtime";
+import type { GameplayCommand } from "@forgetful-fish/realtime-contract";
 import { ServerApiError } from "../../lib/server-api";
 import { createGameStore } from "../../lib/stores/game-store";
-import { GameStoreProvider, useGameStore } from "./GameStoreContext";
+import { GameStoreProvider, useGameStore, useGameStoreApi } from "./GameStoreContext";
 import styles from "./PlayRoom.module.css";
 
 type PlayRoomContainerProps = {
   roomId: string;
 };
+
+const emptyParticipants: Array<{ userId: string; seat: "P1" | "P2"; ready: boolean }> = [];
 
 function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
   const isMountedRef = useRef(true);
@@ -33,11 +36,12 @@ function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
   const [joinFailed, setJoinFailed] = useState(false);
   const [isSubmittingLobbyAction, setIsSubmittingLobbyAction] = useState(false);
 
-  const participants = useGameStore((state) => state.lobbySnapshot?.participants ?? []);
-  const gameStatus = useGameStore((state) => state.lobbySnapshot?.gameStatus ?? "not_started");
-  const gameId = useGameStore((state) => state.lobbySnapshot?.gameId ?? null);
+  const lobbySnapshot = useGameStore((state) => state.lobbySnapshot);
   const lifecycleState = useGameStore((state) => state.lifecycleState);
-  const store = useGameStore((state) => state);
+  const store = useGameStoreApi();
+  const participants = lobbySnapshot?.participants ?? emptyParticipants;
+  const gameStatus = lobbySnapshot?.gameStatus ?? "not_started";
+  const gameId = lobbySnapshot?.gameId ?? null;
 
   async function refreshLobby() {
     const sessionAdapter = sessionAdapterRef.current;
@@ -65,7 +69,7 @@ function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
             }
 
             setConnectionStatus(nextStatus);
-            store.applyConnectionStatus(nextStatus);
+            store.getState().applyConnectionStatus(nextStatus);
           },
           onLobbySnapshot: () => {},
           onLobbyUpdated: () => {},
@@ -81,14 +85,14 @@ function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
               return;
             }
 
-            store.applyViewModel(viewModel);
+            store.getState().applyViewModel(viewModel);
           },
           onGameViewChange: (gameView) => {
             if (!isMountedRef.current) {
               return;
             }
 
-            store.applyGameView(gameView);
+            store.getState().applyGameView(gameView);
           },
           onGameStateError: (error) => {
             if (!isMountedRef.current) {
@@ -100,9 +104,10 @@ function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
           }
         });
 
-        store.attachAdapter({
+        store.getState().attachAdapter({
           fetchGameState: () => sessionAdapter.fetchGameState(),
-          submitGameplayCommand: (command) => sessionAdapter.submitGameplayCommand(command)
+          submitGameplayCommand: (command: GameplayCommand) =>
+            sessionAdapter.submitGameplayCommand(command)
         });
 
         const joined = await sessionAdapter.joinRoom();

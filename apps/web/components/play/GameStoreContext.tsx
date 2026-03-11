@@ -26,3 +26,13 @@ export function useGameStore<T>(selector: (state: ReturnType<GameStore["getState
 
   return useStore(store, selector);
 }
+
+export function useGameStoreApi(): GameStore {
+  const store = useContext(GameStoreContext);
+
+  if (!store) {
+    throw new Error("useGameStoreApi must be used within a GameStoreProvider");
+  }
+
+  return store;
+}
