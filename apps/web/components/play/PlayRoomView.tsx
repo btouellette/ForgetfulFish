@@ -1,16 +1,13 @@
 import React from "react";
 import Link from "next/link";
+import type { RoomLobbySnapshot } from "@forgetful-fish/realtime-contract";
 
 import type { PlayLifecycleState } from "../../lib/play-lifecycle";
 import type { RoomRealtimeStatus } from "../../lib/room-realtime";
 import { LobbyView } from "./LobbyView";
 import styles from "./PlayRoom.module.css";
 
-type Participant = {
-  userId: string;
-  seat: "P1" | "P2";
-  ready: boolean;
-};
+type LobbyParticipant = RoomLobbySnapshot["participants"][number];
 
 type PlayRoomViewProps = {
   roomId: string;
@@ -20,7 +17,7 @@ type PlayRoomViewProps = {
   lifecycleState: PlayLifecycleState;
   connectionStatus: RoomRealtimeStatus;
   realtimeGuardrailMessage: string | null;
-  participants: Participant[];
+  participants: LobbyParticipant[];
   viewerId: string;
   isSubmittingLobbyAction: boolean;
   onReadyToggle: () => void;
@@ -45,7 +42,14 @@ export function PlayRoomView({
     <main className={styles.playRoom}>
       <h1>Play Room</h1>
       <p>{`Room: ${roomId}`}</p>
-      <p>Game: {gameStatus === "started" ? `started (${gameId})` : "not started"}</p>
+      <p>
+        Game:{" "}
+        {gameStatus === "started"
+          ? gameId
+            ? `started (${gameId})`
+            : "started (loading...)"
+          : "not started"}
+      </p>
       <p>Lifecycle: {lifecycleState}</p>
       <p>Live connection: {connectionStatus}</p>
       {realtimeGuardrailMessage ? <p>{realtimeGuardrailMessage}</p> : null}

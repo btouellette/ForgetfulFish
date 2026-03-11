@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import type { RoomLobbySnapshot, GameplayCommand } from "@forgetful-fish/realtime-contract";
 import {
   createGameSessionAdapter,
   type GameSessionViewModel,
@@ -14,7 +15,6 @@ import {
   shouldPollLobbyWhileDisconnected
 } from "../../lib/room-guardrails";
 import type { RoomRealtimeStatus } from "../../lib/room-realtime";
-import type { GameplayCommand } from "@forgetful-fish/realtime-contract";
 import { ServerApiError } from "../../lib/server-api";
 import { createGameStore } from "../../lib/stores/game-store";
 import { GameStoreProvider, useGameStore, useGameStoreApi } from "./GameStoreContext";
@@ -24,7 +24,7 @@ type PlayRoomContainerProps = {
   roomId: string;
 };
 
-const emptyParticipants: Array<{ userId: string; seat: "P1" | "P2"; ready: boolean }> = [];
+const emptyParticipants: RoomLobbySnapshot["participants"] = [];
 
 function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
   const isMountedRef = useRef(true);

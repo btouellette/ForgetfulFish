@@ -1,14 +1,12 @@
 import React from "react";
+import type { RoomLobbySnapshot } from "@forgetful-fish/realtime-contract";
+
 import styles from "./PlayRoom.module.css";
 
-type Participant = {
-  userId: string;
-  seat: "P1" | "P2";
-  ready: boolean;
-};
+type LobbyParticipant = RoomLobbySnapshot["participants"][number];
 
 type LobbyViewProps = {
-  participants: Participant[];
+  participants: LobbyParticipant[];
   viewerId: string;
   gameStatus: "not_started" | "started";
   isSubmittingLobbyAction: boolean;

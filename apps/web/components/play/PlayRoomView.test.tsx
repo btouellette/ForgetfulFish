@@ -52,6 +52,19 @@ describe("PlayRoomView", () => {
     expect(html).toContain("game-active-placeholder");
   });
 
+  it("shows a safe fallback when gameplay has started before the game id is available", () => {
+    const html = renderToStaticMarkup(
+      <PlayRoomView
+        {...baseProps()}
+        lifecycleState="game_active"
+        gameStatus="started"
+        gameId={null}
+      />
+    );
+
+    expect(html).toContain("Game: started (loading...)");
+  });
+
   it("surfaces resyncing status without changing lobby presentation shape", () => {
     const html = renderToStaticMarkup(
       <PlayRoomView
