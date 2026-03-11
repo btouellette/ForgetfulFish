@@ -449,7 +449,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: pass-priority dispatch, pending-choice rendering, disabled submission state; capture `task-10-pass-priority.txt`, `task-10-choice-ui.txt`, `task-10-disabled-state.txt`
   - Commit target: `Add CommandPanel component`
 
-- [ ] T11. StatusRail
+- [x] T11. StatusRail
   - Files: `apps/web/components/play/StatusRail.tsx`, `apps/web/components/play/StatusRail.module.css`, tests
   - Depends on: T8, T9
   - Deliverables: phase label, active-player indicator, priority indicator, life totals
