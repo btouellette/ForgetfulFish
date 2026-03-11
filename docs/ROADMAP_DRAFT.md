@@ -97,7 +97,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] websocket connect/reconnect lifecycle
   - [x] command submission API
   - [x] server snapshot/event normalization into a UI view model
-  - [x] forward raw `RoomLobbySnapshot` / `RoomGameStarted` payloads to UI via callbacks alongside normalized view-model updates
+  - [x] forward raw `RoomLobbySnapshot` / `RoomGameStarted` payloads to UI callbacks for metadata only; fetch `PlayerGameView` over HTTP when per-player projected state is required
 - [ ] Keep server authoritative: no rules resolution in client code; client only renders projected state and submits legal intents.
 
 #### Phase A Detailed Workplan
@@ -182,8 +182,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [ ] command submission roundtrip updates both clients consistently
   - [ ] reconnect during pending choice rehydrates canonical server state
   - [ ] invalid/expired session behavior remains safe and user-visible
-- [ ] Add a manual verification test pack in `e2e/manual/` with deterministic fixtures:
-  - [ ] replace this with the final manual QA wave below; do not create a separate `e2e/manual/` pack in this milestone
+- [ ] Use the final manual QA wave below instead of creating a separate `e2e/manual/` pack in this milestone:
   - [ ] capture screenshots/traces/videos under `.sisyphus/evidence/final-qa/`
   - [ ] keep the manual scenarios tied to the final verification checklist rather than a parallel documentation track
 - [ ] Keep manual QA reproducible from the same deterministic room/auth fixture path used by automated tests.
@@ -202,8 +201,8 @@ while expanding browser coverage to include deterministic manual UI verification
   - [ ] Two-client command roundtrip sync with gameplay command endpoint.
   - [ ] Reconnect during pending choice and canonical state recovery assertions.
   - [ ] Session expiration and auth failure UX validation while in gameplay route.
-- [ ] Manual verification pack (`e2e/manual/`)
-  - [ ] superseded by the final verification wave below; do not add `e2e/manual/` docs or scripts in this milestone
+- [ ] Manual verification approach
+  - [ ] do not add `e2e/manual/` docs or scripts in this milestone
   - [ ] keep artifact capture under `.sisyphus/evidence/final-qa/`
   - [ ] use Playwright-driven manual verification directly against deterministic fixture state when F3 runs
 - [ ] Phase D issue checkpoints (fail fast)
@@ -261,11 +260,11 @@ while expanding browser coverage to include deterministic manual UI verification
 - [ ] Horizontal scale fanout gap
   - `apps/server/src/app.ts` uses in-process room socket registry; multi-instance websocket fanout needs external pub/sub when scaling beyond single instance.
 
-### Milestone 2.5 Exit Criteria
+### Milestone 2.5 Exit Criteria (target once T3/T4 land)
 
 - [ ] Web client can render authoritative gameplay session state from server transport without full page refresh.
 - [ ] Two-client command/action sync is covered by automated browser tests.
-- [ ] Manual UI test pack exists, is documented, and is runnable by contributors.
+- [ ] Manual QA flow is documented through the final verification wave and reproducible by contributors.
 - [ ] Integration architecture is ready for higher-fidelity interaction work without rewrites.
 
 ### Decision Gates Before Implementation
@@ -297,7 +296,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [ ] Use HTTP fetches for projected game state on `game_started`, active-game `subscribed`, and `room_game_updated`; do not expand WS payloads to per-player game projections in this milestone.
   - [ ] Command panel scope stays limited to `PASS_PRIORITY`, `MAKE_CHOICE`, and `CONCEDE`; do not add a broader legal-actions manifest yet.
   - [ ] `viewerPlayerId` must be present in the projected game-state payload.
-  - [ ] No raw `SerializedGameState` or raw `GameState` on the wire; transport type is `PlayerGameView` only.
+  - [ ] Target transport for per-player projected state is `PlayerGameView` only; until T3/T4 land, adapters must still fetch projected state over HTTP because WS events do not carry full `PlayerGameView` payloads.
 
 #### Verified Preconditions And Repo Realities
 
@@ -523,7 +522,7 @@ while expanding browser coverage to include deterministic manual UI verification
 - [ ] Endpoint spot checks once T3/T4 land:
   - [ ] `curl -s -b "$SESSION_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq '.viewerPlayerId'`
   - [ ] `curl -s -b "$P1_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq '.opponent.handCount'`
-  - [ ] `curl -s -b "$SESSION_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq '.rngSeed'`
+  - [ ] `curl -s -b "$SESSION_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq 'has("rngSeed")'`
   - [ ] `curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/api/rooms/$ROOM_ID/game`
 - [ ] Evidence naming stays task-scoped under `.sisyphus/evidence/` and final manual QA under `.sisyphus/evidence/final-qa/`.
 
