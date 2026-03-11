@@ -20,7 +20,8 @@ export async function getRoomGameStateInDatabase(
       },
       game: {
         select: {
-          state: true
+          state: true,
+          stateVersion: true
         }
       }
     }
@@ -46,8 +47,13 @@ export async function getRoomGameStateInDatabase(
     };
   }
 
+  const projected = projectPlayerView(fromPersistedGameState(room.game.state), userId);
+
   return {
     status: "ok",
-    payload: projectPlayerView(fromPersistedGameState(room.game.state), userId)
+    payload: {
+      ...projected,
+      stateVersion: room.game.stateVersion
+    }
   };
 }

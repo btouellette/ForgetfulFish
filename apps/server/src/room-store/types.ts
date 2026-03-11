@@ -1,3 +1,5 @@
+import type { PlayerGameView } from "@forgetful-fish/realtime-contract";
+
 export type RoomSeat = "P1" | "P2";
 
 export type CreatedRoomPayload = {
@@ -39,7 +41,7 @@ export type GetRoomLobbyResult =
   | { status: "forbidden" };
 
 export type GetRoomGameStateResult =
-  | { status: "ok"; payload: unknown }
+  | { status: "ok"; payload: PlayerGameView }
   | { status: "not_found" }
   | { status: "forbidden" };
 
