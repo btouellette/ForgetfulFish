@@ -465,7 +465,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: populated counts and empty-zone handling; capture `task-12-zone-counts.txt`, `task-12-empty-zones.txt`
   - Commit target: `Add ZonesSummaryPanel component`
 
-- [ ] T13. EventRail
+- [x] T13. EventRail
   - Files: `apps/web/components/play/EventRail.tsx`, `apps/web/components/play/EventRail.module.css`, tests
   - Depends on: T8, T9
   - Deliverables: recent event list from store with sequence + type, compact debug-oriented empty state, bottom-appending behavior
