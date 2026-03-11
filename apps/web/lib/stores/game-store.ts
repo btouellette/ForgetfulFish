@@ -16,6 +16,7 @@ type GameStoreAdapter = {
 };
 
 type MakeChoicePayload = Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"];
+const maxRecentEvents = 10;
 
 type GameStoreState = {
   viewModel: GameSessionViewModel | null;
@@ -67,6 +68,10 @@ function computeLifecycleState(params: {
   });
 }
 
+function trimRecentEvents(recentEvents: Array<{ seq: number; eventType: string }>) {
+  return recentEvents.slice(-maxRecentEvents);
+}
+
 export function createGameStore() {
   let adapter: GameStoreAdapter | null = null;
   let connectionStatus: RoomRealtimeStatus = "offline";
@@ -96,7 +101,9 @@ export function createGameStore() {
     },
     applyViewModel(viewModel) {
       set((state) => {
-        const nextEvents = [...state.recentEvents];
+        const gameChanged = state.viewModel?.gameId !== viewModel.gameId;
+        const nextEvents =
+          gameChanged || viewModel.latestAppliedVersion === null ? [] : [...state.recentEvents];
         const latest = viewModel.latestAppliedVersion;
 
         if (latest && viewModel.lastEventType) {
@@ -118,7 +125,7 @@ export function createGameStore() {
           viewModel,
           lobbySnapshot: createLobbySnapshot(viewModel),
           pendingChoice: viewModel.pendingChoice,
-          recentEvents: nextEvents,
+          recentEvents: trimRecentEvents(nextEvents),
           lifecycleState: computeLifecycleState({
             viewModel,
             hasError: state.error !== null,
@@ -148,11 +155,28 @@ export function createGameStore() {
         throw new Error("game store adapter is not attached");
       }
 
-      set({ isLoadingGameState: true, error: null });
+      set((state) => ({
+        isLoadingGameState: true,
+        error: null,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: false,
+          connectionStatus
+        })
+      }));
 
       try {
         const gameView = await adapter.fetchGameState();
-        set({ gameView, pendingChoice: gameView.pendingChoice, isLoadingGameState: false });
+        set((state) => ({
+          gameView,
+          pendingChoice: gameView.pendingChoice,
+          isLoadingGameState: false,
+          lifecycleState: computeLifecycleState({
+            viewModel: state.viewModel,
+            hasError: state.error !== null,
+            connectionStatus
+          })
+        }));
         return gameView;
       } catch (error) {
         const message = toErrorMessage(error);
@@ -173,7 +197,15 @@ export function createGameStore() {
         throw new Error("game store adapter is not attached");
       }
 
-      set({ isSubmittingCommand: true, error: null });
+      set((state) => ({
+        isSubmittingCommand: true,
+        error: null,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: false,
+          connectionStatus
+        })
+      }));
 
       try {
         await adapter.submitGameplayCommand({ type: "PASS_PRIORITY" });
@@ -190,15 +222,29 @@ export function createGameStore() {
         }));
         throw error;
       }
-
-      set({ isSubmittingCommand: false });
+      set((state) => ({
+        isSubmittingCommand: false,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: state.error !== null,
+          connectionStatus
+        })
+      }));
     },
     async makeChoice(payload) {
       if (!adapter) {
         throw new Error("game store adapter is not attached");
       }
 
-      set({ isSubmittingCommand: true, error: null });
+      set((state) => ({
+        isSubmittingCommand: true,
+        error: null,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: false,
+          connectionStatus
+        })
+      }));
 
       try {
         await adapter.submitGameplayCommand({ type: "MAKE_CHOICE", payload });
@@ -215,15 +261,29 @@ export function createGameStore() {
         }));
         throw error;
       }
-
-      set({ isSubmittingCommand: false });
+      set((state) => ({
+        isSubmittingCommand: false,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: state.error !== null,
+          connectionStatus
+        })
+      }));
     },
     async concede() {
       if (!adapter) {
         throw new Error("game store adapter is not attached");
       }
 
-      set({ isSubmittingCommand: true, error: null });
+      set((state) => ({
+        isSubmittingCommand: true,
+        error: null,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: false,
+          connectionStatus
+        })
+      }));
 
       try {
         await adapter.submitGameplayCommand({ type: "CONCEDE" });
@@ -240,8 +300,14 @@ export function createGameStore() {
         }));
         throw error;
       }
-
-      set({ isSubmittingCommand: false });
+      set((state) => ({
+        isSubmittingCommand: false,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: state.error !== null,
+          connectionStatus
+        })
+      }));
     }
   }));
 

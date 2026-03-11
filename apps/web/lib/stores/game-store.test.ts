@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import type { GameplayPendingChoice, PlayerGameView } from "@forgetful-fish/realtime-contract";
+import type {
+  GameplayCommand,
+  GameplayPendingChoice,
+  PlayerGameView
+} from "@forgetful-fish/realtime-contract";
 
 import type { GameSessionViewModel } from "../game-session-adapter";
 import { createGameStore } from "./game-store";
@@ -94,6 +98,36 @@ describe("createGameStore", () => {
     expect(store.getState().recentEvents).toEqual([{ seq: 7, eventType: "PRIORITY_PASSED" }]);
   });
 
+  it("resets and caps recent events across game boundaries", () => {
+    const store = createGameStore();
+
+    store.getState().applyConnectionStatus("connected");
+    for (let index = 1; index <= 12; index += 1) {
+      store.getState().applyViewModel(
+        createViewModel({
+          gameId: "game-a",
+          gameStatus: "started",
+          latestAppliedVersion: { stateVersion: index, lastAppliedEventSeq: index },
+          lastEventType: `EVENT_${index}`
+        })
+      );
+    }
+
+    expect(store.getState().recentEvents).toHaveLength(10);
+    expect(store.getState().recentEvents[0]).toEqual({ seq: 3, eventType: "EVENT_3" });
+
+    store.getState().applyViewModel(
+      createViewModel({
+        gameId: "game-b",
+        gameStatus: "started",
+        latestAppliedVersion: null,
+        lastEventType: null
+      })
+    );
+
+    expect(store.getState().recentEvents).toEqual([]);
+  });
+
   it("delegates command actions through the injected adapter", async () => {
     const passPriority = vi.fn().mockResolvedValue(undefined);
     const makeChoice = vi.fn().mockResolvedValue(undefined);
@@ -103,7 +137,7 @@ describe("createGameStore", () => {
 
     store.getState().attachAdapter({
       fetchGameState,
-      submitGameplayCommand: async (command) => {
+      submitGameplayCommand: async (command: GameplayCommand) => {
         switch (command.type) {
           case "PASS_PRIORITY":
             return passPriority(command);
@@ -150,6 +184,23 @@ describe("createGameStore", () => {
     expect(store.getState().error).toBeNull();
   });
 
+  it("clears error lifecycle when a retry fetch starts and succeeds", async () => {
+    const store = createGameStore();
+
+    store.getState().applyConnectionStatus("connected");
+    store.getState().applyViewModel(createViewModel({ gameStatus: "started", gameId: "game-a" }));
+    store.getState().attachAdapter({
+      fetchGameState: vi.fn().mockResolvedValue(createGameView()),
+      submitGameplayCommand: vi.fn()
+    });
+    store.setState({ error: "boom", lifecycleState: "error" });
+
+    await store.getState().fetchGameState();
+
+    expect(store.getState().error).toBeNull();
+    expect(store.getState().lifecycleState).toBe("game_active");
+  });
+
   it("tracks command submission loading state and error handling", async () => {
     const store = createGameStore();
     const deferred = new Promise<never>((_, reject) => {
@@ -166,5 +217,27 @@ describe("createGameStore", () => {
     expect(store.getState().isSubmittingCommand).toBe(false);
     expect(store.getState().error).toBe("submit failed");
     expect(store.getState().lifecycleState).toBe("error");
+  });
+
+  it("clears error lifecycle when command retries start and succeed", async () => {
+    const store = createGameStore();
+
+    store.getState().applyConnectionStatus("connected");
+    store.getState().applyViewModel(createViewModel({ gameStatus: "started", gameId: "game-a" }));
+    store.getState().attachAdapter({
+      fetchGameState: vi.fn().mockResolvedValue(createGameView()),
+      submitGameplayCommand: vi.fn().mockResolvedValue(undefined)
+    });
+
+    for (const action of [
+      store.getState().passPriority,
+      () => store.getState().makeChoice({ type: "CHOOSE_YES_NO", accepted: true }),
+      store.getState().concede
+    ]) {
+      store.setState({ error: "boom", lifecycleState: "error" });
+      await action();
+      expect(store.getState().error).toBeNull();
+      expect(store.getState().lifecycleState).toBe("game_active");
+    }
   });
 });
