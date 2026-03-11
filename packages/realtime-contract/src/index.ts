@@ -247,6 +247,118 @@ export const gameplayCommandResponseSchema = z
   })
   .strict();
 
+const manaPoolSchema = z
+  .object({
+    white: z.number().int().min(0),
+    blue: z.number().int().min(0),
+    black: z.number().int().min(0),
+    red: z.number().int().min(0),
+    green: z.number().int().min(0),
+    colorless: z.number().int().min(0)
+  })
+  .strict();
+
+const zoneRefSchema = z.discriminatedUnion("scope", [
+  z
+    .object({
+      kind: z.enum(["library", "graveyard", "battlefield", "exile", "stack", "hand"]),
+      scope: z.literal("shared")
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.enum(["library", "graveyard", "battlefield", "exile", "stack", "hand"]),
+      scope: z.literal("player"),
+      playerId: playerIdSchema
+    })
+    .strict()
+]);
+
+export const gameObjectViewSchema = z
+  .object({
+    id: objectIdSchema,
+    zcc: z.number().int().min(0),
+    cardDefId: z.string().min(1),
+    owner: playerIdSchema,
+    controller: playerIdSchema,
+    counters: z.record(z.string(), z.number().int()),
+    damage: z.number().int().min(0),
+    tapped: z.boolean(),
+    summoningSick: z.boolean(),
+    attachments: z.array(objectIdSchema),
+    zone: zoneRefSchema
+  })
+  .strict();
+
+export const playerViewSchema = z
+  .object({
+    id: playerIdSchema,
+    life: z.number().int(),
+    manaPool: manaPoolSchema,
+    hand: z.array(gameObjectViewSchema),
+    handCount: z.number().int().min(0)
+  })
+  .strict();
+
+export const opponentViewSchema = z
+  .object({
+    id: playerIdSchema,
+    life: z.number().int(),
+    manaPool: manaPoolSchema,
+    handCount: z.number().int().min(0)
+  })
+  .strict();
+
+export const zoneViewSchema = z
+  .object({
+    zoneRef: zoneRefSchema,
+    objectIds: z.array(objectIdSchema).optional(),
+    count: z.number().int().min(0)
+  })
+  .strict();
+
+export const stackItemViewSchema = z
+  .object({
+    object: objectRefSchema,
+    controller: playerIdSchema
+  })
+  .strict();
+
+export const playerTurnStateViewSchema = z
+  .object({
+    phase: z.enum([
+      "UNTAP",
+      "UPKEEP",
+      "DRAW",
+      "MAIN_1",
+      "BEGIN_COMBAT",
+      "DECLARE_ATTACKERS",
+      "DECLARE_BLOCKERS",
+      "COMBAT_DAMAGE",
+      "END_COMBAT",
+      "MAIN_2",
+      "END",
+      "CLEANUP"
+    ]),
+    activePlayerId: playerIdSchema,
+    priorityPlayerId: playerIdSchema
+  })
+  .strict();
+
+export const playerGameViewSchema = z
+  .object({
+    viewerPlayerId: playerIdSchema,
+    stateVersion: z.number().int().min(1),
+    turnState: playerTurnStateViewSchema,
+    viewer: playerViewSchema,
+    opponent: opponentViewSchema,
+    zones: z.array(zoneViewSchema),
+    objectPool: z.record(objectIdSchema, gameObjectViewSchema),
+    stack: z.array(stackItemViewSchema),
+    pendingChoice: gameplayPendingChoiceSchema.nullable()
+  })
+  .strict();
+
 export const wsRoomGameUpdatedMessageSchema = z.object({
   type: z.literal("room_game_updated"),
   schemaVersion: z.literal(roomWsMessageSchemaVersion),
@@ -269,3 +381,4 @@ export type GameplayCommand = z.infer<typeof gameplayCommandSchema>;
 export type GameplayCommandSubmission = z.infer<typeof gameplayCommandSubmissionSchema>;
 export type GameplayPendingChoice = z.infer<typeof gameplayPendingChoiceSchema>;
 export type GameplayCommandResponse = z.infer<typeof gameplayCommandResponseSchema>;
+export type PlayerGameView = z.infer<typeof playerGameViewSchema>;
