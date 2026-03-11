@@ -21,8 +21,17 @@ function baseProps() {
     ],
     viewerId: "player-1",
     isSubmittingLobbyAction: false,
+    gameView: null,
+    recentEvents: [],
+    pendingChoice: null,
+    isSubmittingCommand: false,
+    error: null,
     onReadyToggle: noop,
-    onStartGame: noop
+    onStartGame: noop,
+    onPassPriority: noop,
+    onConcede: noop,
+    onMakeChoice: noop,
+    onClearError: noop
   };
 }
 
@@ -37,19 +46,54 @@ describe("PlayRoomView", () => {
     expect(html).toContain("Start game");
   });
 
-  it("renders a gameplay placeholder during active games", () => {
+  it("renders the composed gameplay shell during active games", () => {
     const html = renderToStaticMarkup(
       <PlayRoomView
         {...baseProps()}
         lifecycleState="game_active"
         gameStatus="started"
         gameId="10000000-0000-4000-8000-000000000001"
+        gameView={{
+          viewerPlayerId: "player-1",
+          stateVersion: 2,
+          turnState: {
+            phase: "MAIN_1",
+            activePlayerId: "player-1",
+            priorityPlayerId: "player-2"
+          },
+          viewer: {
+            id: "player-1",
+            life: 20,
+            manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+            hand: [],
+            handCount: 0
+          },
+          opponent: {
+            id: "player-2",
+            life: 18,
+            manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+            handCount: 2
+          },
+          zones: [],
+          objectPool: {},
+          stack: [],
+          pendingChoice: null
+        }}
+        recentEvents={[]}
+        pendingChoice={null}
+        isSubmittingCommand={false}
+        error={null}
+        onPassPriority={noop}
+        onConcede={noop}
+        onMakeChoice={noop}
+        onClearError={noop}
       />
     );
 
     expect(html).toContain("Lifecycle: game_active");
-    expect(html).toContain("Gameplay shell placeholder");
-    expect(html).toContain("game-active-placeholder");
+    expect(html).toContain("Status");
+    expect(html).toContain("Commands");
+    expect(html).toContain("Canvas placeholder");
   });
 
   it("shows a safe fallback when gameplay has started before the game id is available", () => {
