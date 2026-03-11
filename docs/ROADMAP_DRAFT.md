@@ -457,7 +457,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: phase display must cover all supported phase-name mappings, plus opponent-turn and life-total cases; capture `task-11-phase-display.txt`, `task-11-opponent-turn.txt`, `task-11-life-totals.txt`
   - Commit target: `Add StatusRail component`
 
-- [ ] T12. ZonesSummaryPanel
+- [x] T12. ZonesSummaryPanel
   - Files: `apps/web/components/play/ZonesSummaryPanel.tsx`, `apps/web/components/play/ZonesSummaryPanel.module.css`, tests
   - Depends on: T8, T9
   - Deliverables: grouped zone counts for viewer and shared/opponent zones; counts only, no content drill-in
