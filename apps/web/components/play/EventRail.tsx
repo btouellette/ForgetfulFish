@@ -15,7 +15,7 @@ export function EventRail({ recentEvents }: EventRailProps) {
       ) : (
         <div className={styles.eventList}>
           {recentEvents.map((event) => (
-            <div key={event.seq} className={styles.eventRow}>
+            <div key={`${event.seq}-${event.eventType}`} className={styles.eventRow}>
               <strong>#{event.seq}</strong>
               <span>{event.eventType}</span>
             </div>
