@@ -290,6 +290,54 @@ while expanding browser coverage to include deterministic manual UI verification
 - Keep Framer Motion as the initial motion system for DOM-layer transitions.
 - Keep manual test artifacts on failure by default (trace/video/screenshots), with optional debug runs for always-on capture.
 
+### Approved Execution Slices (2026-03-11)
+
+- [ ] Execute Milestone 2.5 through small PR slices on top of updated `main`; do not batch Phase B+C into one branch.
+- [ ] Resolve the server projection blocker before broader UI work:
+  - [ ] T1. Add `PlayerGameView` types in `packages/game-engine/src/view/types.ts` and matching Zod schemas in `packages/realtime-contract/src/index.ts`.
+  - [ ] T2. Add `projectPlayerView()` in `packages/game-engine/src/view/projection.ts` with explicit redaction of opponent hand identities, library order, `rngSeed`, `lkiStore`, `triggerQueue`, and `continuousEffects`.
+  - [ ] T3. Add `GET /api/rooms/:id/game` in `apps/server/src/app.ts` plus `apps/server/src/room-store/get-game-state.ts`, protected by `authorizeRequest` and participant checks.
+  - [ ] T4. Add `getGameState()` in `apps/web/lib/server-api.ts` and adapter-driven refresh hooks in `apps/web/lib/game-session-adapter.ts` for `game_started`, active `subscribed`, and `room_game_updated`.
+- [ ] Build the frontend baseline after the projected state path exists:
+  - [ ] T5. Install `zustand` and `framer-motion` for `apps/web`.
+  - [ ] T6. Add `apps/web/components/play/PlayRoom.module.css` plus the `components/play/renderer/` directory scaffolding.
+  - [ ] T7. Add the per-page Zustand game store factory in `apps/web/lib/stores/game-store.ts`.
+- [ ] Split the route before adding more UI surface area:
+  - [ ] T8. Extract `PlayRoomContainer` and store context wiring from `apps/web/app/play/[roomId]/page.tsx`.
+  - [ ] T9. Add `PlayRoomView` and `LobbyView` presentational components under `apps/web/components/play/`.
+- [ ] Add gameplay panels as separate reviewable slices:
+  - [ ] T10. Add `CommandPanel`.
+  - [ ] T11. Add `StatusRail`.
+  - [ ] T12. Add `ZonesSummaryPanel`.
+  - [ ] T13. Add `EventRail`.
+  - [ ] T14. Wire the shell in `GameplayView`.
+- [ ] Add the battlefield rendering path last:
+  - [ ] T15. Add `CanvasHost`.
+  - [ ] T16. Add `battlefield-renderer.ts` 2D rendering logic.
+  - [ ] T17. Connect the canvas layer to `GameplayView` and the game store.
+- [ ] Close Milestone 2.5 with explicit final verification slices:
+  - [ ] F1. Plan-compliance audit.
+  - [ ] F2. Code-quality review.
+  - [ ] F3. Manual browser QA with Playwright-driven artifact capture.
+  - [ ] F4. Scope-fidelity check against Milestone 2.5 exit criteria.
+
+#### Approved Wave Order
+
+- [ ] Wave 0: T1 -> T2 -> T3 -> T4
+- [ ] Wave 1: T5 || T6 -> T7
+- [ ] Wave 2: T8 -> T9
+- [ ] Wave 3: T10 || T11 || T12 || T13 -> T14
+- [ ] Wave 4: T15 || T16 -> T17
+- [ ] Final Wave: F1 || F2 || F3 || F4
+
+#### PR Loop Requirements For These Slices
+
+- [ ] Every slice starts with a failing test before implementation.
+- [ ] Every slice opens as a feature-branch PR; do not push direct commits to `main`.
+- [ ] Every slice must pass `pnpm --filter @forgetful-fish/game-engine test`, `pnpm --filter @forgetful-fish/server test` when server code changes, `pnpm --filter @forgetful-fish/web test` when web code changes, plus `pnpm lint` and `pnpm typecheck` before merge.
+- [ ] Every PR waits for strict CI green and Copilot review triage before merge.
+- [ ] Hidden-information checks are mandatory in engine and server tests before any gameplay UI panel work is considered complete.
+
 ## Milestone 3 - Core Rules Loop
 
 - [ ] Build authoritative engine skeleton with deterministic event log.
