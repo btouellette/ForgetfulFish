@@ -305,7 +305,7 @@ while expanding browser coverage to include deterministic manual UI verification
 - [x] `subscribed` still provides only lobby snapshot data, so reconnect during active games now triggers an HTTP game-state fetch.
 - [ ] `apps/web/app/play/[roomId]/page.tsx` is still the route-level integration hotspot and should stay behaviorally stable while being decomposed.
 - [x] `zustand` and `framer-motion` are now part of the `apps/web` dependency baseline on `main`.
-- [ ] `apps/web/components/play/` and `apps/web/components/play/renderer/` are new app-level component roots; do not create shared package abstractions for this milestone.
+- [x] `apps/web/components/play/` and `apps/web/components/play/renderer/` now exist as app-level component roots; do not create shared package abstractions for this milestone.
 
 #### Mandatory Guardrails For Remaining Execution
 
@@ -409,7 +409,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: package listing plus no-regression web test run; capture `task-5-deps-installed.txt`, `task-5-no-regressions.txt`
   - Commit target: `Install zustand and framer-motion`
 
-- [ ] T6. Play CSS module infrastructure
+- [x] T6. Play CSS module infrastructure
   - Files: `apps/web/components/play/`, `apps/web/components/play/renderer/`, `apps/web/components/play/PlayRoom.module.css`
   - Depends on: Wave 0 complete
   - Deliverables: structural layout classes only: `playRoom`, `lobbyView`, `gameplayView`, `statusRail`, `commandPanel`, `sidebar`, `canvasArea`

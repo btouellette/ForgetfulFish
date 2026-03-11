@@ -1,0 +1,46 @@
+.playRoom {
+  display: grid;
+  gap: 1.5rem;
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
+.lobbyView {
+  display: grid;
+  gap: 1rem;
+}
+
+.gameplayView {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+}
+
+.statusRail {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.commandPanel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.sidebar {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.canvasArea {
+  min-height: 24rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+@media (max-width: 900px) {
+  .gameplayView {
+    grid-template-columns: 1fr;
+  }
+}
