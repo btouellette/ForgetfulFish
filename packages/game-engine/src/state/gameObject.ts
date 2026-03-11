@@ -17,6 +17,6 @@ export type GameObjectBase = {
   zone: ZoneRef;
 };
 
-export type GameObjectView = GameObjectBase;
+export type DerivedGameObjectView = GameObjectBase;
 
 export type GameObject = GameObjectBase;

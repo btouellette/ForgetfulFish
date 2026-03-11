@@ -1,4 +1,4 @@
-import type { GameObject, GameObjectBase, GameObjectView } from "./gameObject";
+import type { DerivedGameObjectView, GameObject, GameObjectBase } from "./gameObject";
 import type { ObjectId, ObjectRef } from "./objectRef";
 import type { ZoneRef } from "./zones";
 
@@ -6,10 +6,10 @@ export type LKISnapshot = {
   ref: ObjectRef;
   zone: ZoneRef;
   base: GameObjectBase;
-  derived: GameObjectView;
+  derived: DerivedGameObjectView;
 };
 
-function cloneGameObjectShape<T extends GameObjectBase | GameObjectView>(object: T): T {
+function cloneGameObjectShape<T extends GameObjectBase | DerivedGameObjectView>(object: T): T {
   return {
     ...object,
     counters: new Map(object.counters),
@@ -24,7 +24,7 @@ export function lkiKey(id: ObjectId, zcc: number): string {
 
 export function captureSnapshot(
   obj: GameObject,
-  derivedView: GameObjectView,
+  derivedView: DerivedGameObjectView,
   zone: ZoneRef
 ): LKISnapshot {
   const base = cloneGameObjectShape(obj);
