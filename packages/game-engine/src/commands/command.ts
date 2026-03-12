@@ -80,6 +80,7 @@ export type PlayLandCommand = CommandBase & {
 
 export type ConcedeCommand = CommandBase & {
   type: "CONCEDE";
+  playerId?: PlayerId;
 };
 
 export type Command =
