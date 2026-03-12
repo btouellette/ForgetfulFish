@@ -516,4 +516,50 @@ describe("engine/processCommand", () => {
     expect(result.nextState.turnState.priorityState.activePlayerPassed).toBe(true);
     expect(result.nextState.turnState.priorityState.nonActivePlayerPassed).toBe(true);
   });
+
+  it("marks the conceding player as lost and emits PLAYER_LOST", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "game-concede",
+      rngSeed: "seed-concede"
+    });
+    const result = processCommand(
+      state,
+      {
+        type: "CONCEDE",
+        playerId: "p2"
+      },
+      new Rng(state.rngSeed)
+    );
+
+    expect(result.nextState.players[1].hasLost).toBe(true);
+    expect(result.newEvents).toHaveLength(1);
+    expect(result.newEvents[0]).toMatchObject({
+      type: "PLAYER_LOST",
+      playerId: "p2",
+      reason: "conceded"
+    });
+  });
+
+  it("clears pendingChoice when a player concedes", () => {
+    const baseState = createInitialGameState("p1", "p2", {
+      id: "game-concede-pending-choice",
+      rngSeed: "seed-concede-pending-choice"
+    });
+    const state: GameState = {
+      ...baseState,
+      pendingChoice: yesNoPendingChoice("p1")
+    };
+
+    const result = processCommand(
+      state,
+      {
+        type: "CONCEDE",
+        playerId: "p1"
+      },
+      new Rng(state.rngSeed)
+    );
+
+    expect(result.nextState.pendingChoice).toBeNull();
+    expect(result.pendingChoice).toBeNull();
+  });
 });

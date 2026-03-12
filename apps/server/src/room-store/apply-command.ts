@@ -9,6 +9,7 @@ import {
   type PendingChoice
 } from "@forgetful-fish/game-engine";
 import { gameplayCommandSchema } from "@forgetful-fish/realtime-contract";
+import type { GameplayCommand } from "@forgetful-fish/realtime-contract";
 
 import { fromPersistedGameState, toPersistedGameState } from "./state-persistence";
 import type { ApplyGameplayCommandResult } from "./types";
@@ -63,8 +64,15 @@ function toInvalidCommandResult(error: unknown): ApplyGameplayCommandResult {
   };
 }
 
-function toEngineCommand(command: unknown): Command {
-  const parsed = gameplayCommandSchema.parse(command);
+class ForbiddenGameplayCommandError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ForbiddenGameplayCommandError";
+  }
+}
+
+function toEngineCommand(command: GameplayCommand, actorPlayerId: string): Command {
+  const parsed = command;
 
   const normalizeMode = (mode: { id: string; label?: string | undefined }) => {
     if (mode.label === undefined) {
@@ -179,15 +187,75 @@ function toEngineCommand(command: unknown): Command {
         cardId: parsed.cardId
       };
     case "CONCEDE":
-      return { type: "CONCEDE" };
+      return { type: "CONCEDE", playerId: actorPlayerId };
     default:
       throw new Error("unsupported command type");
   }
 }
 
-function applyCommandToState(state: GameState, command: unknown) {
-  const parsedCommand = toEngineCommand(command);
+function applyCommandToState(state: GameState, command: GameplayCommand, actorPlayerId: string) {
+  const parsedCommand = toEngineCommand(command, actorPlayerId);
   return processCommand(state, parsedCommand, new Rng(state.rngSeed));
+}
+
+function assertActorCanSubmitCommand(
+  state: GameState,
+  command: GameplayCommand,
+  actorPlayerId: string
+): void {
+  const priorityHolder = state.turnState.priorityState.playerWithPriority;
+  const activePlayerId = state.turnState.activePlayerId;
+  const currentStep = state.turnState.step;
+
+  switch (command.type) {
+    case "PASS_PRIORITY":
+    case "PLAY_LAND":
+    case "CAST_SPELL":
+    case "ACTIVATE_ABILITY": {
+      if (priorityHolder !== actorPlayerId) {
+        throw new ForbiddenGameplayCommandError(
+          "command can only be submitted by player with priority"
+        );
+      }
+      return;
+    }
+    case "DECLARE_ATTACKERS": {
+      if (
+        priorityHolder !== actorPlayerId ||
+        currentStep !== "DECLARE_ATTACKERS" ||
+        actorPlayerId !== activePlayerId
+      ) {
+        throw new ForbiddenGameplayCommandError(
+          "declare-attackers command requires active player priority during declare attackers step"
+        );
+      }
+      return;
+    }
+    case "DECLARE_BLOCKERS": {
+      if (
+        priorityHolder !== actorPlayerId ||
+        currentStep !== "DECLARE_BLOCKERS" ||
+        actorPlayerId === activePlayerId
+      ) {
+        throw new ForbiddenGameplayCommandError(
+          "declare-blockers command requires non-active player priority during declare blockers step"
+        );
+      }
+      return;
+    }
+    case "MAKE_CHOICE": {
+      if (state.pendingChoice === null || state.pendingChoice.forPlayer !== actorPlayerId) {
+        throw new ForbiddenGameplayCommandError(
+          "choice command can only be submitted by pending choice player"
+        );
+      }
+      return;
+    }
+    case "CONCEDE":
+      return;
+    default:
+      throw new ForbiddenGameplayCommandError("unrecognized or unauthorized gameplay command");
+  }
 }
 
 export async function applyGameplayCommandInDatabase(
@@ -251,7 +319,17 @@ export async function applyGameplayCommandInDatabase(
       }
 
       const currentState = fromPersistedGameState(game.state);
-      const applied = applyCommandToState(currentState, command);
+      const parsedCommand = gameplayCommandSchema.parse(command);
+      const actor = currentState.players.find((player) => player.id === userId);
+
+      if (actor === undefined) {
+        return {
+          status: "forbidden"
+        };
+      }
+
+      assertActorCanSubmitCommand(currentState, parsedCommand, actor.id);
+      const applied = applyCommandToState(currentState, parsedCommand, actor.id);
       const nextState = applied.nextState;
       const emittedEvents = applied.newEvents;
       const firstPersistedEventSeq = game.lastAppliedEventSeq + 1;
@@ -308,6 +386,12 @@ export async function applyGameplayCommandInDatabase(
 
     return result;
   } catch (error) {
+    if (error instanceof ForbiddenGameplayCommandError) {
+      return {
+        status: "forbidden"
+      };
+    }
+
     return toInvalidCommandResult(error);
   }
 }

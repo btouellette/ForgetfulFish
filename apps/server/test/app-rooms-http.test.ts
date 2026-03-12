@@ -51,6 +51,16 @@ describe("server room routes", () => {
     };
   }
 
+  function yesNoPendingChoice(forPlayer: "owner-1" | "player-2") {
+    return {
+      id: `choice-${forPlayer}-yes-no`,
+      type: "CHOOSE_YES_NO" as const,
+      forPlayer,
+      prompt: "Choose yes or no",
+      constraints: { prompt: "Choose yes or no" }
+    };
+  }
+
   it("requires auth for room creation", async () => {
     const app = buildServer({
       sessionLookup: async () => null
@@ -881,6 +891,133 @@ describe("server room routes", () => {
     ) {
       expect(persistedPayload.seq).toBe(1);
     }
+  });
+
+  it("rejects pass-priority from participant who does not hold priority", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const { roomId } = await startGameForTwoPlayers(roomStore);
+
+    const response = await injectAs(roomStore, "player-2", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/commands`,
+      payload: {
+        command: {
+          type: "PASS_PRIORITY"
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "forbidden" });
+  });
+
+  it("rejects declare-attackers outside declare-attackers step", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const { roomId } = await startGameForTwoPlayers(roomStore);
+
+    const response = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/commands`,
+      payload: {
+        command: {
+          type: "DECLARE_ATTACKERS",
+          attackers: []
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "forbidden" });
+  });
+
+  it("rejects declare-blockers when submitted by active player", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const { roomId } = await startGameForTwoPlayers(roomStore);
+    const room = roomStore.inspectRoom(roomId);
+
+    if (!room?.gameState) {
+      throw new Error("expected room game state");
+    }
+
+    room.gameState.turnState.step = "DECLARE_BLOCKERS";
+    room.gameState.turnState.phase = "DECLARE_BLOCKERS";
+    room.gameState.turnState.activePlayerId = "owner-1";
+    room.gameState.turnState.priorityState.playerWithPriority = "owner-1";
+    room.gameState.players[0].priority = true;
+    room.gameState.players[1].priority = false;
+
+    const response = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/commands`,
+      payload: {
+        command: {
+          type: "DECLARE_BLOCKERS",
+          assignments: []
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "forbidden" });
+  });
+
+  it("applies concede for the authenticated actor even without priority", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const { roomId, gameId } = await startGameForTwoPlayers(roomStore);
+
+    const response = await injectAs(roomStore, "player-2", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/commands`,
+      payload: {
+        command: {
+          type: "CONCEDE"
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      roomId,
+      gameId,
+      stateVersion: 2,
+      lastAppliedEventSeq: 1,
+      pendingChoice: null,
+      emittedEvents: [{ seq: 1, eventType: "PLAYER_LOST" }]
+    });
+
+    const room = roomStore.inspectRoom(roomId);
+    expect(room?.gameState?.players[1]?.id).toBe("player-2");
+    expect(room?.gameState?.players[1]?.hasLost).toBe(true);
+    expect(room?.gameEvents[1]?.eventType).toBe("PLAYER_LOST");
+  });
+
+  it("rejects make-choice from participant who is not pending choice player", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const { roomId } = await startGameForTwoPlayers(roomStore);
+    const room = roomStore.inspectRoom(roomId);
+
+    if (!room?.gameState) {
+      throw new Error("expected room game state");
+    }
+
+    room.gameState.pendingChoice = yesNoPendingChoice("owner-1");
+
+    const response = await injectAs(roomStore, "player-2", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/commands`,
+      payload: {
+        command: {
+          type: "MAKE_CHOICE",
+          payload: {
+            type: "CHOOSE_YES_NO",
+            accepted: true
+          }
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "forbidden" });
   });
 
   it("returns 409 when room store reports command conflict", async () => {

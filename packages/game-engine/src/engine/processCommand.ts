@@ -37,6 +37,58 @@ function passThrough(state: Readonly<GameState>): HandlerResult {
   };
 }
 
+function handleConcedeCommand(state: Readonly<GameState>, command: Command): HandlerResult {
+  if (command.type !== "CONCEDE") {
+    throw new Error("invalid concede command");
+  }
+
+  const concedingPlayerId = command.playerId ?? state.turnState.priorityState.playerWithPriority;
+  const concedingPlayer = state.players.find((player) => player.id === concedingPlayerId);
+
+  if (concedingPlayer === undefined) {
+    throw new Error(`Unknown playerId '${concedingPlayerId}'`);
+  }
+
+  if (concedingPlayer.hasLost) {
+    return passThrough(state);
+  }
+
+  const nextState: GameState = {
+    ...state,
+    version: state.version + 1,
+    pendingChoice: null,
+    players: [
+      {
+        ...state.players[0],
+        hasLost: state.players[0].id === concedingPlayerId ? true : state.players[0].hasLost
+      },
+      {
+        ...state.players[1],
+        hasLost: state.players[1].id === concedingPlayerId ? true : state.players[1].hasLost
+      }
+    ]
+  };
+
+  const concededEvent = createEvent(
+    {
+      engineVersion: state.engineVersion,
+      schemaVersion: 1,
+      gameId: state.id
+    },
+    nextState.version,
+    {
+      type: "PLAYER_LOST",
+      playerId: concedingPlayerId,
+      reason: "conceded"
+    }
+  );
+
+  return {
+    state: nextState,
+    events: [concededEvent]
+  };
+}
+
 function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): HandlerResult {
   const playerWithPriority = state.turnState.priorityState.playerWithPriority;
   const priorityResult = passPriority(state, playerWithPriority);
@@ -585,7 +637,7 @@ export function processCommand(
       case "ACTIVATE_ABILITY":
         return handleActivateAbilityCommand(state, command);
       case "CONCEDE":
-        return passThrough(state);
+        return handleConcedeCommand(state, command);
       case "MAKE_CHOICE":
         return handleMakeChoiceCommand(state, command, rng);
       case "DECLARE_ATTACKERS":
