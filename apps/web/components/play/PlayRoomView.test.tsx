@@ -109,10 +109,12 @@ describe("PlayRoomView", () => {
     expect(html).toContain("Game: started (loading...)");
   });
 
-  it("surfaces resyncing status without changing lobby presentation shape", () => {
+  it("keeps gameplay shell visible while resyncing an active game", () => {
     const html = renderToStaticMarkup(
       <PlayRoomView
         {...baseProps()}
+        gameStatus="started"
+        gameId="10000000-0000-4000-8000-000000000001"
         lifecycleState="resyncing"
         realtimeGuardrailMessage="Realtime reconnecting..."
       />
@@ -120,7 +122,7 @@ describe("PlayRoomView", () => {
 
     expect(html).toContain("Lifecycle: resyncing");
     expect(html).toContain("Realtime reconnecting...");
-    expect(html).toContain("P1: player-1 (ready)");
+    expect(html).toContain("Gameplay shell placeholder");
   });
 
   it("keeps the lobby shell visible for joining and error lifecycle states", () => {

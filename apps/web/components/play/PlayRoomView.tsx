@@ -62,6 +62,10 @@ export function PlayRoomView({
   onMakeChoice,
   onClearError
 }: PlayRoomViewProps) {
+  const shouldRenderGameplay =
+    gameStatus === "started" &&
+    (lifecycleState === "game_active" || lifecycleState === "resyncing");
+
   return (
     <main className={styles.playRoom}>
       <h1>Play Room</h1>
@@ -77,7 +81,7 @@ export function PlayRoomView({
       <p>Lifecycle: {lifecycleState}</p>
       <p>Live connection: {connectionStatus}</p>
       {realtimeGuardrailMessage ? <p>{realtimeGuardrailMessage}</p> : null}
-      {lifecycleState === "game_active" ? (
+      {shouldRenderGameplay ? (
         <GameplayView
           gameView={gameView}
           recentEvents={recentEvents}
