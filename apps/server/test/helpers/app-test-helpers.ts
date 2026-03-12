@@ -8,6 +8,7 @@ import {
   type PendingChoice
 } from "@forgetful-fish/game-engine";
 import { gameplayCommandSchema } from "@forgetful-fish/realtime-contract";
+import type { GameplayCommand } from "@forgetful-fish/realtime-contract";
 
 import { buildServer } from "../../src/app";
 import { createGameplayDeckPreset } from "../../src/room-store/deck-preset";
@@ -357,9 +358,49 @@ export function createInMemoryRoomStore() {
           }
         | undefined;
 
+      const actor = room.gameState.players.find((player) => player.id === userId);
+
+      if (actor === undefined) {
+        return {
+          status: "forbidden" as const
+        };
+      }
+
       try {
         const parsedCommand = gameplayCommandSchema.parse(command);
-        result = processCommand(room.gameState, parsedCommand, new Rng(room.gameState.rngSeed));
+
+        const assertActorCanSubmitCommand = (state: GameState, nextCommand: GameplayCommand) => {
+          const priorityHolder = state.turnState.priorityState.playerWithPriority;
+
+          switch (nextCommand.type) {
+            case "PASS_PRIORITY":
+            case "PLAY_LAND":
+            case "CAST_SPELL":
+            case "ACTIVATE_ABILITY":
+            case "DECLARE_ATTACKERS":
+            case "DECLARE_BLOCKERS":
+              return priorityHolder === actor.id;
+            case "MAKE_CHOICE":
+              return state.pendingChoice !== null && state.pendingChoice.forPlayer === actor.id;
+            case "CONCEDE":
+              return true;
+            default:
+              return false;
+          }
+        };
+
+        if (!assertActorCanSubmitCommand(room.gameState, parsedCommand)) {
+          return {
+            status: "forbidden" as const
+          };
+        }
+
+        const engineCommand =
+          parsedCommand.type === "CONCEDE"
+            ? { ...parsedCommand, playerId: actor.id }
+            : parsedCommand;
+
+        result = processCommand(room.gameState, engineCommand, new Rng(room.gameState.rngSeed));
       } catch (error) {
         if (error instanceof Error) {
           return {
