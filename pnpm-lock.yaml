@@ -84,6 +84,9 @@ importers:
       '@forgetful-fish/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@forgetful-fish/game-engine':
+        specifier: workspace:*
+        version: link:../../packages/game-engine
       '@forgetful-fish/realtime-contract':
         specifier: workspace:*
         version: link:../../packages/realtime-contract
