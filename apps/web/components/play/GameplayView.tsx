@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   GameplayCommand,
   GameplayPendingChoice,
@@ -41,6 +41,11 @@ export function GameplayView({
 }: GameplayViewProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
+  const [canvasVersion, setCanvasVersion] = useState(0);
+
+  const handleCanvasResize = useCallback(() => {
+    setCanvasVersion((version) => version + 1);
+  }, []);
 
   useEffect(() => {
     if (!gameView || !canvasRef.current) {
@@ -54,18 +59,19 @@ export function GameplayView({
       return;
     }
 
+    const rect = canvas.getBoundingClientRect();
+    const cssWidth = Math.max(0, rect.width);
+    const cssHeight = Math.max(0, rect.height);
+    const dpr = cssWidth > 0 ? canvas.width / cssWidth : 1;
+
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
     const battlefieldObjects = Object.values(gameView.objectPool).filter(
       (object) => object.zone.kind === "battlefield"
     );
 
     rafRef.current = window.requestAnimationFrame(() => {
-      renderBattlefield(
-        context,
-        battlefieldObjects,
-        canvas.width,
-        canvas.height,
-        gameView.viewerPlayerId
-      );
+      renderBattlefield(context, battlefieldObjects, cssWidth, cssHeight, gameView.viewerPlayerId);
       rafRef.current = null;
     });
 
@@ -75,7 +81,7 @@ export function GameplayView({
         rafRef.current = null;
       }
     };
-  }, [gameView]);
+  }, [gameView, canvasVersion]);
 
   if (!gameView) {
     return (
@@ -89,7 +95,7 @@ export function GameplayView({
   return (
     <section className={styles.gameplayView}>
       <div className={styles.canvasArea}>
-        <CanvasHost ref={canvasRef} />
+        <CanvasHost ref={canvasRef} onResize={handleCanvasResize} />
       </div>
       <div className={styles.sidebar}>
         <StatusRail

@@ -4,11 +4,12 @@ import styles from "./CanvasHost.module.css";
 
 type CanvasHostProps = {
   onCanvasReady?: (canvas: HTMLCanvasElement | null) => void;
+  onResize?: (width: number, height: number) => void;
   devicePixelRatio?: number;
 };
 
 export const CanvasHost = forwardRef<HTMLCanvasElement | null, CanvasHostProps>(function CanvasHost(
-  { onCanvasReady, devicePixelRatio },
+  { onCanvasReady, onResize, devicePixelRatio },
   forwardedRef
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -38,6 +39,7 @@ export const CanvasHost = forwardRef<HTMLCanvasElement | null, CanvasHostProps>(
       canvas.height = Math.round(height * dpr);
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
+      onResize?.(width, height);
     };
 
     applySize();
@@ -53,7 +55,7 @@ export const CanvasHost = forwardRef<HTMLCanvasElement | null, CanvasHostProps>(
       observer.disconnect();
       onCanvasReady?.(null);
     };
-  }, [devicePixelRatio, onCanvasReady]);
+  }, [devicePixelRatio, onCanvasReady, onResize]);
 
   return (
     <div ref={containerRef} className={styles.canvasHost}>
