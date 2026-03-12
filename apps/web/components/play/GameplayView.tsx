@@ -1,14 +1,19 @@
+"use client";
+
 import React from "react";
+import { useEffect, useRef } from "react";
 import type {
   GameplayCommand,
   GameplayPendingChoice,
   PlayerGameView
 } from "@forgetful-fish/realtime-contract";
 
+import { renderBattlefield } from "../../lib/renderer/battlefield-renderer";
 import { CommandPanel } from "./CommandPanel";
 import { EventRail } from "./EventRail";
 import { StatusRail } from "./StatusRail";
 import { ZonesSummaryPanel } from "./ZonesSummaryPanel";
+import { CanvasHost } from "./renderer/CanvasHost";
 import styles from "./PlayRoom.module.css";
 
 type GameplayViewProps = {
@@ -34,6 +39,44 @@ export function GameplayView({
   onMakeChoice,
   onClearError
 }: GameplayViewProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!gameView || !canvasRef.current) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      return;
+    }
+
+    const battlefieldObjects = Object.values(gameView.objectPool).filter(
+      (object) => object.zone.kind === "battlefield"
+    );
+
+    rafRef.current = window.requestAnimationFrame(() => {
+      renderBattlefield(
+        context,
+        battlefieldObjects,
+        canvas.width,
+        canvas.height,
+        gameView.viewerPlayerId
+      );
+      rafRef.current = null;
+    });
+
+    return () => {
+      if (rafRef.current !== null) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [gameView]);
+
   if (!gameView) {
     return (
       <section className={styles.gameplayView} data-testid="game-active-placeholder">
@@ -46,8 +89,7 @@ export function GameplayView({
   return (
     <section className={styles.gameplayView}>
       <div className={styles.canvasArea}>
-        <h2>Canvas placeholder</h2>
-        <p>Battlefield rendering lands in the next shell-integration slices.</p>
+        <CanvasHost ref={canvasRef} />
       </div>
       <div className={styles.sidebar}>
         <StatusRail
