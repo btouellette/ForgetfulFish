@@ -3,6 +3,8 @@ import type { GameObjectView } from "@forgetful-fish/game-engine";
 const cardWidth = 132;
 const cardHeight = 184;
 const cardGap = 24;
+const slotWidth = cardHeight + cardGap;
+const slotHeight = cardHeight + cardGap;
 
 function labelController(controller: string, viewerPlayerId: string) {
   return controller === viewerPlayerId ? "You" : "Opponent";
@@ -28,13 +30,21 @@ export function renderBattlefield(
     return;
   }
 
-  const totalWidth = objects.length * cardWidth + Math.max(0, objects.length - 1) * cardGap;
-  let currentX = Math.max(24, (width - totalWidth) / 2);
-  const centerY = Math.max(cardHeight / 2 + 24, height / 2);
+  const availableWidth = Math.max(slotWidth, width - 48);
+  const columns = Math.max(1, Math.floor(availableWidth / slotWidth));
+  const rows = Math.max(1, Math.ceil(objects.length / columns));
+  const contentWidth = columns * slotWidth - cardGap;
+  const contentHeight = rows * slotHeight - cardGap;
+  const startX = Math.max(24, (width - contentWidth) / 2);
+  const startY = Math.max(24, (height - contentHeight) / 2);
 
-  for (const object of objects) {
-    const cardX = currentX;
-    const cardY = centerY - cardHeight / 2;
+  for (const [index, object] of objects.entries()) {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const slotX = startX + column * slotWidth;
+    const slotY = startY + row * slotHeight;
+    const cardX = slotX + (slotWidth - cardWidth) / 2;
+    const cardY = slotY + (slotHeight - cardHeight) / 2;
 
     ctx.save();
 
@@ -63,6 +73,5 @@ export function renderBattlefield(
     }
 
     ctx.restore();
-    currentX += cardWidth + cardGap;
   }
 }
