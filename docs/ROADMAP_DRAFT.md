@@ -250,14 +250,14 @@ while expanding browser coverage to include deterministic manual UI verification
 
 ### Current Gap Inventory (Verified In Repo)
 
-- [x] Web command submission gap
+- Web command submission gap (closed in Milestone 2.5)
   - `apps/web/lib/server-api.ts` now exposes a typed client helper for `POST /api/rooms/:id/commands`.
-- [x] Realtime gameplay update gap
+- Realtime gameplay update gap (closed in Milestone 2.5)
   - `packages/realtime-contract/src/index.ts` now includes a versioned `room_game_updated` websocket message for gameplay command application updates.
   - `apps/server/src/app.ts` now broadcasts applied gameplay command updates to subscribed room sockets.
-- [x] Route-level gameplay wiring gap
-  - `apps/web/app/play/[roomId]/page.tsx` currently wires lobby/start sync but does not yet implement gameplay command + gameplay-state rendering loop.
-- [x] Horizontal scale fanout gap
+- Route-level gameplay wiring gap (closed in Milestone 2.5)
+  - `apps/web/app/play/[roomId]/page.tsx` now wires lobby/start sync and implements the gameplay command + gameplay-state rendering loop.
+- Horizontal scale fanout gap (still open beyond Milestone 2.5)
   - `apps/server/src/app.ts` uses in-process room socket registry; multi-instance websocket fanout needs external pub/sub when scaling beyond single instance.
 
 ### Milestone 2.5 Exit Criteria (target once T3/T4 land)
@@ -270,7 +270,7 @@ while expanding browser coverage to include deterministic manual UI verification
 ### Decision Gates Before Implementation
 
 - [x] Confirm primary interaction rendering path for gameplay launch:
-  - [x] DOM-first only (defer canvas)
+  - Alternative not chosen: DOM-first only (defer canvas)
   - [x] hybrid DOM + canvas from first gameplay slice
 - [x] Confirm animation/motion library baseline: Framer Motion.
 - [x] Confirm manual test artifact policy: failure-only capture by default.
