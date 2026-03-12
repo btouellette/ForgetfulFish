@@ -911,6 +911,56 @@ describe("server room routes", () => {
     expect(response.json()).toEqual({ error: "forbidden" });
   });
 
+  it("rejects declare-attackers outside declare-attackers step", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const { roomId } = await startGameForTwoPlayers(roomStore);
+
+    const response = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/commands`,
+      payload: {
+        command: {
+          type: "DECLARE_ATTACKERS",
+          attackers: []
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "forbidden" });
+  });
+
+  it("rejects declare-blockers when submitted by active player", async () => {
+    const roomStore = createInMemoryRoomStore();
+    const { roomId } = await startGameForTwoPlayers(roomStore);
+    const room = roomStore.inspectRoom(roomId);
+
+    if (!room?.gameState) {
+      throw new Error("expected room game state");
+    }
+
+    room.gameState.turnState.step = "DECLARE_BLOCKERS";
+    room.gameState.turnState.phase = "DECLARE_BLOCKERS";
+    room.gameState.turnState.activePlayerId = "owner-1";
+    room.gameState.turnState.priorityState.playerWithPriority = "owner-1";
+    room.gameState.players[0].priority = true;
+    room.gameState.players[1].priority = false;
+
+    const response = await injectAs(roomStore, "owner-1", {
+      method: "POST",
+      url: `/api/rooms/${roomId}/commands`,
+      payload: {
+        command: {
+          type: "DECLARE_BLOCKERS",
+          assignments: []
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "forbidden" });
+  });
+
   it("applies concede for the authenticated actor even without priority", async () => {
     const roomStore = createInMemoryRoomStore();
     const { roomId, gameId } = await startGameForTwoPlayers(roomStore);

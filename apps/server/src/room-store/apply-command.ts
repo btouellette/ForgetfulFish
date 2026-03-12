@@ -204,17 +204,41 @@ function assertActorCanSubmitCommand(
   actorPlayerId: string
 ): void {
   const priorityHolder = state.turnState.priorityState.playerWithPriority;
+  const activePlayerId = state.turnState.activePlayerId;
+  const currentStep = state.turnState.step;
 
   switch (command.type) {
     case "PASS_PRIORITY":
     case "PLAY_LAND":
     case "CAST_SPELL":
-    case "ACTIVATE_ABILITY":
-    case "DECLARE_ATTACKERS":
-    case "DECLARE_BLOCKERS": {
+    case "ACTIVATE_ABILITY": {
       if (priorityHolder !== actorPlayerId) {
         throw new ForbiddenGameplayCommandError(
           "command can only be submitted by player with priority"
+        );
+      }
+      return;
+    }
+    case "DECLARE_ATTACKERS": {
+      if (
+        priorityHolder !== actorPlayerId ||
+        currentStep !== "DECLARE_ATTACKERS" ||
+        actorPlayerId !== activePlayerId
+      ) {
+        throw new ForbiddenGameplayCommandError(
+          "declare-attackers command requires active player priority during declare attackers step"
+        );
+      }
+      return;
+    }
+    case "DECLARE_BLOCKERS": {
+      if (
+        priorityHolder !== actorPlayerId ||
+        currentStep !== "DECLARE_BLOCKERS" ||
+        actorPlayerId === activePlayerId
+      ) {
+        throw new ForbiddenGameplayCommandError(
+          "declare-blockers command requires non-active player priority during declare blockers step"
         );
       }
       return;
@@ -230,7 +254,7 @@ function assertActorCanSubmitCommand(
     case "CONCEDE":
       return;
     default:
-      return;
+      throw new ForbiddenGameplayCommandError("unrecognized or unauthorized gameplay command");
   }
 }
 

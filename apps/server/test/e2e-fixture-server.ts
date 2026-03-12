@@ -304,15 +304,27 @@ function createInMemoryRoomStore() {
           nextCommand: GameplayCommand
         ) => {
           const priorityHolder = state.turnState.priorityState.playerWithPriority;
+          const activePlayerId = state.turnState.activePlayerId;
+          const currentStep = state.turnState.step;
 
           switch (nextCommand.type) {
             case "PASS_PRIORITY":
             case "PLAY_LAND":
             case "CAST_SPELL":
             case "ACTIVATE_ABILITY":
-            case "DECLARE_ATTACKERS":
-            case "DECLARE_BLOCKERS":
               return priorityHolder === actor.id;
+            case "DECLARE_ATTACKERS":
+              return (
+                priorityHolder === actor.id &&
+                currentStep === "DECLARE_ATTACKERS" &&
+                actor.id === activePlayerId
+              );
+            case "DECLARE_BLOCKERS":
+              return (
+                priorityHolder === actor.id &&
+                currentStep === "DECLARE_BLOCKERS" &&
+                actor.id !== activePlayerId
+              );
             case "MAKE_CHOICE":
               return state.pendingChoice !== null && state.pendingChoice.forPlayer === actor.id;
             case "CONCEDE":
