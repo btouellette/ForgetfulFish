@@ -1,14 +1,19 @@
+"use client";
+
 import React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   GameplayCommand,
   GameplayPendingChoice,
   PlayerGameView
 } from "@forgetful-fish/realtime-contract";
 
+import { renderBattlefield } from "../../lib/renderer/battlefield-renderer";
 import { CommandPanel } from "./CommandPanel";
 import { EventRail } from "./EventRail";
 import { StatusRail } from "./StatusRail";
 import { ZonesSummaryPanel } from "./ZonesSummaryPanel";
+import { CanvasHost } from "./renderer/CanvasHost";
 import styles from "./PlayRoom.module.css";
 
 type GameplayViewProps = {
@@ -34,6 +39,50 @@ export function GameplayView({
   onMakeChoice,
   onClearError
 }: GameplayViewProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const [canvasVersion, setCanvasVersion] = useState(0);
+
+  const handleCanvasResize = useCallback(() => {
+    setCanvasVersion((version) => version + 1);
+  }, []);
+
+  useEffect(() => {
+    if (!gameView || !canvasRef.current) {
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const cssWidth = Math.max(0, rect.width);
+    const cssHeight = Math.max(0, rect.height);
+    const dpr = cssWidth > 0 ? canvas.width / cssWidth : 1;
+
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const battlefieldObjects = Object.values(gameView.objectPool).filter(
+      (object) => object.zone.kind === "battlefield"
+    );
+
+    rafRef.current = window.requestAnimationFrame(() => {
+      renderBattlefield(context, battlefieldObjects, cssWidth, cssHeight, gameView.viewerPlayerId);
+      rafRef.current = null;
+    });
+
+    return () => {
+      if (rafRef.current !== null) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [gameView, canvasVersion]);
+
   if (!gameView) {
     return (
       <section className={styles.gameplayView} data-testid="game-active-placeholder">
@@ -46,8 +95,7 @@ export function GameplayView({
   return (
     <section className={styles.gameplayView}>
       <div className={styles.canvasArea}>
-        <h2>Canvas placeholder</h2>
-        <p>Battlefield rendering lands in the next shell-integration slices.</p>
+        <CanvasHost ref={canvasRef} onResize={handleCanvasResize} />
       </div>
       <div className={styles.sidebar}>
         <StatusRail

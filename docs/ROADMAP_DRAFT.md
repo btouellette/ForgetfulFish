@@ -497,7 +497,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: empty battlefield, labeled objects, tapped distinction, and viewer-vs-opponent owner distinction; capture `task-16-empty-battlefield.txt`, `task-16-object-rendering.txt`, `task-16-tapped-visual.txt`
   - Commit target: `Add battlefield canvas 2D renderer`
 
-- [ ] T17. Canvas/store integration
+- [x] T17. Canvas/store integration
   - Files: `apps/web/components/play/GameplayView.tsx`, tests
   - Depends on: T15, T16
   - Deliverables: replace placeholder with `CanvasHost`, filter battlefield objects from `gameView.objectPool`, drive `renderBattlefield()` through `requestAnimationFrame`, cancel pending frame on cleanup

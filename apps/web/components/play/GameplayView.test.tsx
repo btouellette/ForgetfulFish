@@ -53,7 +53,7 @@ function createPendingChoice(
 }
 
 describe("GameplayView", () => {
-  it("renders all gameplay panels and canvas placeholder", () => {
+  it("renders all gameplay panels and a live canvas host", () => {
     const html = renderToStaticMarkup(
       <GameplayView
         gameView={createGameView({ pendingChoice: createPendingChoice() })}
@@ -75,7 +75,7 @@ describe("GameplayView", () => {
     expect(html).toContain("Commands");
     expect(html).toContain("Zones");
     expect(html).toContain("Events");
-    expect(html).toContain("Canvas placeholder");
+    expect(html).toContain("<canvas");
   });
 
   it("falls back to the waiting placeholder when gameView is missing", () => {

@@ -1,4 +1,6 @@
-import type { GameObjectView } from "@forgetful-fish/game-engine";
+import type { PlayerGameView } from "@forgetful-fish/realtime-contract";
+
+type BattlefieldObjectView = PlayerGameView["objectPool"][string];
 
 const cardWidth = 132;
 const cardHeight = 184;
@@ -12,7 +14,7 @@ function labelController(controller: string, viewerPlayerId: string) {
 
 export function renderBattlefield(
   ctx: CanvasRenderingContext2D,
-  objects: GameObjectView[],
+  objects: BattlefieldObjectView[],
   width: number,
   height: number,
   viewerPlayerId: string

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import type { GameObjectView } from "@forgetful-fish/game-engine";
+import type { PlayerGameView } from "@forgetful-fish/realtime-contract";
 
 import { renderBattlefield } from "./battlefield-renderer";
 
-function createObject(overrides: Partial<GameObjectView> = {}): GameObjectView {
+type BattlefieldObjectView = PlayerGameView["objectPool"][string];
+
+function createObject(overrides: Partial<BattlefieldObjectView> = {}): BattlefieldObjectView {
   return {
     id: "object-1",
     zcc: 1,
