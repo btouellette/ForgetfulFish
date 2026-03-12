@@ -75,7 +75,7 @@ describe("GameplayView", () => {
     expect(html).toContain("Commands");
     expect(html).toContain("Zones");
     expect(html).toContain("Events");
-    expect(html).toContain("Canvas placeholder");
+    expect(html).toContain("<canvas");
   });
 
   it("falls back to the waiting placeholder when gameView is missing", () => {

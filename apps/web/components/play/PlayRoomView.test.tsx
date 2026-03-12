@@ -93,7 +93,7 @@ describe("PlayRoomView", () => {
     expect(html).toContain("Lifecycle: game_active");
     expect(html).toContain("Status");
     expect(html).toContain("Commands");
-    expect(html).toContain("Canvas placeholder");
+    expect(html).toContain("<canvas");
   });
 
   it("shows a safe fallback when gameplay has started before the game id is available", () => {
