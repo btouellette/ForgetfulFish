@@ -53,7 +53,7 @@ function createPendingChoice(
 }
 
 describe("GameplayView", () => {
-  it("renders all gameplay panels and canvas placeholder", () => {
+  it("renders all gameplay panels and a live canvas host", () => {
     const html = renderToStaticMarkup(
       <GameplayView
         gameView={createGameView({ pendingChoice: createPendingChoice() })}

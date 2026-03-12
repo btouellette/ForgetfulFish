@@ -86,14 +86,21 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
 
 describe("GameplayView canvas integration", () => {
   class MockResizeObserver {
+    static instances: MockResizeObserver[] = [];
+
     callback: ResizeObserverCallback;
 
     constructor(callback: ResizeObserverCallback) {
       this.callback = callback;
+      MockResizeObserver.instances.push(this);
     }
 
     observe() {}
     disconnect() {}
+
+    trigger(target: Element) {
+      this.callback([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver);
+    }
   }
 
   let container: HTMLDivElement;
@@ -109,6 +116,8 @@ describe("GameplayView canvas integration", () => {
     container?.remove();
     renderBattlefieldMock.mockReset();
     cancelAnimationFrameMock.mockReset();
+    MockResizeObserver.instances = [];
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -123,9 +132,9 @@ describe("GameplayView canvas integration", () => {
       return rafIds;
     });
     vi.stubGlobal("cancelAnimationFrame", cancelAnimationFrameMock);
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
-      {} as CanvasRenderingContext2D
-    );
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      setTransform: vi.fn()
+    } as unknown as CanvasRenderingContext2D);
   }
 
   function renderView(gameView: PlayerGameView | null) {
@@ -162,6 +171,16 @@ describe("GameplayView canvas integration", () => {
     expect(renderBattlefieldMock.mock.calls[0]?.[1]).toHaveLength(2);
   });
 
+  it("requests a redraw when the canvas host resizes", () => {
+    setupAnimationFrameMocks();
+    renderView(createGameView());
+
+    const host = container.querySelector("div > div") as HTMLDivElement;
+    MockResizeObserver.instances[0]?.trigger(host);
+
+    expect(rafCallbacks).toHaveLength(2);
+  });
+
   it("cancels a pending animation frame on unmount", () => {
     setupAnimationFrameMocks();
     renderView(createGameView());
@@ -195,6 +214,8 @@ describe("GameplayView canvas integration", () => {
       );
     });
 
+    const initialFrameCount = rafCallbacks.length;
+
     act(() => {
       root.render(
         <GameplayView
@@ -211,6 +232,6 @@ describe("GameplayView canvas integration", () => {
       );
     });
 
-    expect(rafCallbacks).toHaveLength(2);
+    expect(rafCallbacks.length).toBe(initialFrameCount + 1);
   });
 });
