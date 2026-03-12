@@ -492,7 +492,7 @@ while expanding browser coverage to include deterministic manual UI verification
 - [x] T16. Battlefield 2D renderer
   - Files: `apps/web/lib/renderer/battlefield-renderer.ts`, `apps/web/lib/renderer/battlefield-renderer.test.ts`
   - Depends on: T14
-  - Deliverables: pure `renderBattlefield(ctx, objects, width, height)` function with clear, grid layout, labeled rectangles, tapped distinction, owner distinction, empty-battlefield placeholder
+  - Deliverables: pure `renderBattlefield(ctx, objects, width, height, viewerPlayerId)` function with clear wrapped grid layout, labeled rectangles, tapped distinction, owner distinction, empty-battlefield placeholder
   - Acceptance: battlefield-only rendering, no interactions, no image work, no canvas abstraction libraries
   - QA and evidence: empty battlefield, labeled objects, tapped distinction, and viewer-vs-opponent owner distinction; capture `task-16-empty-battlefield.txt`, `task-16-object-rendering.txt`, `task-16-tapped-visual.txt`
   - Commit target: `Add battlefield canvas 2D renderer`
