@@ -98,7 +98,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] command submission API
   - [x] server snapshot/event normalization into a UI view model
   - [x] forward raw `RoomLobbySnapshot` / `RoomGameStarted` payloads to UI callbacks for metadata only; fetch `PlayerGameView` over HTTP when per-player projected state is required
-- [ ] Keep server authoritative: no rules resolution in client code; client only renders projected state and submits legal intents.
+- [x] Keep server authoritative: no rules resolution in client code; client only renders projected state and submits legal intents.
 
 #### Phase A Detailed Workplan
 
@@ -110,7 +110,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] Create `game-session-adapter.ts` as the single integration facade used by route components.
   - [x] Consolidate command invocation currently spread across `apps/web/lib/server-api.ts` and page handlers into adapter methods.
   - [x] Keep websocket event handling behind adapter-owned callbacks/state transitions (reuse reconnect behavior from `apps/web/lib/room-realtime.ts`).
-- [ ] Sequence and staleness guardrails
+- [x] Sequence and staleness guardrails
   - [x] Track latest applied server version (`stateVersion`, `lastAppliedEventSeq`) in adapter state.
   - [x] Drop or quarantine stale/out-of-order updates before UI application.
   - [x] Define reconnect resync rule: `subscribed` snapshot is canonical reset point.
@@ -121,156 +121,156 @@ while expanding browser coverage to include deterministic manual UI verification
 
 ### Phase B - Frontend Stack Baseline for Arena-Style UX (Non-3D)
 
-- [ ] Keep Next.js + React as the product shell (routing, auth, deployment alignment).
-- [ ] Adopt a two-lane rendering strategy:
-  - [ ] Lane 1 (now): hybrid DOM + canvas baseline (DOM shell/controls + canvas battlefield interactions)
-  - [ ] Lane 2 (later): advanced canvas effects/optimization layer for high-density board states
-- [ ] Pick an interaction state model optimized for rapid realtime updates and optimistic local affordances.
-- [ ] Define reconnect/resync and authoritative-state behavior now; defer formal performance budgets and instrumentation to later milestone work.
+- [x] Keep Next.js + React as the product shell (routing, auth, deployment alignment).
+- [x] Adopt a two-lane rendering strategy:
+  - [x] Lane 1 (now): hybrid DOM + canvas baseline (DOM shell/controls + canvas battlefield interactions)
+  - [x] Lane 2 (later): advanced canvas effects/optimization layer for high-density board states
+- [x] Pick an interaction state model optimized for rapid realtime updates and optimistic local affordances.
+- [x] Define reconnect/resync and authoritative-state behavior now; defer formal performance budgets and instrumentation to later milestone work.
 
 #### Phase B Detailed Workplan
 
-- [ ] State partition and ownership
-  - [ ] Introduce Zustand store for session/authoritative lane (room/game status, legal actions, pending choice, command lifecycle).
-  - [ ] Keep high-frequency interaction lane outside Zustand in refs + `requestAnimationFrame` loops.
-  - [ ] Define explicit bridge contract from Zustand state -> canvas scene model (read-only pull per frame).
-- [ ] Rendering architecture
-  - [ ] Keep React/DOM for HUD, controls, status rails, overlays, and accessibility semantics.
-  - [ ] Add canvas battlefield surface with deterministic draw order and card-object identity mapping.
-  - [ ] Install `framer-motion` for later use but do not apply it in this milestone.
-- [ ] Performance and resilience budgets
-  - [ ] Keep server-driven state application narrow enough to avoid obvious React commit storms in the gameplay shell.
-  - [ ] Defer formal frame budgets, latency targets, and instrumentation counters until after the basic gameplay loop is functional.
-  - [ ] Keep canvas scope intentionally simple: deterministic draw order, labeled rectangles, and no interaction system yet.
-- [ ] Phase B issue checkpoints (fail fast)
-  - [ ] Checkpoint B1: React rerender storms caused by broad selectors.
-  - [ ] Checkpoint B2: canvas frame drops under representative board density.
-  - [ ] Checkpoint B3: adapter/store divergence after command conflict (`409`).
+- [x] State partition and ownership
+  - [x] Introduce Zustand store for session/authoritative lane (room/game status, legal actions, pending choice, command lifecycle).
+  - [x] Keep high-frequency interaction lane outside Zustand in refs + `requestAnimationFrame` loops.
+  - [x] Define explicit bridge contract from Zustand state -> canvas scene model (read-only pull per frame).
+- [x] Rendering architecture
+  - [x] Keep React/DOM for HUD, controls, status rails, overlays, and accessibility semantics.
+  - [x] Add canvas battlefield surface with deterministic draw order and card-object identity mapping.
+  - [x] Install `framer-motion` for later use but do not apply it in this milestone.
+- [x] Performance and resilience budgets
+  - [x] Keep server-driven state application narrow enough to avoid obvious React commit storms in the gameplay shell.
+  - [x] Defer formal frame budgets, latency targets, and instrumentation counters until after the basic gameplay loop is functional.
+  - [x] Keep canvas scope intentionally simple: deterministic draw order, labeled rectangles, and no interaction system yet.
+- [x] Phase B issue checkpoints (fail fast)
+  - [x] Checkpoint B1: React rerender storms caused by broad selectors.
+  - [x] Checkpoint B2: canvas frame drops under representative board density.
+  - [x] Checkpoint B3: adapter/store divergence after command conflict (`409`).
 
 ### Phase C - Gameplay UI Skeleton (No Full Visual Polish Yet)
 
-- [ ] Build a minimal but structured gameplay surface under `apps/web/app/play/[roomId]`:
-  - [ ] zones panel (library, hand, battlefield, graveyard summaries)
-  - [ ] priority/status rail (whose priority, pending choice, stack depth)
-  - [ ] command panel for legal actions surfaced from server responses
-- [ ] Separate adapter state from presentational components to avoid coupling transport concerns into visual components.
-- [ ] Preserve current lobby/start flow while extending the same route with gameplay-state rendering after start.
+- [x] Build a minimal but structured gameplay surface under `apps/web/app/play/[roomId]`:
+  - [x] zones panel (library, hand, battlefield, graveyard summaries)
+  - [x] priority/status rail (whose priority, pending choice, stack depth)
+  - [x] command panel for legal actions surfaced from server responses
+- [x] Separate adapter state from presentational components to avoid coupling transport concerns into visual components.
+- [x] Preserve current lobby/start flow while extending the same route with gameplay-state rendering after start.
 
 #### Phase C Detailed Workplan
 
-- [ ] Route-level composition (`apps/web/app/play/[roomId]/page.tsx`)
-  - [ ] Keep existing lobby and start flow operational while adding post-start gameplay panels.
-  - [ ] Split current monolithic page logic into route container + presentational sections.
+- [x] Route-level composition (`apps/web/app/play/[roomId]/page.tsx`)
+  - [x] Keep existing lobby and start flow operational while adding post-start gameplay panels.
+  - [x] Split current monolithic page logic into route container + presentational sections.
   - [x] Add explicit lifecycle states: `joining`, `lobby_ready`, `game_active`, `resyncing`, `error`.
-- [ ] Gameplay panel scaffolding (minimal but durable)
-  - [ ] Zones summary panel (counts + key visibility constraints).
-  - [ ] Priority/choice rail (active player, pending choice status, command lock states).
-  - [ ] Command panel generated from server-legal intents (no client legality inference).
-  - [ ] Event/debug rail for deterministic troubleshooting during development.
-- [ ] Canvas battlefield integration
-  - [ ] Map stable server object identity to canvas node identity for animation continuity.
-  - [ ] Defer pointer interaction adapters (hover/drag/target preview) until after the gameplay state/rendering loop is stable.
-  - [ ] Keep critical actions available through DOM controls while canvas remains read-only.
-- [ ] Phase C issue checkpoints (fail fast)
-  - [ ] Checkpoint C1: UI can enter illegal local state not representable by server data.
-  - [ ] Checkpoint C2: object identity churn breaks animation continuity.
-  - [ ] Checkpoint C3: reconnect clears presentation lane without restoring actionable controls.
+- [x] Gameplay panel scaffolding (minimal but durable)
+  - [x] Zones summary panel (counts + key visibility constraints).
+  - [x] Priority/choice rail (active player, pending choice status, command lock states).
+  - [x] Command panel generated from server-legal intents (no client legality inference).
+  - [x] Event/debug rail for deterministic troubleshooting during development.
+- [x] Canvas battlefield integration
+  - [x] Map stable server object identity to canvas node identity for animation continuity.
+  - [x] Defer pointer interaction adapters (hover/drag/target preview) until after the gameplay state/rendering loop is stable.
+  - [x] Keep critical actions available through DOM controls while canvas remains read-only.
+- [x] Phase C issue checkpoints (fail fast)
+  - [x] Checkpoint C1: UI can enter illegal local state not representable by server data.
+  - [x] Checkpoint C2: object identity churn breaks animation continuity.
+  - [x] Checkpoint C3: reconnect clears presentation lane without restoring actionable controls.
 
 ### Phase D - Test Expansion (Automated + Manual Browser Validation)
 
-- [ ] Extend Playwright E2E beyond lobby sync:
-  - [ ] command submission roundtrip updates both clients consistently
-  - [ ] reconnect during pending choice rehydrates canonical server state
-  - [ ] invalid/expired session behavior remains safe and user-visible
-- [ ] Use the final manual QA wave below instead of creating a separate `e2e/manual/` pack in this milestone:
-  - [ ] capture screenshots/traces/videos under `.sisyphus/evidence/final-qa/`
-  - [ ] keep the manual scenarios tied to the final verification checklist rather than a parallel documentation track
-- [ ] Keep manual QA reproducible from the same deterministic room/auth fixture path used by automated tests.
+- [x] Extend Playwright E2E beyond lobby sync:
+  - [x] command submission roundtrip updates both clients consistently
+  - [x] reconnect during pending choice rehydrates canonical server state
+  - [x] invalid/expired session behavior remains safe and user-visible
+- [x] Use the final manual QA wave below instead of creating a separate `e2e/manual/` pack in this milestone:
+  - [x] capture screenshots/traces/videos under `.sisyphus/evidence/final-qa/`
+  - [x] keep the manual scenarios tied to the final verification checklist rather than a parallel documentation track
+- [x] Keep manual QA reproducible from the same deterministic room/auth fixture path used by automated tests.
 
 #### Phase D Detailed Workplan
 
-- [ ] Server and contract-level regression expansion (pre-UI heavy work)
-  - [ ] Add command-route integration coverage for conflict, invalid command, and unauthorized cases (extend `apps/server/test/app-rooms-http.test.ts`).
-  - [ ] Add websocket reconnect/resync coverage for gameplay-active rooms (extend `apps/server/test/realtime-ws.sync-events.test.ts`).
-  - [ ] Add shared contract schema tests when introducing new adapter-consumed payload fields.
-- [ ] Web unit/integration coverage
-  - [ ] Add adapter tests with fake websocket/fetch drivers (pattern from `apps/web/lib/room-realtime.test.ts` and `apps/web/lib/server-api.test.ts`).
-  - [ ] Add selector-level tests for Zustand session store update behavior under bursty server updates.
-  - [ ] Add guardrail tests for stale snapshot rejection and version monotonicity.
-- [ ] Browser E2E expansion (`e2e/`)
-  - [ ] Two-client command roundtrip sync with gameplay command endpoint.
-  - [ ] Reconnect during pending choice and canonical state recovery assertions.
-  - [ ] Session expiration and auth failure UX validation while in gameplay route.
-- [ ] Manual verification approach
-  - [ ] do not add `e2e/manual/` docs or scripts in this milestone
-  - [ ] keep artifact capture under `.sisyphus/evidence/final-qa/`
-  - [ ] use Playwright-driven manual verification directly against deterministic fixture state when F3 runs
-- [ ] Phase D issue checkpoints (fail fast)
-  - [ ] Checkpoint D1: non-deterministic fixture behavior across reruns.
-  - [ ] Checkpoint D2: flaky cross-browser timing around reconnect assertions.
-  - [ ] Checkpoint D3: manual checklist drift from automated coverage scope.
+- [x] Server and contract-level regression expansion (pre-UI heavy work)
+  - [x] Add command-route integration coverage for conflict, invalid command, and unauthorized cases (extend `apps/server/test/app-rooms-http.test.ts`).
+  - [x] Add websocket reconnect/resync coverage for gameplay-active rooms (extend `apps/server/test/realtime-ws.sync-events.test.ts`).
+  - [x] Add shared contract schema tests when introducing new adapter-consumed payload fields.
+- [x] Web unit/integration coverage
+  - [x] Add adapter tests with fake websocket/fetch drivers (pattern from `apps/web/lib/room-realtime.test.ts` and `apps/web/lib/server-api.test.ts`).
+  - [x] Add selector-level tests for Zustand session store update behavior under bursty server updates.
+  - [x] Add guardrail tests for stale snapshot rejection and version monotonicity.
+- [x] Browser E2E expansion (`e2e/`)
+  - [x] Two-client command roundtrip sync with gameplay command endpoint.
+  - [x] Reconnect during pending choice and canonical state recovery assertions.
+  - [x] Session expiration and auth failure UX validation while in gameplay route.
+- [x] Manual verification approach
+  - [x] do not add `e2e/manual/` docs or scripts in this milestone
+  - [x] keep artifact capture under `.sisyphus/evidence/final-qa/`
+  - [x] use Playwright-driven manual verification directly against deterministic fixture state when F3 runs
+- [x] Phase D issue checkpoints (fail fast)
+  - [x] Checkpoint D1: non-deterministic fixture behavior across reruns.
+  - [x] Checkpoint D2: flaky cross-browser timing around reconnect assertions.
+  - [x] Checkpoint D3: manual checklist drift from automated coverage scope.
 
 ### Phase E - Execution Guardrails
 
-- [ ] Test-first for each behavior increment (failing test before implementation).
-- [ ] No client-side rule authority; all gameplay legality validated by server/game-engine.
-- [ ] Keep API/WS contracts versioned and parsed at boundaries.
-- [ ] Do not block on final visual system decisions before shipping integration scaffolding.
+- [x] Test-first for each behavior increment (failing test before implementation).
+- [x] No client-side rule authority; all gameplay legality validated by server/game-engine.
+- [x] Keep API/WS contracts versioned and parsed at boundaries.
+- [x] Do not block on final visual system decisions before shipping integration scaffolding.
 
 #### Phase E Detailed Workplan
 
-- [ ] PR slicing strategy (small, reviewable verticals)
-  - [ ] PR1: adapter contract and store scaffolding (no canvas yet).
-  - [ ] PR2: canvas battlefield shell + interaction refs/RAF bridge.
-  - [ ] PR3: gameplay panel wiring + command flows.
-  - [ ] PR4: automated test expansion.
-  - [ ] PR5: final verification wave evidence, cleanup, and milestone-close checks.
-- [ ] Verification gate per PR
-  - [ ] `pnpm --filter @forgetful-fish/web test`
-  - [ ] `pnpm --filter @forgetful-fish/server test`
-  - [ ] `pnpm test:e2e` for affected flows
-  - [ ] `pnpm typecheck` and `pnpm lint`
-- [ ] Non-negotiable invariants
-  - [ ] Server remains sole authority for legality and state transitions.
-  - [ ] Reconnect always resolves to canonical snapshot, never local optimistic state.
-  - [ ] Hidden-information boundaries are preserved in all client-projected views.
+- [x] PR slicing strategy (small, reviewable verticals)
+  - [x] PR1: adapter contract and store scaffolding (no canvas yet).
+  - [x] PR2: canvas battlefield shell + interaction refs/RAF bridge.
+  - [x] PR3: gameplay panel wiring + command flows.
+  - [x] PR4: automated test expansion.
+  - [x] PR5: final verification wave evidence, cleanup, and milestone-close checks.
+- [x] Verification gate per PR
+  - [x] `pnpm --filter @forgetful-fish/web test`
+  - [x] `pnpm --filter @forgetful-fish/server test`
+  - [x] `pnpm test:e2e` for affected flows
+  - [x] `pnpm typecheck` and `pnpm lint`
+- [x] Non-negotiable invariants
+  - [x] Server remains sole authority for legality and state transitions.
+  - [x] Reconnect always resolves to canonical snapshot, never local optimistic state.
+  - [x] Hidden-information boundaries are preserved in all client-projected views.
 
 ### Cross-Phase Risk Register (Track From Day 1)
 
-- [ ] Transport ordering and duplication risk
+- [x] Transport ordering and duplication risk
   - mitigation: monotonic version checks, stale update drops, reconnect snapshot reset
-- [ ] Interaction smoothness risk under board density
+- [x] Interaction smoothness risk under board density
   - mitigation: refs+RAF interaction lane, capped per-frame work, draw-call budgeting
-- [ ] Test flake risk from asynchronous realtime flows
+- [x] Test flake risk from asynchronous realtime flows
   - mitigation: deterministic fixture tokens/rooms, explicit wait-for-message-type helpers, bounded retry policy
-- [ ] Accessibility and usability risk from canvas-first interactions
+- [x] Accessibility and usability risk from canvas-first interactions
   - mitigation: DOM control fallbacks for critical actions, clear status rails and command affordances
-- [ ] Scope creep risk before core integration stabilizes
+- [x] Scope creep risk before core integration stabilizes
   - mitigation: PR slicing, phase exit gates, defer visual polish until correctness and resync behavior are stable
 
 ### Current Gap Inventory (Verified In Repo)
 
-- [x] Web command submission gap
+- Web command submission gap (closed in Milestone 2.5)
   - `apps/web/lib/server-api.ts` now exposes a typed client helper for `POST /api/rooms/:id/commands`.
-- [x] Realtime gameplay update gap
+- Realtime gameplay update gap (closed in Milestone 2.5)
   - `packages/realtime-contract/src/index.ts` now includes a versioned `room_game_updated` websocket message for gameplay command application updates.
   - `apps/server/src/app.ts` now broadcasts applied gameplay command updates to subscribed room sockets.
-- [ ] Route-level gameplay wiring gap
-  - `apps/web/app/play/[roomId]/page.tsx` currently wires lobby/start sync but does not yet implement gameplay command + gameplay-state rendering loop.
-- [ ] Horizontal scale fanout gap
+- Route-level gameplay wiring gap (closed in Milestone 2.5)
+  - `apps/web/app/play/[roomId]/page.tsx` now wires lobby/start sync and implements the gameplay command + gameplay-state rendering loop.
+- Horizontal scale fanout gap (still open beyond Milestone 2.5)
   - `apps/server/src/app.ts` uses in-process room socket registry; multi-instance websocket fanout needs external pub/sub when scaling beyond single instance.
 
 ### Milestone 2.5 Exit Criteria (target once T3/T4 land)
 
-- [ ] Web client can render authoritative gameplay session state from server transport without full page refresh.
-- [ ] Two-client command/action sync is covered by automated browser tests.
-- [ ] Manual QA flow is documented through the final verification wave and reproducible by contributors.
-- [ ] Integration architecture is ready for higher-fidelity interaction work without rewrites.
+- [x] Web client can render authoritative gameplay session state from server transport without full page refresh.
+- [x] Two-client command/action sync is covered by automated browser tests.
+- [x] Manual QA flow is documented through the final verification wave and reproducible by contributors.
+- [x] Integration architecture is ready for higher-fidelity interaction work without rewrites.
 
 ### Decision Gates Before Implementation
 
 - [x] Confirm primary interaction rendering path for gameplay launch:
-  - [ ] DOM-first only (defer canvas)
+  - Alternative not chosen: DOM-first only (defer canvas)
   - [x] hybrid DOM + canvas from first gameplay slice
 - [x] Confirm animation/motion library baseline: Framer Motion.
 - [x] Confirm manual test artifact policy: failure-only capture by default.
@@ -289,19 +289,19 @@ while expanding browser coverage to include deterministic manual UI verification
 
 ### Approved Execution Slices (2026-03-11)
 
-- [ ] The detailed task reference below supersedes the earlier high-level Phase B-D bullets whenever there is any ambiguity.
-- [ ] Execute Milestone 2.5 through small PR slices on top of updated `main`; do not batch Phase B+C into one branch.
-- [ ] Keep roadmap and execution aligned with the approved scope defaults:
-  - [ ] Minimal player projection only for this milestone: own hand objects, opponent hand count, zone counts/visible objects, turn state, life totals, mana pools, pending choice, stack summary.
+- [x] The detailed task reference below supersedes the earlier high-level Phase B-D bullets whenever there is any ambiguity.
+- [x] Execute Milestone 2.5 through small PR slices on top of updated `main`; do not batch Phase B+C into one branch.
+- [x] Keep roadmap and execution aligned with the approved scope defaults:
+  - [x] Minimal player projection only for this milestone: own hand objects, opponent hand count, zone counts/visible objects, turn state, life totals, mana pools, pending choice, stack summary.
   - [x] Use HTTP fetches for projected game state on `game_started`, active-game `subscribed`, and `room_game_updated`; do not expand WS payloads to per-player game projections in this milestone.
-  - [ ] Command panel scope stays limited to `PASS_PRIORITY`, `MAKE_CHOICE`, and `CONCEDE`; do not add a broader legal-actions manifest yet.
-  - [ ] `viewerPlayerId` must be present in the projected game-state payload.
+  - [x] Command panel scope stays limited to `PASS_PRIORITY`, `MAKE_CHOICE`, and `CONCEDE`; do not add a broader legal-actions manifest yet.
+  - [x] `viewerPlayerId` must be present in the projected game-state payload.
   - [x] Target transport for per-player projected state is `PlayerGameView` only, and adapters fetch it over HTTP because WS events still do not carry full `PlayerGameView` payloads.
 
 #### Verified Preconditions And Repo Realities
 
 - [x] `GET /api/rooms/:id/game` now exposes participant-scoped projected state; clients still receive gameplay command metadata from `POST /api/rooms/:id/commands`.
-- [ ] `room_game_updated` currently carries only `{ roomId, gameId, stateVersion, lastAppliedEventSeq, pendingChoice, emittedEvents }`; it does not carry full projected state.
+- [x] `room_game_updated` currently carries only `{ roomId, gameId, stateVersion, lastAppliedEventSeq, pendingChoice, emittedEvents }`; it does not carry full projected state.
 - [x] `subscribed` still provides only lobby snapshot data, so reconnect during active games now triggers an HTTP game-state fetch.
 - [x] `apps/web/app/play/[roomId]/page.tsx` is now a thin server entrypoint, and the route-level integration logic lives in `PlayRoomContainer`.
 - [x] `zustand` and `framer-motion` are now part of the `apps/web` dependency baseline on `main`.
@@ -309,10 +309,10 @@ while expanding browser coverage to include deterministic manual UI verification
 
 #### Mandatory Guardrails For Remaining Execution
 
-- [ ] Hidden information stays hidden: no opponent hand identities, no library order, no `rngSeed`, no `lkiStore`, no `triggerQueue`, no `continuousEffects`, no raw engine internals in client-visible payloads.
-- [ ] Client code remains render-only: no rules resolution, no legality inference, no optimistic authoritative state, no app-layer card/rules branching.
-- [ ] Keep the gameplay renderer intentionally minimal: DOM shell + Canvas 2D rectangles; no PixiJS, Three.js, drag-and-drop engine, or high-frequency animation framework usage.
-- [ ] Use CSS Modules for all new play-route components; do not grow `globals.css` except for narrow cleanup during page split.
+- [x] Hidden information stays hidden: no opponent hand identities, no library order, no `rngSeed`, no `lkiStore`, no `triggerQueue`, no `continuousEffects`, no raw engine internals in client-visible payloads.
+- [x] Client code remains render-only: no rules resolution, no legality inference, no optimistic authoritative state, no app-layer card/rules branching.
+- [x] Keep the gameplay renderer intentionally minimal: DOM shell + Canvas 2D rectangles; no PixiJS, Three.js, drag-and-drop engine, or high-frequency animation framework usage.
+- [x] Use CSS Modules for all new play-route components; do not grow `globals.css` except for narrow cleanup during page split.
 - [x] Store design is per-page-instance only; no global gameplay singleton is used.
 
 #### Required Store Contract
@@ -327,46 +327,46 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] `isSubmittingCommand: boolean`
   - [x] `isLoadingGameState: boolean`
   - [x] `error: string | null`
-- [ ] UI consumption stays explicit:
-  - [ ] `PlayRoomView` reads `lifecycleState`
-  - [ ] `LobbyView` reads `lobbySnapshot`
-  - [ ] `CommandPanel` reads `pendingChoice`, `isSubmittingCommand`, `error`
-  - [ ] `StatusRail` reads `gameView.turnState`, `gameView.viewer.life`, `gameView.opponent.life`, `gameView.viewerPlayerId`
-  - [ ] `ZonesSummaryPanel` reads `gameView.zones`
-  - [ ] `EventRail` reads `recentEvents`
-  - [ ] Canvas wiring reads `gameView.objectPool`
+- [x] UI consumption stays explicit:
+  - [x] `PlayRoomView` reads `lifecycleState`
+  - [x] `LobbyView` reads `lobbySnapshot`
+  - [x] `CommandPanel` reads `pendingChoice`, `isSubmittingCommand`, `error`
+  - [x] `StatusRail` reads `gameView.turnState`, `gameView.viewer.life`, `gameView.opponent.life`, `gameView.viewerPlayerId`
+  - [x] `ZonesSummaryPanel` reads `gameView.zones`
+  - [x] `EventRail` reads `recentEvents`
+  - [x] Canvas wiring reads `gameView.objectPool`
 
 #### Definition Of Done For Phase B+C
 
-- [ ] `pnpm --filter @forgetful-fish/game-engine test` passes with the projection test suite.
-- [ ] `pnpm --filter @forgetful-fish/server test` passes with game-state endpoint coverage.
-- [ ] `pnpm --filter @forgetful-fish/web test` passes with store, component, and route integration coverage.
-- [ ] `pnpm lint` and `pnpm typecheck` pass before merge for every slice.
+- [x] `pnpm --filter @forgetful-fish/game-engine test` passes with the projection test suite.
+- [x] `pnpm --filter @forgetful-fish/server test` passes with game-state endpoint coverage.
+- [x] `pnpm --filter @forgetful-fish/web test` passes with store, component, and route integration coverage.
+- [x] `pnpm lint` and `pnpm typecheck` pass before merge for every slice.
 - [x] `GET /api/rooms/:id/game` returns projected state with player-specific hidden-info filtering.
-- [ ] The play route transitions from lobby to gameplay without losing reconnect/resync behavior.
-- [ ] The command panel can submit pass-priority, make-choice, and concede through the adapter/store path.
-- [ ] The battlefield canvas renders deterministic placeholder cards from projected battlefield objects.
+- [x] The play route transitions from lobby to gameplay without losing reconnect/resync behavior.
+- [x] The command panel can submit pass-priority, make-choice, and concede through the adapter/store path.
+- [x] The battlefield canvas renders deterministic placeholder cards from projected battlefield objects.
 
 #### Approved Wave Order
 
 - [x] Wave 0: T1 -> T2 -> T3 -> T4
 - [x] Wave 1: (T5 || T6) -> T7
-- [ ] Wave 2: T8 -> T9
-- [ ] Wave 3: (T10 || T11 || T12 || T13) -> T14
-- [ ] Wave 4: (T15 || T16) -> T17
-- [ ] Final Wave: F1 || F2 || F3 || F4
+- [x] Wave 2: T8 -> T9
+- [x] Wave 3: (T10 || T11 || T12 || T13) -> T14
+- [x] Wave 4: (T15 || T16) -> T17
+- [x] Final Wave: F1 || F2 || F3 || F4
 
 #### PR Loop Requirements For These Slices
 
-- [ ] Every slice starts with a failing test before implementation.
-- [ ] Every slice opens as a feature-branch PR; do not push direct commits to `main`.
-- [ ] Every slice must pass `pnpm --filter @forgetful-fish/game-engine test`, `pnpm --filter @forgetful-fish/server test` when server code changes, `pnpm --filter @forgetful-fish/web test` when web code changes, plus `pnpm lint` and `pnpm typecheck` before merge.
-- [ ] Every PR waits for strict CI green and Copilot review triage before merge.
-- [ ] Hidden-information checks are mandatory in engine and server tests before any gameplay UI panel work is considered complete.
+- [x] Every slice starts with a failing test before implementation.
+- [x] Every slice opens as a feature-branch PR; do not push direct commits to `main`.
+- [x] Every slice must pass `pnpm --filter @forgetful-fish/game-engine test`, `pnpm --filter @forgetful-fish/server test` when server code changes, `pnpm --filter @forgetful-fish/web test` when web code changes, plus `pnpm lint` and `pnpm typecheck` before merge.
+- [x] Every PR waits for strict CI green and Copilot review triage before merge.
+- [x] Hidden-information checks are mandatory in engine and server tests before any gameplay UI panel work is considered complete.
 
 #### Detailed Task Reference (Execution Source Of Truth)
 
-- [ ] T1. Player game view contract
+- [x] T1. Player game view contract
   - Files: `packages/game-engine/src/view/types.ts`, `packages/game-engine/test/view/types.test.ts`, `packages/game-engine/src/index.ts`, `packages/realtime-contract/src/index.ts`, `packages/realtime-contract/test/schema.test.ts`
   - Deliverables: `PlayerGameView`, `PlayerView`, `OpponentView`, `GameObjectView`, `ZoneView`, `StackItemView`, `playerGameViewSchema`
   - Contract details: `PlayerView` and `OpponentView` both include `life` and `manaPool`; only the viewer receives full hand object details
@@ -375,7 +375,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: `pnpm --filter @forgetful-fish/game-engine test`, `pnpm --filter @forgetful-fish/realtime-contract test`; capture `task-1-zod-schema-validation.txt`, `task-1-typecheck.txt`
   - Commit target: `Add PlayerGameView types and runtime schemas`
 
-- [ ] T2. Player-view projection
+- [x] T2. Player-view projection
   - Files: `packages/game-engine/src/view/projection.ts`, `packages/game-engine/test/view/projection.test.ts`, `packages/game-engine/test/view/projection-redaction.test.ts`, `packages/game-engine/src/index.ts`
   - Depends on: T1
   - Deliverables: `projectPlayerView(state, viewerPlayerId)` projecting viewer hand, opponent hand count, public zones, stack summary, `pendingChoice`, turn-state view, and both players' `manaPool`
@@ -505,26 +505,26 @@ while expanding browser coverage to include deterministic manual UI verification
   - QA and evidence: store wiring, animation cleanup, rerender on state change; capture `task-17-canvas-store-wiring.txt`, `task-17-animation-cleanup.txt`, `task-17-re-render-on-change.txt`
   - Commit target: `Wire canvas into GameplayView and connect to store`
 
-- [ ] Final verification wave
-  - [ ] F1. Plan compliance audit: verify every Must Have and Must Not Have against the built code and captured evidence; output `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT`
-  - [ ] F2. Code quality review: run `pnpm typecheck`, `pnpm lint`, `pnpm test`; search for `as any`, `@ts-ignore`, empty catches, commented-out code, stray `console.log`, and CSS-module violations; output `Build | Lint | Tests | Files | VERDICT`
-  - [ ] F3. Real manual QA with Playwright: create room, join/start with two players, verify lobby->game transition, panels, pass-priority roundtrip, reconnect recovery, and save screenshots under `.sisyphus/evidence/final-qa/`; output `Scenarios | Integration | Edge Cases | VERDICT`
-  - [ ] F4. Scope fidelity check: compare each implemented slice with its task card and guardrails, flag any missing or out-of-scope work; output `Tasks | Contamination | Unaccounted | VERDICT`
+- [x] Final verification wave
+  - [x] F1. Plan compliance audit: verify every Must Have and Must Not Have against the built code and captured evidence; output `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT`
+  - [x] F2. Code quality review: run `pnpm typecheck`, `pnpm lint`, `pnpm test`; search for `as any`, `@ts-ignore`, empty catches, commented-out code, stray `console.log`, and CSS-module violations; output `Build | Lint | Tests | Files | VERDICT`
+  - [x] F3. Real manual QA with Playwright: create room, join/start with two players, verify lobby->game transition, panels, pass-priority roundtrip, reconnect recovery, and save screenshots under `.sisyphus/evidence/final-qa/`; output `Scenarios | Integration | Edge Cases | VERDICT`
+  - [x] F4. Scope fidelity check: compare each implemented slice with its task card and guardrails, flag any missing or out-of-scope work; output `Tasks | Contamination | Unaccounted | VERDICT`
 
 #### Verification Commands And Evidence Targets
 
-- [ ] Core command set for every remaining slice:
-  - [ ] `pnpm --filter @forgetful-fish/game-engine test`
-  - [ ] `pnpm --filter @forgetful-fish/server test`
-  - [ ] `pnpm --filter @forgetful-fish/web test`
-  - [ ] `pnpm typecheck`
-  - [ ] `pnpm lint`
-- [ ] Endpoint spot checks once T3/T4 land:
-  - [ ] `curl -s -b "$SESSION_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq '.viewerPlayerId'`
-  - [ ] `curl -s -b "$P1_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq '.opponent.handCount'`
-  - [ ] `curl -s -b "$SESSION_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq 'has("rngSeed")'`
-  - [ ] `curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/api/rooms/$ROOM_ID/game`
-- [ ] Evidence naming stays task-scoped under `.sisyphus/evidence/` and final manual QA under `.sisyphus/evidence/final-qa/`.
+- [x] Core command set for every remaining slice:
+  - [x] `pnpm --filter @forgetful-fish/game-engine test`
+  - [x] `pnpm --filter @forgetful-fish/server test`
+  - [x] `pnpm --filter @forgetful-fish/web test`
+  - [x] `pnpm typecheck`
+  - [x] `pnpm lint`
+- [x] Endpoint spot checks once T3/T4 land:
+  - [x] `curl -s -b "$SESSION_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq '.viewerPlayerId'`
+  - [x] `curl -s -b "$P1_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq '.opponent.handCount'`
+  - [x] `curl -s -b "$SESSION_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq 'has("rngSeed")'`
+  - [x] `curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/api/rooms/$ROOM_ID/game`
+- [x] Evidence naming stays task-scoped under `.sisyphus/evidence/` and final manual QA under `.sisyphus/evidence/final-qa/`.
 
 ## Milestone 3 - Core Rules Loop
 
