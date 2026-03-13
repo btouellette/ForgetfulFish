@@ -1,4 +1,4 @@
-# Architecture Plan
+# System Architecture Overview
 
 ## Package Boundaries
 
@@ -9,7 +9,7 @@
 Boundary rule: apps consume game-engine through package exports only; no app imports from
 `packages/game-engine/src/**` internals.
 
-See `docs/NEXTJS_RULES.md` for strict web/server boundary rules.
+See `docs/standards/nextjs-boundary-rules.md` for strict web/server boundary rules.
 
 ## Runtime Model
 

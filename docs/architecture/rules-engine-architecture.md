@@ -1,5 +1,7 @@
 # Rules Engine Architecture
 
+Status: canonical reference for the target rules-engine design.
+
 ## Context
 
 `packages/game-engine` now includes implemented Phase 0-2 foundations (deterministic state,

@@ -1,4 +1,4 @@
-# Next.js Rules
+# Next.js Boundary Rules
 
 These rules apply to `apps/web`.
 

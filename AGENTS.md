@@ -2,7 +2,7 @@
 
 All AI coding agents working in this repository must follow:
 
-- `docs/AI_TOOLING_RULES.md`
+- `docs/standards/ai-tooling-rules.md`
 
 ## Default Expectations
 - Use test-first development for new functionality.

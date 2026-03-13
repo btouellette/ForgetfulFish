@@ -1,4 +1,6 @@
-# Gameplay Transport Contract (Milestone 2.5 Phase A)
+# Gameplay Transport Contract
+
+Status: current gameplay transport baseline for the active web/server integration path.
 
 Canonical schema source: `packages/realtime-contract/src/index.ts`.
 

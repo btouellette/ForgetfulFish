@@ -10,7 +10,7 @@ Production URL: `https://forgetfulfish.com`.
 - `apps/server`: Fastify realtime/backend server.
 - `packages/game-engine`: deterministic game engine domain package.
 - `packages/database`: Prisma schema and database tooling.
-- `docs`: architecture, product, auth, and workflow docs.
+- `docs`: categorized architecture, standards, contracts, operations, and planning docs.
 
 ## Quick Start
 
@@ -37,9 +37,15 @@ Production URL: `https://forgetfulfish.com`.
 
 - Build image: `docker build -f Dockerfile.web -t forgetful-fish-web:latest .`
 - Runtime stack: `docker compose -f docker-compose.production.yml up -d`
-- Runbook: `docs/DEPLOYMENT_RUNBOOK.md`
+- Runbook: `docs/operations/deployment-runbook.md`
+
+## Documentation
+
+- Docs index: `docs/README.md`
+- Roadmap: `docs/plans/roadmap.md`
+- Rules-engine plan: `docs/plans/rules-engine/README.md`
 
 ## AI Agent Rules
 
 - See `AGENTS.md`
-- Detailed rules: `docs/AI_TOOLING_RULES.md`
+- Detailed rules: `docs/standards/ai-tooling-rules.md`

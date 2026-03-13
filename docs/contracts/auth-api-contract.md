@@ -1,4 +1,4 @@
-# Auth (v1)
+# Auth API Contract
 
 ## Strategy
 
@@ -78,7 +78,7 @@ Auth routes are owned by Auth.js.
   - `pong`: heartbeat response to client `ping`.
 
 Gameplay transport-specific contract details are tracked in
-`docs/GAMEPLAY_TRANSPORT_CONTRACT.md`.
+`docs/contracts/gameplay-transport-contract.md`.
 
 ## Room Semantics (v1)
 
