@@ -26,7 +26,7 @@ export type ParsedPendingChoice =
   | { kind: "invalid"; message: string };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -88,8 +88,12 @@ export function parseOrderCardsConstraints(input: unknown): ParseResult<OrderCar
 }
 
 export function parseNameCardConstraints(input: unknown): ParseResult<NameCardConstraints> {
-  if (!isRecord(input) || Array.isArray(input)) {
+  if (!isRecord(input)) {
     return { ok: false, message: "constraints must be an object" };
+  }
+
+  if (Object.keys(input).length > 0) {
+    return { ok: false, message: "NAME_CARD constraints must be empty" };
   }
 
   return {

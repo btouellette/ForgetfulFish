@@ -45,6 +45,12 @@ describe("pending-choice adapter", () => {
     expect(parsed.ok).toBe(false);
   });
 
+  it("rejects array-shaped CHOOSE_CARDS constraints", () => {
+    const parsed = parseChooseCardsConstraints(["obj-1", "obj-2"]);
+
+    expect(parsed.ok).toBe(false);
+  });
+
   it("parses valid ORDER_CARDS constraints", () => {
     const parsed = parseOrderCardsConstraints({ cards: ["obj-1", "obj-2"] });
 
@@ -55,6 +61,12 @@ describe("pending-choice adapter", () => {
     const parsed = parseNameCardConstraints({});
 
     expect(parsed).toEqual({ ok: true, value: {} });
+  });
+
+  it("rejects NAME_CARD constraints with unexpected keys", () => {
+    const parsed = parseNameCardConstraints({ extra: true });
+
+    expect(parsed.ok).toBe(false);
   });
 
   it("returns invalid marker when constraints do not match pending-choice type", () => {
