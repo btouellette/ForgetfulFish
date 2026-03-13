@@ -58,6 +58,10 @@ function toCommandErrorMessage(error: unknown) {
       return "Session issue detected. Re-verify your sign-in and try again.";
     }
 
+    if (error.status >= 500) {
+      return "Server issue detected. Wait a moment, then try again.";
+    }
+
     return "Command was rejected. Wait for the next state refresh, then try again.";
   }
 
@@ -126,6 +130,8 @@ export function createGameStore() {
           viewModel.pendingChoice === null &&
           !gameChanged &&
           viewModel.gameStatus === "started" &&
+          viewModel.gameId !== null &&
+          state.viewModel?.gameId !== null &&
           viewModel.latestAppliedVersion === null;
 
         if (latest && viewModel.lastEventType) {
@@ -161,7 +167,7 @@ export function createGameStore() {
     applyGameView(gameView) {
       set({
         gameView,
-        pendingChoice: gameView?.pendingChoice ?? get().pendingChoice
+        pendingChoice: gameView ? gameView.pendingChoice : get().pendingChoice
       });
     },
     clearError() {
@@ -396,7 +402,7 @@ export function createGameStore() {
       try {
         await adapter.submitGameplayCommand({ type: "CONCEDE" });
       } catch (error) {
-        const message = toErrorMessage(error);
+        const message = toCommandErrorMessage(error);
         set((state) => ({
           error: message,
           isSubmittingCommand: false,

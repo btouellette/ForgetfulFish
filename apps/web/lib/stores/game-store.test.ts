@@ -127,6 +127,63 @@ describe("createGameStore", () => {
     expect(store.getState().pendingChoice).toEqual(pendingChoice);
   });
 
+  it("does not preserve pending choice when started-game snapshot is missing gameId", () => {
+    const store = createGameStore();
+    const pendingChoice = createPendingChoice();
+
+    store.getState().applyConnectionStatus("connected");
+    store.getState().applyViewModel(
+      createViewModel({
+        gameId: "game-a",
+        gameStatus: "started",
+        latestAppliedVersion: { stateVersion: 3, lastAppliedEventSeq: 9 },
+        pendingChoice,
+        lastEventType: "PRIORITY_PASSED"
+      })
+    );
+
+    store.getState().applyViewModel(
+      createViewModel({
+        gameId: null,
+        gameStatus: "started",
+        latestAppliedVersion: null,
+        pendingChoice: null,
+        lastEventType: null
+      })
+    );
+
+    expect(store.getState().pendingChoice).toBeNull();
+  });
+
+  it("clears preserved pending choice when refreshed game view reports no pending choice", () => {
+    const store = createGameStore();
+    const pendingChoice = createPendingChoice();
+
+    store.getState().applyViewModel(
+      createViewModel({
+        gameId: "game-a",
+        gameStatus: "started",
+        latestAppliedVersion: { stateVersion: 3, lastAppliedEventSeq: 9 },
+        pendingChoice,
+        lastEventType: "PRIORITY_PASSED"
+      })
+    );
+
+    store.getState().applyViewModel(
+      createViewModel({
+        gameId: "game-a",
+        gameStatus: "started",
+        latestAppliedVersion: null,
+        pendingChoice: null,
+        lastEventType: null
+      })
+    );
+    expect(store.getState().pendingChoice).toEqual(pendingChoice);
+
+    store.getState().applyGameView(createGameView({ pendingChoice: null }));
+    expect(store.getState().pendingChoice).toBeNull();
+  });
+
   it("resets and caps recent events across game boundaries", () => {
     const store = createGameStore();
 
@@ -281,6 +338,19 @@ describe("createGameStore", () => {
     expect(store.getState().error).toBe(
       "Command was rejected. Wait for the next state refresh, then try again."
     );
+  });
+
+  it("shows server-issue message for 5xx command failures", async () => {
+    const store = createGameStore();
+
+    store.getState().attachAdapter({
+      fetchGameState: vi.fn().mockResolvedValue(createGameView()),
+      submitGameplayCommand: vi.fn().mockRejectedValue(new ServerApiError(503, "unavailable"))
+    });
+
+    await expect(store.getState().concede()).rejects.toThrow("unavailable");
+
+    expect(store.getState().error).toBe("Server issue detected. Wait a moment, then try again.");
   });
 
   it("clears error lifecycle when command retries start and succeed", async () => {
