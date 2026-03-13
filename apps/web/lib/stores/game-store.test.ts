@@ -161,6 +161,9 @@ describe("createGameStore", () => {
     await store.getState().makeChoice({ type: "CHOOSE_YES_NO", accepted: true });
     await store.getState().playLand("land-1");
     await store.getState().castSpell("spell-1");
+    await store
+      .getState()
+      .castSpell("spell-2", [{ kind: "object", object: { id: "stack-obj", zcc: 0 } }]);
     await store.getState().concede();
     await store.getState().fetchGameState();
 
@@ -170,7 +173,12 @@ describe("createGameStore", () => {
       payload: { type: "CHOOSE_YES_NO", accepted: true }
     });
     expect(playLand).toHaveBeenCalledWith({ type: "PLAY_LAND", cardId: "land-1" });
-    expect(castSpell).toHaveBeenCalledWith({ type: "CAST_SPELL", cardId: "spell-1" });
+    expect(castSpell).toHaveBeenNthCalledWith(1, { type: "CAST_SPELL", cardId: "spell-1" });
+    expect(castSpell).toHaveBeenNthCalledWith(2, {
+      type: "CAST_SPELL",
+      cardId: "spell-2",
+      targets: [{ kind: "object", object: { id: "stack-obj", zcc: 0 } }]
+    });
     expect(concede).toHaveBeenCalledWith({ type: "CONCEDE" });
     expect(fetchGameState).toHaveBeenCalledTimes(1);
     expect(store.getState().gameView?.viewerPlayerId).toBe("player-1");

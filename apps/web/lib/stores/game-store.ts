@@ -17,6 +17,7 @@ type GameStoreAdapter = {
 
 type MakeChoicePayload = Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"];
 type CastSpellCommand = Extract<GameplayCommand, { type: "CAST_SPELL" }>;
+type CastSpellTargets = NonNullable<CastSpellCommand["targets"]>;
 const maxRecentEvents = 10;
 
 type GameStoreState = {
@@ -41,7 +42,7 @@ type GameStoreState = {
   fetchGameState: () => Promise<PlayerGameView>;
   passPriority: () => Promise<void>;
   playLand: (cardId: string) => Promise<void>;
-  castSpell: (cardId: CastSpellCommand["cardId"]) => Promise<void>;
+  castSpell: (cardId: CastSpellCommand["cardId"], targets?: CastSpellTargets) => Promise<void>;
   makeChoice: (payload: MakeChoicePayload) => Promise<void>;
   concede: () => Promise<void>;
 };
@@ -313,7 +314,7 @@ export function createGameStore() {
         })
       }));
     },
-    async castSpell(cardId) {
+    async castSpell(cardId, targets) {
       if (!adapter) {
         throw new Error("game store adapter is not attached");
       }
@@ -329,7 +330,11 @@ export function createGameStore() {
       }));
 
       try {
-        await adapter.submitGameplayCommand({ type: "CAST_SPELL", cardId });
+        await adapter.submitGameplayCommand({
+          type: "CAST_SPELL",
+          cardId,
+          ...(targets ? { targets } : {})
+        });
       } catch (error) {
         const message = toErrorMessage(error);
         set((state) => ({

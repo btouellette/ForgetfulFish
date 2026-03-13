@@ -8,6 +8,7 @@ type HandPanelProps = {
   isSubmitting: boolean;
   onPlayLand: (cardId: string) => void;
   onCastSpell: (cardId: string) => void;
+  onBeginTargetedCast: (cardId: string) => void;
 };
 
 const cardsRequiringTargetSelection = new Set(["memory-lapse"]);
@@ -16,7 +17,13 @@ function canCastFromHandWithoutTargetPicker(cardDefId: string) {
   return !cardsRequiringTargetSelection.has(cardDefId);
 }
 
-export function HandPanel({ hand, isSubmitting, onPlayLand, onCastSpell }: HandPanelProps) {
+export function HandPanel({
+  hand,
+  isSubmitting,
+  onPlayLand,
+  onCastSpell,
+  onBeginTargetedCast
+}: HandPanelProps) {
   return (
     <section className={styles.handPanel}>
       <h3>Hand</h3>
@@ -53,10 +60,11 @@ export function HandPanel({ hand, isSubmitting, onPlayLand, onCastSpell }: HandP
               ) : (
                 <button
                   type="button"
-                  data-testid={`cast-spell-disabled-${card.id}`}
-                  disabled={true}
+                  data-testid={`cast-spell-targeted-${card.id}`}
+                  onClick={() => onBeginTargetedCast(card.id)}
+                  disabled={isSubmitting}
                 >
-                  Pick targets (WP5)
+                  Pick target
                 </button>
               )}
             </div>
