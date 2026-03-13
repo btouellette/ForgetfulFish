@@ -6,25 +6,23 @@ Status: planned
 
 **Files**: `cards/diminishing-returns.ts`
 
-Cards: **Diminishing Returns** (exile hand and graveyard, shuffle library, draw 7, lose 1 life)
+Cards: **Diminishing Returns** (shuffle hand + graveyard into library, exile top 10, then each player draws up to 7)
 
 Implement:
 - CardDefinition: sorcery, {2}{U}{U}, `onResolve`:
-  - Each player exiles their hand (to exile zone)
-- Exile graveyard zone resolved by `mode.resolveZone(state, 'graveyard', casterId)`
-  - Shuffle shared library
-  - Each player draws 7 (alternating per `GameMode.simultaneousDrawOrder`)
-  - Each player loses 1 life
+  - Each player shuffles their hand and graveyard into their library (mode-routed in shared-deck)
+  - Exile the top ten cards of the shared library
+  - Each player draws up to seven cards (alternating per `GameMode.simultaneousDrawOrder`)
 
 **Test file**: `test/cards/diminishingReturns.test.ts`
 Depends: P0.6, P0.7, P0.11, P2.1, P1.3
 Test: **Write tests FIRST**, then implement.
 1. (Definition) Loads as 4-mana blue sorcery.
-2. (Resolution) Both players' hands are moved to the exile zone.
-3. (Resolution) The shared graveyard is moved to the exile zone.
-4. (Resolution) The shared library is shuffled.
-5. (Resolution) Both players draw 7 cards in alternating order.
-6. (Resolution) The caster (and only the caster) loses 1 life.
+2. (Resolution) Both players' hands are moved into the shared library.
+3. (Resolution) The shared graveyard is moved into the shared library.
+4. (Resolution) The shared library is shuffled after combining those zones.
+5. (Resolution) The top ten cards of the shared library are exiled after shuffle.
+6. (Resolution) Both players draw up to seven cards in alternating order.
 7. (Shared-deck) All zone operations target the common library/graveyard.
 8. (State) `assertStateInvariants` passes after the massive multi-zone state change.
 Acceptance: Complex multi-zone card works with shared-deck hooks.

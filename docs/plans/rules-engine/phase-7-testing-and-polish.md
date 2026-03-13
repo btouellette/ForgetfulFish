@@ -91,7 +91,7 @@ Per test strategy:
 Depends: P2.4, P2.5
 Test: **Write tests FIRST**, then implement.
 1. Verify nested replacements resolve in a predictable, stable order.
-2. Verify `ORDER_REPLACEMENTS` choice is emitted when multiple replacements apply simultaneously.
+2. Verify `CHOOSE_REPLACEMENT` choice is emitted when multiple replacements apply simultaneously.
 3. Test the pipeline with 100+ concurrent actions.
 4. Test the pipeline with 0 actions (empty case).
 5. Verify choice resumption works correctly when nested inside a replacement effect.

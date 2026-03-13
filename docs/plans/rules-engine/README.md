@@ -161,7 +161,7 @@ Collected from the phase files below — items needing clarification before or d
 17. **P4.1** — Dandan attack legality: check Layer 3-rewritten condition at declaration time
 18. **P4.7** — Mystic Sanctuary: "3+ other Islands" — self doesn't count
 19. **P4.9** — Scry choice type (CHOOSE_YES_NO vs CHOOSE_CARDS)
-20. **P5.1** — Diminishing Returns: "you lose 1 life" — caster only, confirm
+20. **P5.1** — Diminishing Returns: confirm shared-deck handling for "shuffle hand/graveyard into library", "exile top ten", and "draw up to seven"
 21. **P5.4** — Metamorphose: actual Oracle text vs architecture doc characterization
 22. **P5.6** — Vision Charm phase out: minimal scope needed
 23. **P5.7** — Flashback subsystem design (alternative cost + exile replacement)

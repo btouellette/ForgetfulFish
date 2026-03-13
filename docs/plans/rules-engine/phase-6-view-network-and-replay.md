@@ -2,12 +2,13 @@
 
 Status: planned
 
-### [ ] P6.1 — projectView implementation
+### [ ] P6.1 — Extend `projectPlayerView` and expose `projectView` alias
 
 **Files**: `view/projection.ts`
 
 Implement per §13:
-- `projectView(state: GameState, forPlayer: PlayerId): GameView`
+- Extend existing `projectPlayerView(state, viewerPlayerId)` in `view/projection.ts`
+- Export `projectView(state: GameState, forPlayer: PlayerId): GameView` as the canonical alias that delegates to the same implementation path
 - Redaction rules:
   - Own hand: full contents
   - Opponent hand: count only
@@ -17,6 +18,10 @@ Implement per §13:
   - Exile: face-up cards full
   - `rngSeed`: never included
   - `pendingChoice`: only if `forPlayer` matches `PendingChoice.forPlayer`
+
+Current baseline:
+- `projectPlayerView` already exists with redaction tests in `test/view/projection.test.ts` and `test/view/projection-redaction.test.ts`.
+- This task should preserve existing behavior while closing remaining gaps (especially battlefield derived views once `computeGameObject` is available).
 
 **Test file**: `test/view/projection.test.ts`
 Depends: P0.3, P3.2
