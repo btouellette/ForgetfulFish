@@ -74,7 +74,7 @@ Recommended implementation order:
 
 ---
 
-### [ ] WP2 - CommandPanel support for CHOOSE_CARDS and NAME_CARD
+### [x] WP2 - CommandPanel support for CHOOSE_CARDS and NAME_CARD
 
 **Goal**: Make pending-choice interactions usable for Mystical Tutor/Predict-class flows.
 
