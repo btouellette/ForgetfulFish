@@ -328,8 +328,8 @@ function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
       onPlayLand={(cardId) => {
         void playLand(cardId);
       }}
-      onCastSpell={(cardId) => {
-        void castSpell(cardId);
+      onCastSpell={(cardId, targets) => {
+        void castSpell(cardId, targets);
       }}
       onMakeChoice={(payload) => {
         void makeChoice(payload);

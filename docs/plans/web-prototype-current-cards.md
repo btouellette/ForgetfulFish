@@ -157,7 +157,7 @@ Recommended implementation order:
 
 ---
 
-### [ ] WP5 - Minimal stack panel and target-picker for Memory Lapse
+### [x] WP5 - Minimal stack panel and target-picker for Memory Lapse
 
 **Goal**: Support targeted `CAST_SPELL` submission needed for Memory Lapse.
 

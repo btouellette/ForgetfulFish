@@ -1,0 +1,35 @@
+.stackPanel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.targetBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(2, 132, 199, 0.3);
+  border-radius: 0.5rem;
+  background: rgba(224, 242, 254, 0.5);
+}
+
+.stackList {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.stackRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 0.5rem;
+}
+
+.stackMeta {
+  display: grid;
+  gap: 0.25rem;
+}

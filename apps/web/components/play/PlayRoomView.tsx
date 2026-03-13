@@ -36,7 +36,10 @@ type PlayRoomViewProps = {
   onPassPriority: () => void;
   onConcede: () => void;
   onPlayLand: (cardId: string) => void;
-  onCastSpell: (cardId: string) => void;
+  onCastSpell: (
+    cardId: string,
+    targets?: NonNullable<Extract<GameplayCommand, { type: "CAST_SPELL" }>["targets"]>
+  ) => void;
   onMakeChoice: (payload: Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"]) => void;
   onClearError: () => void;
 };

@@ -47,6 +47,7 @@ describe("HandPanel", () => {
           isSubmitting={false}
           onPlayLand={vi.fn()}
           onCastSpell={vi.fn()}
+          onBeginTargetedCast={vi.fn()}
         />
       );
     });
@@ -68,6 +69,7 @@ describe("HandPanel", () => {
           isSubmitting={false}
           onPlayLand={onPlayLand}
           onCastSpell={vi.fn()}
+          onBeginTargetedCast={vi.fn()}
         />
       );
     });
@@ -97,6 +99,7 @@ describe("HandPanel", () => {
           isSubmitting={false}
           onPlayLand={vi.fn()}
           onCastSpell={onCastSpell}
+          onBeginTargetedCast={vi.fn()}
         />
       );
     });
@@ -113,8 +116,8 @@ describe("HandPanel", () => {
     expect(onCastSpell).toHaveBeenCalledWith("obj-2");
   });
 
-  it("does not allow casting cards that still require target selection", () => {
-    const onCastSpell = vi.fn();
+  it("starts target selection for cards that require a target", () => {
+    const onBeginTargetedCast = vi.fn();
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -125,22 +128,23 @@ describe("HandPanel", () => {
           hand={[createHandCard("obj-3", "memory-lapse")]}
           isSubmitting={false}
           onPlayLand={vi.fn()}
-          onCastSpell={onCastSpell}
+          onCastSpell={vi.fn()}
+          onBeginTargetedCast={onBeginTargetedCast}
         />
       );
     });
 
-    const disabledCastButton = container.querySelector(
-      '[data-testid="cast-spell-disabled-obj-3"]'
+    const targetedCastButton = container.querySelector(
+      '[data-testid="cast-spell-targeted-obj-3"]'
     ) as HTMLButtonElement | null;
-    expect(disabledCastButton).toBeTruthy();
-    expect(disabledCastButton?.disabled).toBe(true);
+    expect(targetedCastButton).toBeTruthy();
+    expect(targetedCastButton?.disabled).toBe(false);
 
     act(() => {
-      disabledCastButton?.click();
+      targetedCastButton?.click();
     });
 
-    expect(onCastSpell).not.toHaveBeenCalled();
+    expect(onBeginTargetedCast).toHaveBeenCalledWith("obj-3");
   });
 
   it("disables hand actions while command submission is in progress", () => {
@@ -155,6 +159,7 @@ describe("HandPanel", () => {
           isSubmitting={true}
           onPlayLand={vi.fn()}
           onCastSpell={vi.fn()}
+          onBeginTargetedCast={vi.fn()}
         />
       );
     });

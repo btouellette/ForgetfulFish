@@ -12,6 +12,7 @@ import { renderBattlefield } from "../../lib/renderer/battlefield-renderer";
 import { CommandPanel } from "./CommandPanel";
 import { EventRail } from "./EventRail";
 import { HandPanel } from "./HandPanel";
+import { StackPanel } from "./StackPanel";
 import { StatusRail } from "./StatusRail";
 import { ZonesSummaryPanel } from "./ZonesSummaryPanel";
 import { CanvasHost } from "./renderer/CanvasHost";
@@ -26,7 +27,10 @@ type GameplayViewProps = {
   onPassPriority: () => void;
   onConcede: () => void;
   onPlayLand: (cardId: string) => void;
-  onCastSpell: (cardId: string) => void;
+  onCastSpell: (
+    cardId: string,
+    targets?: NonNullable<Extract<GameplayCommand, { type: "CAST_SPELL" }>["targets"]>
+  ) => void;
   onMakeChoice: (payload: Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"]) => void;
   onClearError: () => void;
 };
@@ -47,6 +51,7 @@ export function GameplayView({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const [canvasVersion, setCanvasVersion] = useState(0);
+  const [targetingCardId, setTargetingCardId] = useState<string | null>(null);
 
   const handleCanvasResize = useCallback(() => {
     setCanvasVersion((version) => version + 1);
@@ -88,6 +93,30 @@ export function GameplayView({
     };
   }, [gameView, canvasVersion]);
 
+  const handleBeginTargetedCast = useCallback((cardId: string) => {
+    setTargetingCardId(cardId);
+  }, []);
+
+  const handleSelectStackTarget = useCallback(
+    (
+      target: Extract<
+        NonNullable<Extract<GameplayCommand, { type: "CAST_SPELL" }>["targets"]>[number],
+        { kind: "object" }
+      >
+    ) => {
+      if (!targetingCardId) {
+        return;
+      }
+      onCastSpell(targetingCardId, [target]);
+      setTargetingCardId(null);
+    },
+    [onCastSpell, targetingCardId]
+  );
+
+  const handleCancelTargetSelection = useCallback(() => {
+    setTargetingCardId(null);
+  }, []);
+
   if (!gameView) {
     return (
       <section className={styles.gameplayView} data-testid="game-active-placeholder">
@@ -114,6 +143,19 @@ export function GameplayView({
           isSubmitting={isSubmittingCommand}
           onPlayLand={onPlayLand}
           onCastSpell={onCastSpell}
+          onBeginTargetedCast={handleBeginTargetedCast}
+        />
+        <StackPanel
+          stack={gameView.stack}
+          objectPool={gameView.objectPool}
+          isSubmitting={isSubmittingCommand}
+          targetingCardDefId={
+            targetingCardId
+              ? (gameView.objectPool[targetingCardId]?.cardDefId ?? targetingCardId)
+              : null
+          }
+          onSelectStackTarget={handleSelectStackTarget}
+          onCancelTargetSelection={handleCancelTargetSelection}
         />
         <CommandPanel
           viewerPlayerId={gameView.viewerPlayerId}

@@ -59,8 +59,22 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
       { zoneRef: { kind: "hand", scope: "player", playerId: "player-2" }, count: 2 },
       { zoneRef: { kind: "battlefield", scope: "shared" }, count: 3, objectIds: ["a", "b", "c"] }
     ],
-    objectPool: {},
-    stack: [],
+    objectPool: {
+      "stack-obj-1": {
+        id: "stack-obj-1",
+        zcc: 0,
+        cardDefId: "brainstorm",
+        owner: "player-2",
+        controller: "player-2",
+        counters: {},
+        damage: 0,
+        tapped: false,
+        summoningSick: false,
+        attachments: [],
+        zone: { kind: "stack", scope: "shared" }
+      }
+    },
+    stack: [{ object: { id: "stack-obj-1", zcc: 0 }, controller: "player-2" }],
     pendingChoice: null,
     ...overrides
   };
@@ -103,8 +117,10 @@ describe("GameplayView", () => {
     expect(html).toContain("Status");
     expect(html).toContain("Commands");
     expect(html).toContain("Hand");
+    expect(html).toContain("Stack");
     expect(html).toContain("Play land");
     expect(html).toContain("Cast spell");
+    expect(html).toContain("brainstorm (stack-obj-1)");
     expect(html).toContain("Zones");
     expect(html).toContain("Events");
     expect(html).toContain("<canvas");
