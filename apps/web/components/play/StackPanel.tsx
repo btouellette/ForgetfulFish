@@ -14,7 +14,7 @@ type StackPanelProps = {
   stack: PlayerGameView["stack"];
   objectPool: PlayerGameView["objectPool"];
   isSubmitting: boolean;
-  targetingCardDefId: string | null;
+  targetingCardLabel: string | null;
   onSelectStackTarget: (target: ObjectTarget) => void;
   onCancelTargetSelection: () => void;
 };
@@ -32,11 +32,11 @@ export function StackPanel({
   stack,
   objectPool,
   isSubmitting,
-  targetingCardDefId,
+  targetingCardLabel,
   onSelectStackTarget,
   onCancelTargetSelection
 }: StackPanelProps) {
-  const isTargeting = targetingCardDefId !== null;
+  const isTargeting = targetingCardLabel !== null;
 
   return (
     <section className={styles.stackPanel}>
@@ -44,7 +44,7 @@ export function StackPanel({
       {stack.length === 0 ? <p>The stack is empty.</p> : null}
       {isTargeting ? (
         <div className={styles.targetBanner}>
-          <span>{`Select a stack spell for ${targetingCardDefId}.`}</span>
+          <span>{`Select a stack spell for ${targetingCardLabel}.`}</span>
           <button
             type="button"
             data-testid="cancel-target-selection"

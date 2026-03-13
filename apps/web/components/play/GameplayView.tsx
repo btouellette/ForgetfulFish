@@ -97,6 +97,11 @@ export function GameplayView({
     setTargetingCardId(cardId);
   }, []);
 
+  const activeTargetingCardId =
+    targetingCardId && (gameView?.viewer.hand.some((card) => card.id === targetingCardId) ?? false)
+      ? targetingCardId
+      : null;
+
   const handleSelectStackTarget = useCallback(
     (
       target: Extract<
@@ -104,18 +109,23 @@ export function GameplayView({
         { kind: "object" }
       >
     ) => {
-      if (!targetingCardId) {
+      if (!activeTargetingCardId) {
         return;
       }
-      onCastSpell(targetingCardId, [target]);
+
+      onCastSpell(activeTargetingCardId, [target]);
       setTargetingCardId(null);
     },
-    [onCastSpell, targetingCardId]
+    [activeTargetingCardId, onCastSpell]
   );
 
   const handleCancelTargetSelection = useCallback(() => {
     setTargetingCardId(null);
   }, []);
+
+  const targetingCardLabel = activeTargetingCardId
+    ? (gameView?.objectPool[activeTargetingCardId]?.cardDefId ?? activeTargetingCardId)
+    : null;
 
   if (!gameView) {
     return (
@@ -149,11 +159,7 @@ export function GameplayView({
           stack={gameView.stack}
           objectPool={gameView.objectPool}
           isSubmitting={isSubmittingCommand}
-          targetingCardDefId={
-            targetingCardId
-              ? (gameView.objectPool[targetingCardId]?.cardDefId ?? targetingCardId)
-              : null
-          }
+          targetingCardLabel={targetingCardLabel}
           onSelectStackTarget={handleSelectStackTarget}
           onCancelTargetSelection={handleCancelTargetSelection}
         />

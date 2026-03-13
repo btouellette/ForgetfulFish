@@ -64,7 +64,7 @@ describe("StackPanel", () => {
             [second.objectView.id]: second.objectView
           }}
           isSubmitting={false}
-          targetingCardDefId={null}
+          targetingCardLabel={null}
           onSelectStackTarget={vi.fn()}
           onCancelTargetSelection={vi.fn()}
         />
@@ -88,7 +88,7 @@ describe("StackPanel", () => {
           stack={[item.stackItem]}
           objectPool={{ [item.objectView.id]: item.objectView }}
           isSubmitting={false}
-          targetingCardDefId="memory-lapse"
+          targetingCardLabel="memory-lapse"
           onSelectStackTarget={onSelectStackTarget}
           onCancelTargetSelection={vi.fn()}
         />

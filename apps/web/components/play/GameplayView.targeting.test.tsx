@@ -242,4 +242,77 @@ describe("GameplayView targeted casts", () => {
     expect(onCastSpell).not.toHaveBeenCalled();
     expect(container.textContent).not.toContain("Select a stack spell for memory-lapse.");
   });
+
+  it("exits target mode when the targeting card leaves hand before selection", () => {
+    const onCastSpell = vi.fn();
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    const initialView = createGameView();
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={initialView}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={vi.fn()}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={onCastSpell}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const beginTargetButton = container.querySelector(
+      '[data-testid="cast-spell-targeted-obj-ml"]'
+    ) as HTMLButtonElement | null;
+    act(() => {
+      beginTargetButton?.click();
+    });
+
+    const stackObject = initialView.objectPool["obj-stack"];
+    if (!stackObject) {
+      throw new Error("missing obj-stack test fixture");
+    }
+
+    const updatedView: PlayerGameView = {
+      ...initialView,
+      stateVersion: 6,
+      viewer: {
+        ...initialView.viewer,
+        hand: [],
+        handCount: 0
+      },
+      objectPool: {
+        "obj-stack": stackObject
+      }
+    };
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={updatedView}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={vi.fn()}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={onCastSpell}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    expect(onCastSpell).not.toHaveBeenCalled();
+    expect(container.textContent).not.toContain("Select a stack spell for memory-lapse.");
+    expect(container.querySelector('[data-testid="stack-target-obj-stack"]')).toBeNull();
+  });
 });
