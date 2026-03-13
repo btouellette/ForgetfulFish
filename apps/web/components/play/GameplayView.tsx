@@ -105,6 +105,7 @@ export function GameplayView({
           opponentLife={gameView.opponent.life}
         />
         <CommandPanel
+          viewerPlayerId={gameView.viewerPlayerId}
           pendingChoice={pendingChoice}
           isSubmitting={isSubmittingCommand}
           error={error}
