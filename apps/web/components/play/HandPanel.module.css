@@ -1,0 +1,29 @@
+.handPanel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.cardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.cardMeta {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.cardMeta span {
+  font-size: 0.8rem;
+  color: rgba(15, 23, 42, 0.75);
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}

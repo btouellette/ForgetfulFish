@@ -18,8 +18,35 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
       id: "player-1",
       life: 20,
       manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
-      hand: [],
-      handCount: 0
+      hand: [
+        {
+          id: "obj-1",
+          zcc: 0,
+          cardDefId: "island",
+          owner: "player-1",
+          controller: "player-1",
+          counters: {},
+          damage: 0,
+          tapped: false,
+          summoningSick: false,
+          attachments: [],
+          zone: { kind: "hand", scope: "player", playerId: "player-1" }
+        },
+        {
+          id: "obj-2",
+          zcc: 0,
+          cardDefId: "brainstorm",
+          owner: "player-1",
+          controller: "player-1",
+          counters: {},
+          damage: 0,
+          tapped: false,
+          summoningSick: false,
+          attachments: [],
+          zone: { kind: "hand", scope: "player", playerId: "player-1" }
+        }
+      ],
+      handCount: 2
     },
     opponent: {
       id: "player-2",
@@ -66,6 +93,8 @@ describe("GameplayView", () => {
         error={null}
         onPassPriority={vi.fn()}
         onConcede={vi.fn()}
+        onPlayLand={vi.fn()}
+        onCastSpell={vi.fn()}
         onMakeChoice={vi.fn()}
         onClearError={vi.fn()}
       />
@@ -73,6 +102,9 @@ describe("GameplayView", () => {
 
     expect(html).toContain("Status");
     expect(html).toContain("Commands");
+    expect(html).toContain("Hand");
+    expect(html).toContain("Play land");
+    expect(html).toContain("Cast spell");
     expect(html).toContain("Zones");
     expect(html).toContain("Events");
     expect(html).toContain("<canvas");
@@ -88,6 +120,8 @@ describe("GameplayView", () => {
         error={null}
         onPassPriority={vi.fn()}
         onConcede={vi.fn()}
+        onPlayLand={vi.fn()}
+        onCastSpell={vi.fn()}
         onMakeChoice={vi.fn()}
         onClearError={vi.fn()}
       />

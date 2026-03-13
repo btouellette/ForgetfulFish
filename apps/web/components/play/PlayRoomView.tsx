@@ -35,6 +35,8 @@ type PlayRoomViewProps = {
   onStartGame: () => void;
   onPassPriority: () => void;
   onConcede: () => void;
+  onPlayLand: (cardId: string) => void;
+  onCastSpell: (cardId: string) => void;
   onMakeChoice: (payload: Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"]) => void;
   onClearError: () => void;
 };
@@ -59,6 +61,8 @@ export function PlayRoomView({
   onStartGame,
   onPassPriority,
   onConcede,
+  onPlayLand,
+  onCastSpell,
   onMakeChoice,
   onClearError
 }: PlayRoomViewProps) {
@@ -90,6 +94,8 @@ export function PlayRoomView({
           error={error}
           onPassPriority={onPassPriority}
           onConcede={onConcede}
+          onPlayLand={onPlayLand}
+          onCastSpell={onCastSpell}
           onMakeChoice={onMakeChoice}
           onClearError={onClearError}
         />
