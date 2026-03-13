@@ -10,6 +10,12 @@ type HandPanelProps = {
   onCastSpell: (cardId: string) => void;
 };
 
+const cardsRequiringTargetSelection = new Set(["memory-lapse"]);
+
+function canCastFromHandWithoutTargetPicker(cardDefId: string) {
+  return !cardsRequiringTargetSelection.has(cardDefId);
+}
+
 export function HandPanel({ hand, isSubmitting, onPlayLand, onCastSpell }: HandPanelProps) {
   return (
     <section className={styles.handPanel}>
@@ -17,6 +23,7 @@ export function HandPanel({ hand, isSubmitting, onPlayLand, onCastSpell }: HandP
       {hand.length === 0 ? <p>No cards in hand.</p> : null}
       {hand.map((card) => {
         const isLand = card.cardDefId === "island";
+        const canCastWithoutTargetPicker = canCastFromHandWithoutTargetPicker(card.cardDefId);
 
         return (
           <div key={card.id} className={styles.cardRow}>
@@ -34,7 +41,7 @@ export function HandPanel({ hand, isSubmitting, onPlayLand, onCastSpell }: HandP
                 >
                   Play land
                 </button>
-              ) : (
+              ) : canCastWithoutTargetPicker ? (
                 <button
                   type="button"
                   data-testid={`cast-spell-${card.id}`}
@@ -42,6 +49,14 @@ export function HandPanel({ hand, isSubmitting, onPlayLand, onCastSpell }: HandP
                   disabled={isSubmitting}
                 >
                   Cast spell
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  data-testid={`cast-spell-disabled-${card.id}`}
+                  disabled={true}
+                >
+                  Pick targets (WP5)
                 </button>
               )}
             </div>

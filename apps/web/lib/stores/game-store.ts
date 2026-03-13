@@ -16,7 +16,7 @@ type GameStoreAdapter = {
 };
 
 type MakeChoicePayload = Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"];
-type CastSpellPayload = Omit<Extract<GameplayCommand, { type: "CAST_SPELL" }>, "type">;
+type CastSpellCommand = Extract<GameplayCommand, { type: "CAST_SPELL" }>;
 const maxRecentEvents = 10;
 
 type GameStoreState = {
@@ -41,7 +41,7 @@ type GameStoreState = {
   fetchGameState: () => Promise<PlayerGameView>;
   passPriority: () => Promise<void>;
   playLand: (cardId: string) => Promise<void>;
-  castSpell: (cardId: CastSpellPayload["cardId"]) => Promise<void>;
+  castSpell: (cardId: CastSpellCommand["cardId"]) => Promise<void>;
   makeChoice: (payload: MakeChoicePayload) => Promise<void>;
   concede: () => Promise<void>;
 };

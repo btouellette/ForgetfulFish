@@ -113,6 +113,36 @@ describe("HandPanel", () => {
     expect(onCastSpell).toHaveBeenCalledWith("obj-2");
   });
 
+  it("does not allow casting cards that still require target selection", () => {
+    const onCastSpell = vi.fn();
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <HandPanel
+          hand={[createHandCard("obj-3", "memory-lapse")]}
+          isSubmitting={false}
+          onPlayLand={vi.fn()}
+          onCastSpell={onCastSpell}
+        />
+      );
+    });
+
+    const disabledCastButton = container.querySelector(
+      '[data-testid="cast-spell-disabled-obj-3"]'
+    ) as HTMLButtonElement | null;
+    expect(disabledCastButton).toBeTruthy();
+    expect(disabledCastButton?.disabled).toBe(true);
+
+    act(() => {
+      disabledCastButton?.click();
+    });
+
+    expect(onCastSpell).not.toHaveBeenCalled();
+  });
+
   it("disables hand actions while command submission is in progress", () => {
     container = document.createElement("div");
     document.body.appendChild(container);
