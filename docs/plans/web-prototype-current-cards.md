@@ -102,7 +102,7 @@ Recommended implementation order:
 
 ---
 
-### [ ] WP3 - ORDER_CARDS workflow for Brainstorm return ordering
+### [x] WP3 - ORDER_CARDS workflow for Brainstorm return ordering
 
 **Goal**: Enable card-ordering choice completion for Brainstorm.
 
