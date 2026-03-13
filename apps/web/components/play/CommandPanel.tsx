@@ -114,13 +114,14 @@ export function CommandPanel({
           ) : parsedPendingChoice?.kind === "choose_cards" ? (
             <div className={styles.choiceColumn}>
               <span>
-                Select {parsedPendingChoice.constraints.min} to{" "}
-                {parsedPendingChoice.constraints.max} cards.
+                Select {chooseCardsConstraints?.min} to {chooseCardsConstraints?.max} cards.
               </span>
               <div className={styles.choiceList}>
-                {parsedPendingChoice.constraints.candidates.map((candidateId) => {
+                {chooseCardsConstraints?.candidates.map((candidateId) => {
                   const isSelected = selectedCardIds.includes(candidateId);
-                  const isMaxedOut = selectedCardIds.length >= parsedPendingChoice.constraints.max;
+                  const isMaxedOut =
+                    chooseCardsConstraints !== null &&
+                    selectedCardIds.length >= chooseCardsConstraints.max;
 
                   return (
                     <label key={candidateId} className={styles.choiceOption}>
@@ -143,8 +144,8 @@ export function CommandPanel({
                   onMakeChoice({
                     type: "CHOOSE_CARDS",
                     selected: selectedCardIds,
-                    min: parsedPendingChoice.constraints.min,
-                    max: parsedPendingChoice.constraints.max
+                    min: chooseCardsConstraints?.min ?? 0,
+                    max: chooseCardsConstraints?.max ?? 0
                   })
                 }
                 disabled={isSubmitting || !canSubmitChooseCards}
@@ -159,7 +160,6 @@ export function CommandPanel({
                 id="name-card-input"
                 type="text"
                 value={namedCard}
-                onChange={(event) => setNamedCard(event.target.value)}
                 onInput={(event) => setNamedCard(event.currentTarget.value)}
                 data-testid="name-card-input"
                 disabled={isSubmitting}
