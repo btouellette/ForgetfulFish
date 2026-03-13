@@ -45,7 +45,7 @@ Recommended implementation order:
 7. `WP7`
 8. `WP8`
 
-### [ ] WP1 - Pending choice constraints adapter in web
+### [x] WP1 - Pending choice constraints adapter in web
 
 **Goal**: Introduce one typed boundary for pending-choice constraints so UI components can safely render current choice types.
 
