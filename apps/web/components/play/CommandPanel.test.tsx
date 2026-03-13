@@ -323,4 +323,79 @@ describe("CommandPanel", () => {
       max: 1
     });
   });
+
+  it("renders ORDER_CARDS entries with reorder controls", () => {
+    const { container } = renderInteractivePanel({
+      pendingChoice: createPendingChoice({
+        type: "ORDER_CARDS",
+        prompt: "Put cards back on top",
+        constraints: { cards: ["obj-a", "obj-b", "obj-c"] }
+      })
+    });
+
+    expect(container?.textContent).toContain("obj-a");
+    expect(container?.textContent).toContain("obj-b");
+    expect(container?.textContent).toContain("obj-c");
+
+    const moveUpButton = container?.querySelector('[data-testid="order-up-obj-b"]');
+    const moveDownButton = container?.querySelector('[data-testid="order-down-obj-b"]');
+
+    expect(moveUpButton).toBeTruthy();
+    expect(moveDownButton).toBeTruthy();
+  });
+
+  it("reorders ORDER_CARDS entries deterministically via up/down controls", () => {
+    const { container } = renderInteractivePanel({
+      pendingChoice: createPendingChoice({
+        type: "ORDER_CARDS",
+        prompt: "Order cards",
+        constraints: { cards: ["obj-a", "obj-b", "obj-c"] }
+      })
+    });
+
+    const moveUpButton = container?.querySelector(
+      '[data-testid="order-up-obj-c"]'
+    ) as HTMLButtonElement | null;
+
+    act(() => {
+      moveUpButton?.click();
+    });
+
+    const orderedLabels = Array.from(
+      container?.querySelectorAll('[data-testid^="order-label-"]') ?? []
+    ).map((element) => element.textContent);
+    expect(orderedLabels).toEqual(["obj-a", "obj-c", "obj-b"]);
+  });
+
+  it("submits ORDER_CARDS MAKE_CHOICE payload", () => {
+    const onMakeChoice = vi.fn();
+    const { container } = renderInteractivePanel({
+      onMakeChoice,
+      pendingChoice: createPendingChoice({
+        type: "ORDER_CARDS",
+        prompt: "Order cards",
+        constraints: { cards: ["obj-a", "obj-b", "obj-c"] }
+      })
+    });
+
+    const moveUpButton = container?.querySelector(
+      '[data-testid="order-up-obj-c"]'
+    ) as HTMLButtonElement | null;
+    const submitButton = container?.querySelector(
+      '[data-testid="order-cards-submit"]'
+    ) as HTMLButtonElement | null;
+
+    act(() => {
+      moveUpButton?.click();
+    });
+
+    act(() => {
+      submitButton?.click();
+    });
+
+    expect(onMakeChoice).toHaveBeenCalledWith({
+      type: "ORDER_CARDS",
+      ordered: ["obj-a", "obj-c", "obj-b"]
+    });
+  });
 });

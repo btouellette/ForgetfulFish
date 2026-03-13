@@ -37,6 +37,13 @@
   gap: 0.5rem;
 }
 
+.orderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .dangerButton {
   color: #7f1d1d;
 }
