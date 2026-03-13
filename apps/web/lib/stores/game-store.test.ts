@@ -131,6 +131,8 @@ describe("createGameStore", () => {
   it("delegates command actions through the injected adapter", async () => {
     const passPriority = vi.fn().mockResolvedValue(undefined);
     const makeChoice = vi.fn().mockResolvedValue(undefined);
+    const playLand = vi.fn().mockResolvedValue(undefined);
+    const castSpell = vi.fn().mockResolvedValue(undefined);
     const concede = vi.fn().mockResolvedValue(undefined);
     const fetchGameState = vi.fn().mockResolvedValue(createGameView());
     const store = createGameStore();
@@ -143,6 +145,10 @@ describe("createGameStore", () => {
             return passPriority(command);
           case "MAKE_CHOICE":
             return makeChoice(command);
+          case "PLAY_LAND":
+            return playLand(command);
+          case "CAST_SPELL":
+            return castSpell(command);
           case "CONCEDE":
             return concede(command);
           default:
@@ -153,6 +159,8 @@ describe("createGameStore", () => {
 
     await store.getState().passPriority();
     await store.getState().makeChoice({ type: "CHOOSE_YES_NO", accepted: true });
+    await store.getState().playLand("land-1");
+    await store.getState().castSpell("spell-1");
     await store.getState().concede();
     await store.getState().fetchGameState();
 
@@ -161,6 +169,8 @@ describe("createGameStore", () => {
       type: "MAKE_CHOICE",
       payload: { type: "CHOOSE_YES_NO", accepted: true }
     });
+    expect(playLand).toHaveBeenCalledWith({ type: "PLAY_LAND", cardId: "land-1" });
+    expect(castSpell).toHaveBeenCalledWith({ type: "CAST_SPELL", cardId: "spell-1" });
     expect(concede).toHaveBeenCalledWith({ type: "CONCEDE" });
     expect(fetchGameState).toHaveBeenCalledTimes(1);
     expect(store.getState().gameView?.viewerPlayerId).toBe("player-1");
@@ -232,6 +242,8 @@ describe("createGameStore", () => {
     for (const action of [
       store.getState().passPriority,
       () => store.getState().makeChoice({ type: "CHOOSE_YES_NO", accepted: true }),
+      () => store.getState().playLand("land-1"),
+      () => store.getState().castSpell("spell-1"),
       store.getState().concede
     ]) {
       store.setState({ error: "boom", lifecycleState: "error" });
@@ -239,5 +251,43 @@ describe("createGameStore", () => {
       expect(store.getState().error).toBeNull();
       expect(store.getState().lifecycleState).toBe("game_active");
     }
+  });
+
+  it("keeps projected game state as the source of truth after play/cast submissions", async () => {
+    const initialView = createGameView({
+      viewer: {
+        id: "player-1",
+        life: 20,
+        manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+        hand: [
+          {
+            id: "obj-1",
+            zcc: 0,
+            cardDefId: "island",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          }
+        ],
+        handCount: 1
+      }
+    });
+    const store = createGameStore();
+
+    store.getState().applyGameView(initialView);
+    store.getState().attachAdapter({
+      fetchGameState: vi.fn().mockResolvedValue(initialView),
+      submitGameplayCommand: vi.fn().mockResolvedValue(undefined)
+    });
+
+    await store.getState().playLand("obj-1");
+    await store.getState().castSpell("obj-1");
+
+    expect(store.getState().gameView).toEqual(initialView);
   });
 });

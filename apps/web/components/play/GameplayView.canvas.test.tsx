@@ -152,6 +152,8 @@ describe("GameplayView canvas integration", () => {
           error={null}
           onPassPriority={vi.fn()}
           onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
           onMakeChoice={vi.fn()}
           onClearError={vi.fn()}
         />
@@ -208,6 +210,8 @@ describe("GameplayView canvas integration", () => {
           error={null}
           onPassPriority={vi.fn()}
           onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
           onMakeChoice={vi.fn()}
           onClearError={vi.fn()}
         />
@@ -226,6 +230,8 @@ describe("GameplayView canvas integration", () => {
           error={null}
           onPassPriority={vi.fn()}
           onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
           onMakeChoice={vi.fn()}
           onClearError={vi.fn()}
         />

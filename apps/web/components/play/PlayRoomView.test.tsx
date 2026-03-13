@@ -30,6 +30,8 @@ function baseProps() {
     onStartGame: noop,
     onPassPriority: noop,
     onConcede: noop,
+    onPlayLand: noop,
+    onCastSpell: noop,
     onMakeChoice: noop,
     onClearError: noop
   };
@@ -85,6 +87,8 @@ describe("PlayRoomView", () => {
         error={null}
         onPassPriority={noop}
         onConcede={noop}
+        onPlayLand={noop}
+        onCastSpell={noop}
         onMakeChoice={noop}
         onClearError={noop}
       />

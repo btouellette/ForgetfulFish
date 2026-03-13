@@ -11,6 +11,7 @@ import type {
 import { renderBattlefield } from "../../lib/renderer/battlefield-renderer";
 import { CommandPanel } from "./CommandPanel";
 import { EventRail } from "./EventRail";
+import { HandPanel } from "./HandPanel";
 import { StatusRail } from "./StatusRail";
 import { ZonesSummaryPanel } from "./ZonesSummaryPanel";
 import { CanvasHost } from "./renderer/CanvasHost";
@@ -24,6 +25,8 @@ type GameplayViewProps = {
   error: string | null;
   onPassPriority: () => void;
   onConcede: () => void;
+  onPlayLand: (cardId: string) => void;
+  onCastSpell: (cardId: string) => void;
   onMakeChoice: (payload: Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"]) => void;
   onClearError: () => void;
 };
@@ -36,6 +39,8 @@ export function GameplayView({
   error,
   onPassPriority,
   onConcede,
+  onPlayLand,
+  onCastSpell,
   onMakeChoice,
   onClearError
 }: GameplayViewProps) {
@@ -103,6 +108,12 @@ export function GameplayView({
           turnState={gameView.turnState}
           viewerLife={gameView.viewer.life}
           opponentLife={gameView.opponent.life}
+        />
+        <HandPanel
+          hand={gameView.viewer.hand}
+          isSubmitting={isSubmittingCommand}
+          onPlayLand={onPlayLand}
+          onCastSpell={onCastSpell}
         />
         <CommandPanel
           viewerPlayerId={gameView.viewerPlayerId}

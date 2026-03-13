@@ -125,7 +125,7 @@ Recommended implementation order:
 
 ---
 
-### [ ] WP4 - Player hand panel with Play Land / Cast Spell intents
+### [x] WP4 - Player hand panel with Play Land / Cast Spell intents
 
 **Goal**: Let players actually issue `PLAY_LAND` and non-targeted `CAST_SPELL` commands from hand.
 

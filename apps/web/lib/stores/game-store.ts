@@ -16,6 +16,7 @@ type GameStoreAdapter = {
 };
 
 type MakeChoicePayload = Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"];
+type CastSpellCommand = Extract<GameplayCommand, { type: "CAST_SPELL" }>;
 const maxRecentEvents = 10;
 
 type GameStoreState = {
@@ -39,6 +40,8 @@ type GameStoreState = {
   clearError: () => void;
   fetchGameState: () => Promise<PlayerGameView>;
   passPriority: () => Promise<void>;
+  playLand: (cardId: string) => Promise<void>;
+  castSpell: (cardId: CastSpellCommand["cardId"]) => Promise<void>;
   makeChoice: (payload: MakeChoicePayload) => Promise<void>;
   concede: () => Promise<void>;
 };
@@ -261,6 +264,86 @@ export function createGameStore() {
         }));
         throw error;
       }
+      set((state) => ({
+        isSubmittingCommand: false,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: state.error !== null,
+          connectionStatus
+        })
+      }));
+    },
+    async playLand(cardId) {
+      if (!adapter) {
+        throw new Error("game store adapter is not attached");
+      }
+
+      set((state) => ({
+        isSubmittingCommand: true,
+        error: null,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: false,
+          connectionStatus
+        })
+      }));
+
+      try {
+        await adapter.submitGameplayCommand({ type: "PLAY_LAND", cardId });
+      } catch (error) {
+        const message = toErrorMessage(error);
+        set((state) => ({
+          error: message,
+          isSubmittingCommand: false,
+          lifecycleState: computeLifecycleState({
+            viewModel: state.viewModel,
+            hasError: true,
+            connectionStatus
+          })
+        }));
+        throw error;
+      }
+
+      set((state) => ({
+        isSubmittingCommand: false,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: state.error !== null,
+          connectionStatus
+        })
+      }));
+    },
+    async castSpell(cardId) {
+      if (!adapter) {
+        throw new Error("game store adapter is not attached");
+      }
+
+      set((state) => ({
+        isSubmittingCommand: true,
+        error: null,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: false,
+          connectionStatus
+        })
+      }));
+
+      try {
+        await adapter.submitGameplayCommand({ type: "CAST_SPELL", cardId });
+      } catch (error) {
+        const message = toErrorMessage(error);
+        set((state) => ({
+          error: message,
+          isSubmittingCommand: false,
+          lifecycleState: computeLifecycleState({
+            viewModel: state.viewModel,
+            hasError: true,
+            connectionStatus
+          })
+        }));
+        throw error;
+      }
+
       set((state) => ({
         isSubmittingCommand: false,
         lifecycleState: computeLifecycleState({
