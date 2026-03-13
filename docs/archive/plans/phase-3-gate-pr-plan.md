@@ -1,4 +1,8 @@
-# Phase 3 Gate PR Implementation Plan
+# Phase 3 Gate PR Plan
+
+Status: completed historical plan.
+Archived because: the active roadmap and rules-engine plan now track current work at a higher level.
+Current reference: `docs/plans/roadmap.md`, `docs/plans/rules-engine/phase-3-continuous-effects-and-layers.md`, and `docs/plans/rules-engine/phase-4-combat-and-triggers.md`.
 
 This document defines the implementation plan for the five Phase 3 gate items identified in the Phase 2 audit. Each item is planned as a separate pull request with isolated scope.
 

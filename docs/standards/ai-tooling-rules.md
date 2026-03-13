@@ -45,13 +45,13 @@ These rules define how AI agents should operate in this repository.
 ## Decision Confirmation
 
 - Confirm major technology choices with the user before implementing them (frameworks, runtime, database, deployment model).
-- If the user has already approved a choice, record it in `docs/DECISIONS_LOG.md` and proceed.
+- If the user has already approved a choice, record it in `docs/decisions/decision-log.md` and proceed.
 - If there is ambiguity in stack direction, pause and ask before scaffolding.
 
 ## Documentation Requirements
 
 - Update relevant docs when behavior, architecture, or decisions change.
-- Record major implementation decisions in `docs/DECISIONS_LOG.md`.
+- Record major implementation decisions in `docs/decisions/decision-log.md`.
 - For new rules/mechanics, document canonical behavior and edge cases.
 
 ## Implementation Preferences

@@ -1,4 +1,4 @@
-# Project Initialization and Dev Tooling
+# Development Tooling
 
 ## Current Baseline
 

@@ -1,4 +1,4 @@
-# Forgetful Fish - Decisions Log
+# Decision Log
 
 ## 2026-02-25 Initial Planning Decisions
 
@@ -68,7 +68,7 @@
 
 ## 2026-03-02 Rules Engine Architecture
 
-- Rules engine design is documented in `docs/RULES_ENGINE_ARCHITECTURE.md`.
+- Rules engine design is documented in `docs/architecture/rules-engine-architecture.md`.
 - Engine entry point is a single pure function `processCommand(state, command, rng): CommandResult` with no I/O.
 - `GameState` uses a flat `objectPool` (ECS-style) with zone arrays holding IDs only; shared library and graveyard are in `zones`, ownership tracked on `GameObject`.
 - Card definitions are plain data objects (`CardDefinition`) in one file per card under `packages/game-engine/src/cards/`; no class inheritance.
@@ -80,7 +80,7 @@
 
 ## 2026-03-03 Rules Engine Architecture Revision
 
-- Revised `docs/RULES_ENGINE_ARCHITECTURE.md` based on deep analysis of XMage, Forge, SabberStone, MTG Arena, and Argentum architectures.
+- Revised `docs/architecture/rules-engine-architecture.md` based on deep analysis of XMage, Forge, SabberStone, MTG Arena, and Argentum architectures.
 - Key architectural changes from original plan:
   - **Object identity**: all object references now use `(id, zcc)` pairs with zone-change counter; LKI snapshots stored on zone changes.
   - **Choice re-entry**: replaced "re-call onResolve" model with persisted `EffectContext` (whiteboard + resolution cursor) on stack items — prevents double-application bugs and makes handlers trivially idempotent.
@@ -96,7 +96,7 @@
 
 ## 2026-03-04 Rules Engine Plan Portability Guardrail
 
-- Updated `docs/RULES_ENGINE_IMPLEMENTATION_PLAN.md` to prevent shared-zone lock-in in foundations.
+- Updated `docs/plans/rules-engine/README.md` to prevent shared-zone lock-in in foundations.
 - Phase 0 now plans mode-routed logical zones (`resolveZone` + `createInitialZones`) and zone storage keyed by `ZoneRef`/`ZoneKey`, instead of fixed `{ library, graveyard, ... }` fields.
 - Shared-deck behavior remains a concrete baseline mode, with an added split-zone conformance test fixture to prove the kernel stays mode-agnostic.
 

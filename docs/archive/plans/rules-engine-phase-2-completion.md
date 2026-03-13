@@ -1,6 +1,10 @@
-# Rules Engine Phase 2 Completion Plan (Slices 1-8)
+# Rules Engine Phase 2 Completion Plan
 
-This plan is constrained to finishing out Phase 2 from `docs/RULES_ENGINE_IMPLEMENTATION_PLAN.md` and does not include Phase 3+ scope.
+Status: completed historical plan.
+Archived because: the active rules-engine implementation plan now lives in split phase files under `docs/plans/rules-engine/`.
+Current reference: `docs/plans/rules-engine/phase-2-stack-resolution-and-choices.md`.
+
+This plan is constrained to finishing out Phase 2 from `docs/plans/rules-engine/README.md` and does not include Phase 3+ scope.
 
 ## Phase 2 Completion Goals
 
@@ -192,8 +196,8 @@ Close Phase 2 explicitly with a completion checklist and focused integration cov
 ### Expected File Touches
 
 - `packages/game-engine/test/**` (integration/regression additions)
-- `docs/RULES_ENGINE_IMPLEMENTATION_PLAN.md` (status updates)
-- `docs/DECISIONS_LOG.md` (if architecture decisions changed)
+- `docs/plans/rules-engine/README.md` (status updates)
+- `docs/decisions/decision-log.md` (if architecture decisions changed)
 
 ### Tests First
 

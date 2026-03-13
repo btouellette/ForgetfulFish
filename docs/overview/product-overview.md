@@ -1,4 +1,4 @@
-# Forgetful Fish Webapp - Project Overview
+# Product Overview
 
 ## Goal
 Build a two-player online web app for the Magic: The Gathering variant "Forgetful Fish" where both players interact with a shared deck, shared graveyard, and a full stack/priority system.

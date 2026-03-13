@@ -1,5 +1,7 @@
 # Rules Engine Architecture
 
+Status: canonical reference for the target rules-engine design.
+
 ## Context
 
 `packages/game-engine` now includes implemented Phase 0-2 foundations (deterministic state,
@@ -379,8 +381,8 @@ interface GameAction {
 - The loop terminates when no unapplied replacements match.
 
 **Why this matters for the deck:**
-- `Diminishing Returns` has "exile your graveyard" as part of resolution — this interacts with
-  any replacement effects that care about cards going to exile.
+- `Diminishing Returns` exiles the top ten cards of the shared library during resolution — this
+  interacts with any replacement effects that care about cards going to exile.
 - `Memory Lapse` uses `MOVE_ZONE` (stack → library top) which must go through the pipeline
   in case future cards add replacement effects on library placement.
 - The filter stage handles target legality: if a spell's target left the battlefield between
@@ -713,8 +715,9 @@ interface GameMode {
 - `Memory Lapse` says "put it on top of its owner's library" — in shared-deck, the owner's
   library IS the shared library, but the variant rules must consistently resolve this.
 - `Mystical Tutor` says "search your library" — routes to the shared library.
-- `Diminishing Returns` says "each player exiles their hand and graveyard" — in shared-deck,
-  the graveyard is shared; the mode hook determines how to handle "your graveyard."
+- `Diminishing Returns` says each player shuffles hand + graveyard into library, then exiles
+  top ten and draws up to seven — in shared-deck, the mode hook determines how "your graveyard"
+  and "your library" route to shared zones.
 - Simultaneous draws (e.g., "each player draws") are dealt alternately from the shared
   library, active player first, per variant rules.
 
@@ -803,7 +806,7 @@ actions produces ~50-100KB of event data total. No Forge-style "hundreds of mega
 | Memory Lapse | Counter + top-of-library put | `COUNTER` + `MOVE_ZONE` actions in whiteboard |
 | Dandan | Islandwalk + "must attack" + "sac if no Islands" | Layer 6 keyword AST + static ability AST with `BasicLandType` token |
 | Accumulated Knowledge | Graveyard count | Resolution step reads shared graveyard state |
-| Diminishing Returns | Exile graveyard, shuffle, draw | Multiple whiteboard actions + `GameMode.resolveGraveyard` |
+| Diminishing Returns | Shuffle hand/graveyard into library, exile top ten, draw up to seven | Multiple whiteboard actions + `GameMode.resolveGraveyard` + `GameMode.resolveLibrary` |
 | Brainstorm | Draw 3, put 2 back | Multi-step resolution with persisted context + `ORDER_CARDS` choice |
 | Mystical Tutor | Library search | `CHOOSE_CARDS` choice + `GameMode.resolveLibrary` |
 | Metamorphose | Counter + top-of-library + draw | Multi-action whiteboard |
@@ -1046,6 +1049,7 @@ These are the most complex interactions in the 80-card deck that exercise multip
 7. **Supplant Form on Dandan** — Bounce creature + create token copy. Tests: Layer 1 copy
    applies; token has all characteristics of copied Dandan; original returns to hand.
 
-8. **Diminishing Returns with shared graveyard** — Each player exiles hand and graveyard, then
-   shuffles library and draws 7. Tests: shared graveyard exiled correctly; shared library
-   shuffled; draws alternate per variant rules; `GameMode` hooks used correctly.
+8. **Diminishing Returns with shared graveyard** — Each player shuffles hand and graveyard into
+   the shared library, then exiles top ten and draws up to seven. Tests: shared graveyard/library
+   routing is correct; top-ten exile is deterministic; draws alternate per variant rules;
+   `GameMode` hooks used correctly.

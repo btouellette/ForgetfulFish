@@ -1,93 +1,13 @@
-# Forgetful Fish Webapp - Roadmap (Draft)
+# Milestone 2.5: UI Integration Foundation
 
-## Milestone 0 - Foundations (In Progress)
-
-- [x] Finalize stack and architecture decisions.
-- [x] Set up monorepo, linting, formatting, test harness.
-- [ ] Establish domain model for zones, stack, phases, and priority.
-
-## Milestone 1 - Private Rooms + Start Gate (Next)
-
-- [x] Implement basic account auth and identity.
-- [x] Implement room creation/join + deterministic seat assignment.
-- [x] Build room lobby UI on `/play/:roomId` (participants + seat + status).
-- [x] Add explicit ready state per player in room lobby.
-- [x] Add explicit game start action (requires both players ready).
-- [x] Create initial game state only after explicit start (not on join).
-- [x] Persist room/game linkage for started games.
-- [x] Add tests for ready/unready/start authorization and edge cases.
-
-## Milestone 2 - Realtime Gameplay Skeleton
-
-- [x] Add room-scoped WebSocket endpoint: `GET /ws/rooms/:id`.
-- [x] Enforce auth/session and participant-only subscription at handshake.
-- [x] Define versioned WS envelopes (`type`, `schemaVersion`, `data`) and Zod-validated payloads.
-- [x] Broadcast authoritative room updates (`room_lobby_updated`, `game_started`) to both players.
-- [x] Implement reconnect + resync baseline (client backoff + server snapshot on reconnect).
-- [x] Add integration tests for two-player sync correctness.
-
-### Milestone 2 Implementation Plan (Tracked Unit)
-
-#### Phase A - Transport and Handshake
-
-- [x] Add Fastify WebSocket support in `apps/server`.
-- [x] Implement `GET /ws/rooms/:id` upgrade route.
-- [x] Reuse existing session cookie parsing + session lookup for WS auth.
-- [x] Reject unauthorized sockets and non-participant room access.
-- [x] Return initial room snapshot immediately after successful connect.
-
-#### Phase B - Protocol and Broadcasts
-
-- [x] Add shared WS contract schemas for server events:
-  - [x] `subscribed` (initial room snapshot)
-  - [x] `room_lobby_updated` (participants/ready/game status)
-  - [x] `game_started` (room + game identifiers)
-  - [x] `error` (recoverable protocol or authorization errors)
-  - [x] `pong` (heartbeat response)
-- [x] Validate all outbound/inbound WS payloads at boundary.
-- [x] Maintain in-memory room connection registry (`roomId -> sockets`).
-- [x] Publish room updates after successful HTTP mutations:
-  - [x] `POST /api/rooms/:id/join`
-  - [x] `POST /api/rooms/:id/ready`
-  - [x] `POST /api/rooms/:id/start`
-- [x] Ensure HTTP responses are not blocked by slow/disconnected clients.
-
-#### Phase C - Client Integration (`/play/:roomId`)
-
-- [x] Add room WS client helper in `apps/web/lib` with `ws`/`wss` URL derivation from `NEXT_PUBLIC_SERVER_BASE_URL`.
-- [x] Connect on room page load and hydrate UI from `subscribed` snapshot.
-- [x] Apply incoming `room_lobby_updated` and `game_started` events to local state.
-- [x] Keep existing HTTP calls for `join`, `ready`, and `start` as the mutation path.
-- [x] Add connection-status UI (`connected`, `reconnecting`, `offline`).
-- [x] Reconnect with bounded backoff and automatic room resubscription.
-
-#### Phase D - Validation and Hardening
-
-- [x] Add server integration tests for:
-  - [x] unauthorized WS rejection
-  - [x] non-participant room rejection
-  - [x] successful subscription snapshot
-  - [x] two-client room update fanout on ready/start
-  - [x] reconnect returning current canonical snapshot
-- [x] Add web tests for WS message handling and reconnect behavior.
-- [x] Add browser E2E coverage for two-client room realtime sync and reconnect UX.
-- [x] Add structured connection lifecycle logs (connect, auth fail, disconnect, broadcast failure).
-- [x] Update architecture/contract docs with WS endpoint and event schemas.
-
-#### Milestone 2 Exit Criteria
-
-- [x] Two authenticated clients in one room see ready-state changes live without refresh.
-- [x] On game start, both clients reflect identical `gameId` and `gameStatus=started` in under ~1s.
-- [x] Reconnecting client automatically restores current room/game state.
-- [x] Unauthorized and non-participant clients cannot receive room events.
-- [x] WS payload contracts are schema-validated and covered by tests.
-
-## Milestone 2.5 - UI Integration Foundation (Next)
+Status: completed historical execution plan.
+Archived because: the active roadmap now keeps only milestone-level summaries while this file preserves the detailed task history.
+Current reference: `docs/plans/roadmap.md`.
 
 Goal: wire the web app to authoritative server gameplay endpoints with a durable client architecture,
 while expanding browser coverage to include deterministic manual UI verification flows.
 
-### Phase A - Integration Contract Stabilization
+## Phase A - Integration Contract Stabilization
 
 - [x] Lock the initial gameplay transport contract for web clients:
   - [x] HTTP command route: `POST /api/rooms/:id/commands`
@@ -100,7 +20,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] forward raw `RoomLobbySnapshot` / `RoomGameStarted` payloads to UI callbacks for metadata only; fetch `PlayerGameView` over HTTP when per-player projected state is required
 - [x] Keep server authoritative: no rules resolution in client code; client only renders projected state and submits legal intents.
 
-#### Phase A Detailed Workplan
+### Phase A Detailed Workplan
 
 - [x] Contract inventory and freeze
   - [x] Pin canonical HTTP/WS payload shapes from `packages/realtime-contract/src/index.ts`.
@@ -119,7 +39,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] Checkpoint A2: stale snapshot overwrite during reconnect.
   - [x] Checkpoint A3: unauthorized/session-expired responses not surfaced clearly in UI.
 
-### Phase B - Frontend Stack Baseline for Arena-Style UX (Non-3D)
+## Phase B - Frontend Stack Baseline for Arena-Style UX (Non-3D)
 
 - [x] Keep Next.js + React as the product shell (routing, auth, deployment alignment).
 - [x] Adopt a two-lane rendering strategy:
@@ -128,7 +48,7 @@ while expanding browser coverage to include deterministic manual UI verification
 - [x] Pick an interaction state model optimized for rapid realtime updates and optimistic local affordances.
 - [x] Define reconnect/resync and authoritative-state behavior now; defer formal performance budgets and instrumentation to later milestone work.
 
-#### Phase B Detailed Workplan
+### Phase B Detailed Workplan
 
 - [x] State partition and ownership
   - [x] Introduce Zustand store for session/authoritative lane (room/game status, legal actions, pending choice, command lifecycle).
@@ -147,7 +67,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] Checkpoint B2: canvas frame drops under representative board density.
   - [x] Checkpoint B3: adapter/store divergence after command conflict (`409`).
 
-### Phase C - Gameplay UI Skeleton (No Full Visual Polish Yet)
+## Phase C - Gameplay UI Skeleton (No Full Visual Polish Yet)
 
 - [x] Build a minimal but structured gameplay surface under `apps/web/app/play/[roomId]`:
   - [x] zones panel (library, hand, battlefield, graveyard summaries)
@@ -156,7 +76,7 @@ while expanding browser coverage to include deterministic manual UI verification
 - [x] Separate adapter state from presentational components to avoid coupling transport concerns into visual components.
 - [x] Preserve current lobby/start flow while extending the same route with gameplay-state rendering after start.
 
-#### Phase C Detailed Workplan
+### Phase C Detailed Workplan
 
 - [x] Route-level composition (`apps/web/app/play/[roomId]/page.tsx`)
   - [x] Keep existing lobby and start flow operational while adding post-start gameplay panels.
@@ -176,7 +96,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] Checkpoint C2: object identity churn breaks animation continuity.
   - [x] Checkpoint C3: reconnect clears presentation lane without restoring actionable controls.
 
-### Phase D - Test Expansion (Automated + Manual Browser Validation)
+## Phase D - Test Expansion (Automated + Manual Browser Validation)
 
 - [x] Extend Playwright E2E beyond lobby sync:
   - [x] command submission roundtrip updates both clients consistently
@@ -187,7 +107,7 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] keep the manual scenarios tied to the final verification checklist rather than a parallel documentation track
 - [x] Keep manual QA reproducible from the same deterministic room/auth fixture path used by automated tests.
 
-#### Phase D Detailed Workplan
+### Phase D Detailed Workplan
 
 - [x] Server and contract-level regression expansion (pre-UI heavy work)
   - [x] Add command-route integration coverage for conflict, invalid command, and unauthorized cases (extend `apps/server/test/app-rooms-http.test.ts`).
@@ -210,14 +130,14 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] Checkpoint D2: flaky cross-browser timing around reconnect assertions.
   - [x] Checkpoint D3: manual checklist drift from automated coverage scope.
 
-### Phase E - Execution Guardrails
+## Phase E - Execution Guardrails
 
 - [x] Test-first for each behavior increment (failing test before implementation).
 - [x] No client-side rule authority; all gameplay legality validated by server/game-engine.
 - [x] Keep API/WS contracts versioned and parsed at boundaries.
 - [x] Do not block on final visual system decisions before shipping integration scaffolding.
 
-#### Phase E Detailed Workplan
+### Phase E Detailed Workplan
 
 - [x] PR slicing strategy (small, reviewable verticals)
   - [x] PR1: adapter contract and store scaffolding (no canvas yet).
@@ -525,30 +445,3 @@ while expanding browser coverage to include deterministic manual UI verification
   - [x] `curl -s -b "$SESSION_COOKIE" http://localhost:4000/api/rooms/$ROOM_ID/game | jq 'has("rngSeed")'`
   - [x] `curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/api/rooms/$ROOM_ID/game`
 - [x] Evidence naming stays task-scoped under `.sisyphus/evidence/` and final manual QA under `.sisyphus/evidence/final-qa/`.
-
-## Milestone 3 - Core Rules Loop
-
-- [ ] Build authoritative engine skeleton with deterministic event log.
-- [ ] Implement turn flow, mulligan flow, draw/cast/resolve basics.
-- [ ] Implement shared library and graveyard mechanics.
-- [ ] Add deterministic engine tests for priority and turn order.
-
-## Milestone 4 - Full Deck Rules Coverage
-
-- [ ] Implement card handlers for entire listed 80-card deck.
-- [ ] Add targeting/choice prompts and stack interaction UX.
-- [ ] Add scenario test suite for representative card combos.
-
-## Milestone 5 - Stability and UX Polish
-
-- [ ] Reconnect/session recovery hardening.
-- [ ] Action log polish + clearer stack/priority indicators.
-- [ ] Performance pass and reliability instrumentation.
-- [ ] Room lifecycle hardening (expiry/cleanup policy) after active gameplay UI is in use.
-
-## Milestone 6 - Beta Readiness
-
-- [ ] Closed playtest with bug triage loop.
-- [ ] Improve onboarding/tutorial hints for variant-specific rules.
-- [ ] Add public quick-match queue.
-- [ ] Decide next features: spectators, replays, ranking, additional variants.

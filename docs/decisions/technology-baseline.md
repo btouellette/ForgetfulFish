@@ -1,6 +1,6 @@
-# Technology Choices (Draft)
+# Technology Baseline
 
-Status: defaults are approved in `docs/DECISIONS_LOG.md`.
+Status: this summarizes the current baseline. Approved decisions remain in `docs/decisions/decision-log.md`.
 
 ## Selected Stack
 - TypeScript monorepo: `pnpm` + `turbo`.
