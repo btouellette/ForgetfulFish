@@ -1,19 +1,25 @@
 import React from "react";
-import type { GameplayPendingChoice } from "@forgetful-fish/realtime-contract";
+import type { GameplayCommand, GameplayPendingChoice } from "@forgetful-fish/realtime-contract";
+
+import { parsePendingChoice } from "../../lib/pending-choice";
 
 import styles from "./CommandPanel.module.css";
 
+type MakeChoicePayload = Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"];
+
 type CommandPanelProps = {
+  viewerPlayerId: string;
   pendingChoice: GameplayPendingChoice | null;
   isSubmitting: boolean;
   error: string | null;
   onPassPriority: () => void;
   onConcede: () => void;
-  onMakeChoice: (payload: { type: "CHOOSE_YES_NO"; accepted: boolean }) => void;
+  onMakeChoice: (payload: MakeChoicePayload) => void;
   onClearError: () => void;
 };
 
 export function CommandPanel({
+  viewerPlayerId,
   pendingChoice,
   isSubmitting,
   error,
@@ -22,7 +28,9 @@ export function CommandPanel({
   onMakeChoice,
   onClearError
 }: CommandPanelProps) {
-  const canRenderYesNo = pendingChoice?.type === "CHOOSE_YES_NO";
+  const parsedPendingChoice = pendingChoice ? parsePendingChoice(pendingChoice) : null;
+  const isPendingChoiceForViewer =
+    pendingChoice !== null && pendingChoice.forPlayer === viewerPlayerId;
 
   function handleConcede() {
     if (typeof window === "undefined") {
@@ -50,7 +58,9 @@ export function CommandPanel({
         <div className={styles.choiceCard}>
           <strong>Pending choice</strong>
           <span>{pendingChoice.prompt}</span>
-          {canRenderYesNo ? (
+          {!isPendingChoiceForViewer ? (
+            <span>Waiting for opponent choice.</span>
+          ) : parsedPendingChoice?.kind === "yes_no" ? (
             <div className={styles.actionRow}>
               <button
                 type="button"
@@ -67,6 +77,8 @@ export function CommandPanel({
                 No
               </button>
             </div>
+          ) : parsedPendingChoice?.kind === "invalid" ? (
+            <span>Choice payload is invalid. Waiting for refresh.</span>
           ) : (
             <span>Waiting for a supported choice action.</span>
           )}

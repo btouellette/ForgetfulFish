@@ -22,6 +22,7 @@ describe("CommandPanel", () => {
   it("renders pass-priority and concede actions", () => {
     const html = renderToStaticMarkup(
       <CommandPanel
+        viewerPlayerId="player-1"
         pendingChoice={null}
         isSubmitting={false}
         error={null}
@@ -39,6 +40,7 @@ describe("CommandPanel", () => {
   it("renders yes-no pending choice controls without advanced widgets", () => {
     const html = renderToStaticMarkup(
       <CommandPanel
+        viewerPlayerId="player-1"
         pendingChoice={createPendingChoice()}
         isSubmitting={false}
         error={null}
@@ -58,6 +60,7 @@ describe("CommandPanel", () => {
   it("disables gameplay actions while keeping the error banner dismissible", () => {
     const html = renderToStaticMarkup(
       <CommandPanel
+        viewerPlayerId="player-1"
         pendingChoice={createPendingChoice()}
         isSubmitting={true}
         error="Priority pass failed"
@@ -72,5 +75,45 @@ describe("CommandPanel", () => {
     expect(html).toMatch(/<button[^>]*>Dismiss<\/button>/);
     expect(html).not.toMatch(/<button[^>]*disabled[^>]*>Dismiss<\/button>/);
     expect(html).toContain("disabled");
+  });
+
+  it("hides pending-choice controls when the choice belongs to the opponent", () => {
+    const html = renderToStaticMarkup(
+      <CommandPanel
+        viewerPlayerId="player-1"
+        pendingChoice={createPendingChoice({ forPlayer: "player-2" })}
+        isSubmitting={false}
+        error={null}
+        onPassPriority={vi.fn()}
+        onConcede={vi.fn()}
+        onMakeChoice={vi.fn()}
+        onClearError={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("Resolve the spell?");
+    expect(html).toContain("Waiting for opponent choice.");
+    expect(html).not.toContain("Yes");
+    expect(html).not.toContain("No");
+  });
+
+  it("renders an invalid choice payload message for malformed constraints", () => {
+    const html = renderToStaticMarkup(
+      <CommandPanel
+        viewerPlayerId="player-1"
+        pendingChoice={createPendingChoice({
+          type: "ORDER_CARDS",
+          constraints: { min: 1, max: 1 }
+        })}
+        isSubmitting={false}
+        error={null}
+        onPassPriority={vi.fn()}
+        onConcede={vi.fn()}
+        onMakeChoice={vi.fn()}
+        onClearError={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("Choice payload is invalid. Waiting for refresh.");
   });
 });
