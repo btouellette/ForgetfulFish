@@ -41,6 +41,7 @@
 
 - `docs/plans/roadmap.md`: current milestone-level roadmap.
 - `docs/plans/rules-engine/README.md`: split rules-engine implementation plan index and shared planning conventions.
+- `docs/plans/web-prototype-current-cards.md`: commit-slice execution plan for web-playable prototype work using currently implemented cards.
 
 ## Archive
 
