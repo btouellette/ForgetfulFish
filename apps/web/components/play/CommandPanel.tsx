@@ -31,6 +31,40 @@ export function CommandPanel({
   const parsedPendingChoice = pendingChoice ? parsePendingChoice(pendingChoice) : null;
   const isPendingChoiceForViewer =
     pendingChoice !== null && pendingChoice.forPlayer === viewerPlayerId;
+  const chooseCardsConstraints =
+    parsedPendingChoice?.kind === "choose_cards" ? parsedPendingChoice.constraints : null;
+  const [selectedCardIds, setSelectedCardIds] = React.useState<string[]>([]);
+  const [namedCard, setNamedCard] = React.useState("");
+
+  React.useEffect(() => {
+    setSelectedCardIds([]);
+    setNamedCard("");
+  }, [pendingChoice?.id]);
+
+  const canSubmitChooseCards =
+    chooseCardsConstraints !== null &&
+    selectedCardIds.length >= chooseCardsConstraints.min &&
+    selectedCardIds.length <= chooseCardsConstraints.max;
+  const trimmedNamedCard = namedCard.trim();
+  const canSubmitNameCard = trimmedNamedCard.length > 0;
+
+  function toggleSelectedCard(cardId: string) {
+    if (chooseCardsConstraints === null) {
+      return;
+    }
+
+    setSelectedCardIds((currentSelected) => {
+      if (currentSelected.includes(cardId)) {
+        return currentSelected.filter((selectedId) => selectedId !== cardId);
+      }
+
+      if (currentSelected.length >= chooseCardsConstraints.max) {
+        return currentSelected;
+      }
+
+      return [...currentSelected, cardId];
+    });
+  }
 
   function handleConcede() {
     if (typeof window === "undefined") {
@@ -75,6 +109,73 @@ export function CommandPanel({
                 disabled={isSubmitting}
               >
                 No
+              </button>
+            </div>
+          ) : parsedPendingChoice?.kind === "choose_cards" ? (
+            <div className={styles.choiceColumn}>
+              <span>
+                Select {parsedPendingChoice.constraints.min} to{" "}
+                {parsedPendingChoice.constraints.max} cards.
+              </span>
+              <div className={styles.choiceList}>
+                {parsedPendingChoice.constraints.candidates.map((candidateId) => {
+                  const isSelected = selectedCardIds.includes(candidateId);
+                  const isMaxedOut = selectedCardIds.length >= parsedPendingChoice.constraints.max;
+
+                  return (
+                    <label key={candidateId} className={styles.choiceOption}>
+                      <input
+                        type="checkbox"
+                        data-testid={`choose-card-${candidateId}`}
+                        checked={isSelected}
+                        onChange={() => toggleSelectedCard(candidateId)}
+                        disabled={isSubmitting || (!isSelected && isMaxedOut)}
+                      />
+                      <span>{candidateId}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                data-testid="choose-cards-submit"
+                onClick={() =>
+                  onMakeChoice({
+                    type: "CHOOSE_CARDS",
+                    selected: selectedCardIds,
+                    min: parsedPendingChoice.constraints.min,
+                    max: parsedPendingChoice.constraints.max
+                  })
+                }
+                disabled={isSubmitting || !canSubmitChooseCards}
+              >
+                Submit selection
+              </button>
+            </div>
+          ) : parsedPendingChoice?.kind === "name_card" ? (
+            <div className={styles.choiceColumn}>
+              <label htmlFor="name-card-input">Card name</label>
+              <input
+                id="name-card-input"
+                type="text"
+                value={namedCard}
+                onChange={(event) => setNamedCard(event.target.value)}
+                onInput={(event) => setNamedCard(event.currentTarget.value)}
+                data-testid="name-card-input"
+                disabled={isSubmitting}
+              />
+              <button
+                type="button"
+                data-testid="name-card-submit"
+                onClick={() =>
+                  onMakeChoice({
+                    type: "NAME_CARD",
+                    cardName: trimmedNamedCard
+                  })
+                }
+                disabled={isSubmitting || !canSubmitNameCard}
+              >
+                Submit name
               </button>
             </div>
           ) : parsedPendingChoice?.kind === "invalid" ? (
