@@ -38,8 +38,15 @@ export function CommandPanel({
   const [selectedCardIds, setSelectedCardIds] = React.useState<string[]>([]);
   const [namedCard, setNamedCard] = React.useState("");
   const [orderedCardIds, setOrderedCardIds] = React.useState<string[]>([]);
+  const initializedChoiceIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
+    const nextChoiceId = pendingChoice?.id ?? null;
+    if (initializedChoiceIdRef.current === nextChoiceId) {
+      return;
+    }
+
+    initializedChoiceIdRef.current = nextChoiceId;
     setSelectedCardIds([]);
     setNamedCard("");
     setOrderedCardIds(orderCardsConstraints?.cards ?? []);
