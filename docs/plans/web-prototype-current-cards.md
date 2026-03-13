@@ -187,7 +187,7 @@ Recommended implementation order:
 
 ---
 
-### [ ] WP6 - Prototype UX hardening and deterministic error surfacing
+### [x] WP6 - Prototype UX hardening and deterministic error surfacing
 
 **Goal**: Keep prototype usable under invalid command responses and reconnect/resync transitions.
 

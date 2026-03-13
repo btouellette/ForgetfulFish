@@ -254,6 +254,53 @@ describe("CommandPanel", () => {
     });
   });
 
+  it("clears stale local choose-card selection when server pending choice changes", () => {
+    const { container } = renderInteractivePanel({
+      pendingChoice: createPendingChoice({
+        id: "choice-1",
+        type: "CHOOSE_CARDS",
+        prompt: "Pick cards",
+        constraints: { candidates: ["obj-a", "obj-b"], min: 1, max: 1 }
+      })
+    });
+
+    const firstChoiceOption = container?.querySelector(
+      '[data-testid="choose-card-obj-a"]'
+    ) as HTMLInputElement | null;
+    expect(firstChoiceOption).toBeTruthy();
+
+    act(() => {
+      firstChoiceOption?.click();
+    });
+    expect(firstChoiceOption?.checked).toBe(true);
+
+    act(() => {
+      root?.render(
+        <CommandPanel
+          viewerPlayerId="player-1"
+          pendingChoice={createPendingChoice({
+            id: "choice-2",
+            type: "CHOOSE_CARDS",
+            prompt: "Pick cards",
+            constraints: { candidates: ["obj-c", "obj-d"], min: 1, max: 1 }
+          })}
+          isSubmitting={false}
+          error={null}
+          onPassPriority={vi.fn()}
+          onConcede={vi.fn()}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const nextChoiceOption = container?.querySelector(
+      '[data-testid="choose-card-obj-c"]'
+    ) as HTMLInputElement | null;
+    expect(nextChoiceOption).toBeTruthy();
+    expect(nextChoiceOption?.checked).toBe(false);
+  });
+
   it("renders NAME_CARD input and submits trimmed card name", () => {
     const onMakeChoice = vi.fn();
     const { container } = renderInteractivePanel({
