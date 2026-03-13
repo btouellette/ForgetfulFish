@@ -33,13 +33,24 @@ export function CommandPanel({
     pendingChoice !== null && pendingChoice.forPlayer === viewerPlayerId;
   const chooseCardsConstraints =
     parsedPendingChoice?.kind === "choose_cards" ? parsedPendingChoice.constraints : null;
+  const orderCardsConstraints =
+    parsedPendingChoice?.kind === "order_cards" ? parsedPendingChoice.constraints : null;
   const [selectedCardIds, setSelectedCardIds] = React.useState<string[]>([]);
   const [namedCard, setNamedCard] = React.useState("");
+  const [orderedCardIds, setOrderedCardIds] = React.useState<string[]>([]);
+  const initializedChoiceIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
+    const nextChoiceId = pendingChoice?.id ?? null;
+    if (initializedChoiceIdRef.current === nextChoiceId) {
+      return;
+    }
+
+    initializedChoiceIdRef.current = nextChoiceId;
     setSelectedCardIds([]);
     setNamedCard("");
-  }, [pendingChoice?.id]);
+    setOrderedCardIds(orderCardsConstraints?.cards ?? []);
+  }, [pendingChoice?.id, orderCardsConstraints?.cards]);
 
   const canSubmitChooseCards =
     chooseCardsConstraints !== null &&
@@ -63,6 +74,28 @@ export function CommandPanel({
       }
 
       return [...currentSelected, cardId];
+    });
+  }
+
+  function moveOrderedCard(cardId: string, direction: -1 | 1) {
+    setOrderedCardIds((currentOrderedCards) => {
+      const currentIndex = currentOrderedCards.indexOf(cardId);
+      if (currentIndex < 0) {
+        return currentOrderedCards;
+      }
+
+      const nextIndex = currentIndex + direction;
+      if (nextIndex < 0 || nextIndex >= currentOrderedCards.length) {
+        return currentOrderedCards;
+      }
+
+      const nextOrderedCards = [...currentOrderedCards];
+      const [movingCard] = nextOrderedCards.splice(currentIndex, 1);
+      if (movingCard === undefined) {
+        return currentOrderedCards;
+      }
+      nextOrderedCards.splice(nextIndex, 0, movingCard);
+      return nextOrderedCards;
     });
   }
 
@@ -176,6 +209,51 @@ export function CommandPanel({
                 disabled={isSubmitting || !canSubmitNameCard}
               >
                 Submit name
+              </button>
+            </div>
+          ) : parsedPendingChoice?.kind === "order_cards" ? (
+            <div className={styles.choiceColumn}>
+              <span>Set the return order (top card first).</span>
+              <div className={styles.choiceList}>
+                {orderedCardIds.map((cardId, index) => {
+                  const lastIndex = orderedCardIds.length - 1;
+                  return (
+                    <div key={cardId} className={styles.orderRow}>
+                      <span data-testid={`order-label-${cardId}`}>{cardId}</span>
+                      <div className={styles.actionRow}>
+                        <button
+                          type="button"
+                          data-testid={`order-up-${cardId}`}
+                          onClick={() => moveOrderedCard(cardId, -1)}
+                          disabled={isSubmitting || index === 0}
+                        >
+                          Up
+                        </button>
+                        <button
+                          type="button"
+                          data-testid={`order-down-${cardId}`}
+                          onClick={() => moveOrderedCard(cardId, 1)}
+                          disabled={isSubmitting || index === lastIndex}
+                        >
+                          Down
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                data-testid="order-cards-submit"
+                onClick={() =>
+                  onMakeChoice({
+                    type: "ORDER_CARDS",
+                    ordered: orderedCardIds
+                  })
+                }
+                disabled={isSubmitting || orderedCardIds.length === 0}
+              >
+                Submit order
               </button>
             </div>
           ) : parsedPendingChoice?.kind === "invalid" ? (
