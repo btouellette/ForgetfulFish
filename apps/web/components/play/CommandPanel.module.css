@@ -21,6 +21,22 @@
   gap: 0.75rem;
 }
 
+.choiceColumn {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.choiceList {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.choiceOption {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .dangerButton {
   color: #7f1d1d;
 }
