@@ -9,6 +9,7 @@ import type {
 import type { GameSessionViewModel } from "../game-session-adapter";
 import { derivePlayLifecycleState, type PlayLifecycleState } from "../play-lifecycle";
 import type { RoomRealtimeStatus } from "../room-realtime";
+import { ServerApiError } from "../server-api";
 
 type GameStoreAdapter = {
   fetchGameState: () => Promise<PlayerGameView>;
@@ -49,6 +50,18 @@ type GameStoreState = {
 
 function toErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "unknown error";
+}
+
+function toCommandErrorMessage(error: unknown) {
+  if (error instanceof ServerApiError) {
+    if (error.status === 401 || error.status === 403) {
+      return "Session issue detected. Re-verify your sign-in and try again.";
+    }
+
+    return "Command was rejected. Wait for the next state refresh, then try again.";
+  }
+
+  return "Command failed. Wait for the next state refresh, then try again.";
 }
 
 function createLobbySnapshot(viewModel: GameSessionViewModel) {
@@ -109,6 +122,11 @@ export function createGameStore() {
         const nextEvents =
           gameChanged || viewModel.latestAppliedVersion === null ? [] : [...state.recentEvents];
         const latest = viewModel.latestAppliedVersion;
+        const shouldPreservePendingChoice =
+          viewModel.pendingChoice === null &&
+          !gameChanged &&
+          viewModel.gameStatus === "started" &&
+          viewModel.latestAppliedVersion === null;
 
         if (latest && viewModel.lastEventType) {
           const previous = nextEvents[nextEvents.length - 1];
@@ -128,7 +146,9 @@ export function createGameStore() {
         return {
           viewModel,
           lobbySnapshot: createLobbySnapshot(viewModel),
-          pendingChoice: viewModel.pendingChoice,
+          pendingChoice: shouldPreservePendingChoice
+            ? state.pendingChoice
+            : viewModel.pendingChoice,
           recentEvents: trimRecentEvents(nextEvents),
           lifecycleState: computeLifecycleState({
             viewModel,
@@ -214,7 +234,7 @@ export function createGameStore() {
       try {
         await adapter.submitGameplayCommand({ type: "PASS_PRIORITY" });
       } catch (error) {
-        const message = toErrorMessage(error);
+        const message = toCommandErrorMessage(error);
         set((state) => ({
           error: message,
           isSubmittingCommand: false,
@@ -253,7 +273,7 @@ export function createGameStore() {
       try {
         await adapter.submitGameplayCommand({ type: "MAKE_CHOICE", payload });
       } catch (error) {
-        const message = toErrorMessage(error);
+        const message = toCommandErrorMessage(error);
         set((state) => ({
           error: message,
           isSubmittingCommand: false,
@@ -292,7 +312,7 @@ export function createGameStore() {
       try {
         await adapter.submitGameplayCommand({ type: "PLAY_LAND", cardId });
       } catch (error) {
-        const message = toErrorMessage(error);
+        const message = toCommandErrorMessage(error);
         set((state) => ({
           error: message,
           isSubmittingCommand: false,
@@ -336,7 +356,7 @@ export function createGameStore() {
           ...(targets ? { targets } : {})
         });
       } catch (error) {
-        const message = toErrorMessage(error);
+        const message = toCommandErrorMessage(error);
         set((state) => ({
           error: message,
           isSubmittingCommand: false,

@@ -6,6 +6,7 @@ import type {
 } from "@forgetful-fish/realtime-contract";
 
 import type { GameSessionViewModel } from "../game-session-adapter";
+import { ServerApiError } from "../server-api";
 import { createGameStore } from "./game-store";
 
 function createViewModel(overrides: Partial<GameSessionViewModel> = {}): GameSessionViewModel {
@@ -96,6 +97,34 @@ describe("createGameStore", () => {
     expect(store.getState().pendingChoice).toEqual(pendingChoice);
     expect(store.getState().gameView?.viewerPlayerId).toBe("player-1");
     expect(store.getState().recentEvents).toEqual([{ seq: 7, eventType: "PRIORITY_PASSED" }]);
+  });
+
+  it("preserves pending choice during transient started-game resync snapshots", () => {
+    const store = createGameStore();
+    const pendingChoice = createPendingChoice();
+
+    store.getState().applyConnectionStatus("connected");
+    store.getState().applyViewModel(
+      createViewModel({
+        gameId: "game-a",
+        gameStatus: "started",
+        latestAppliedVersion: { stateVersion: 3, lastAppliedEventSeq: 9 },
+        pendingChoice,
+        lastEventType: "PRIORITY_PASSED"
+      })
+    );
+
+    store.getState().applyViewModel(
+      createViewModel({
+        gameId: "game-a",
+        gameStatus: "started",
+        latestAppliedVersion: null,
+        pendingChoice: null,
+        lastEventType: null
+      })
+    );
+
+    expect(store.getState().pendingChoice).toEqual(pendingChoice);
   });
 
   it("resets and caps recent events across game boundaries", () => {
@@ -233,8 +262,25 @@ describe("createGameStore", () => {
     await expect(store.getState().passPriority()).rejects.toThrow("submit failed");
 
     expect(store.getState().isSubmittingCommand).toBe(false);
-    expect(store.getState().error).toBe("submit failed");
+    expect(store.getState().error).toBe(
+      "Command failed. Wait for the next state refresh, then try again."
+    );
     expect(store.getState().lifecycleState).toBe("error");
+  });
+
+  it("shows concise actionable command error for rejected server responses", async () => {
+    const store = createGameStore();
+
+    store.getState().attachAdapter({
+      fetchGameState: vi.fn().mockResolvedValue(createGameView()),
+      submitGameplayCommand: vi.fn().mockRejectedValue(new ServerApiError(409, "conflict"))
+    });
+
+    await expect(store.getState().passPriority()).rejects.toThrow("conflict");
+
+    expect(store.getState().error).toBe(
+      "Command was rejected. Wait for the next state refresh, then try again."
+    );
   });
 
   it("clears error lifecycle when command retries start and succeed", async () => {
