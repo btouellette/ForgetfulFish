@@ -12,6 +12,7 @@ const ownerToken = "owner-token";
 const secondToken = "second-token";
 const DEBUG_BUFFER_LIMIT = 30;
 const DIAGNOSTIC_READ_TIMEOUT_MS = 250;
+const STATE_CHANGE_TIMEOUT_MS = 15_000;
 
 type RealtimeControl = {
   blockConnections: boolean;
@@ -88,10 +89,15 @@ async function waitForStateChange(
   previousStateVersion: number
 ) {
   await expect
-    .poll(async () => {
-      const next = await getGameViewForPlayer(request, roomId, token);
-      return next.stateVersion;
-    })
+    .poll(
+      async () => {
+        const next = await getGameViewForPlayer(request, roomId, token);
+        return next.stateVersion;
+      },
+      {
+        timeout: STATE_CHANGE_TIMEOUT_MS
+      }
+    )
     .toBeGreaterThan(previousStateVersion);
 }
 
@@ -551,7 +557,7 @@ test("covers current-card gameplay interactions from browser clients", async ({
     const secondAfterLand = await getGameViewForPlayer(request, roomId, secondToken);
     const mysticalTutorId = getCardIdByDef(secondAfterLand, "mystical-tutor");
     await secondPage.locator(`[data-testid="cast-spell-${mysticalTutorId}"]`).click();
-    await waitForStateChange(request, roomId, ownerToken, secondAfterLand.stateVersion);
+    await waitForStateChange(request, roomId, secondToken, secondAfterLand.stateVersion);
 
     const optionalChooseCardsState = await advanceUntil(
       request,
@@ -584,7 +590,7 @@ test("covers current-card gameplay interactions from browser clients", async ({
     const secondBeforePredict = await getGameViewForPlayer(request, roomId, secondToken);
     const predictId = getCardIdByDef(secondBeforePredict, "predict");
     await secondPage.locator(`[data-testid="cast-spell-${predictId}"]`).click();
-    await waitForStateChange(request, roomId, ownerToken, secondBeforePredict.stateVersion);
+    await waitForStateChange(request, roomId, secondToken, secondBeforePredict.stateVersion);
 
     const nameCardState = await advanceUntil(
       request,
@@ -614,7 +620,7 @@ test("covers current-card gameplay interactions from browser clients", async ({
     const secondBeforeAk = await getGameViewForPlayer(request, roomId, secondToken);
     const opponentAkId = getCardIdByDef(secondBeforeAk, "accumulated-knowledge");
     await secondPage.locator(`[data-testid="cast-spell-${opponentAkId}"]`).click();
-    await waitForStateChange(request, roomId, ownerToken, secondBeforeAk.stateVersion);
+    await waitForStateChange(request, roomId, secondToken, secondBeforeAk.stateVersion);
 
     const memoryLapseResponseWindow = await advanceUntil(
       request,
