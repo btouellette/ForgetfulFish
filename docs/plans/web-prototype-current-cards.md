@@ -214,7 +214,7 @@ Recommended implementation order:
 
 ---
 
-### [ ] WP7 - Browser E2E for current-card playable loop
+### [x] WP7 - Browser E2E for current-card playable loop
 
 **Goal**: Prove the prototype loop works from browser with current cards.
 

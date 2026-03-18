@@ -10,9 +10,34 @@ import { gameplayCommandSchema } from "@forgetful-fish/realtime-contract";
 import type { GameplayCommand } from "@forgetful-fish/realtime-contract";
 
 import { buildServer } from "../src/app";
-import { createGameplayDeckPreset } from "../src/room-store/deck-preset";
 
 type RoomSeat = "P1" | "P2";
+
+function createPlayableLoopOpeningDeck() {
+  return {
+    cards: [
+      { cardDefId: "island", count: 1 },
+      { cardDefId: "island", count: 1 },
+      { cardDefId: "brainstorm", count: 1 },
+      { cardDefId: "predict", count: 1 },
+      { cardDefId: "memory-lapse", count: 1 },
+      { cardDefId: "mystical-tutor", count: 1 },
+      { cardDefId: "accumulated-knowledge", count: 1 },
+      { cardDefId: "accumulated-knowledge", count: 1 },
+      { cardDefId: "island", count: 1 },
+      { cardDefId: "island", count: 1 },
+      { cardDefId: "island", count: 1 },
+      { cardDefId: "island", count: 1 },
+      { cardDefId: "island", count: 20 }
+    ]
+  };
+}
+
+function createPlayableLoopFillerDeck() {
+  return {
+    cards: [{ cardDefId: "island", count: 20 }]
+  };
+}
 
 function createInMemoryRoomStore() {
   type Participant = {
@@ -235,12 +260,23 @@ function createInMemoryRoomStore() {
           id: room.gameId,
           rngSeed: `seed-${room.gameId}`,
           decks: {
-            playerOne: createGameplayDeckPreset(),
-            playerTwo: createGameplayDeckPreset()
+            playerOne: createPlayableLoopOpeningDeck(),
+            playerTwo: createPlayableLoopFillerDeck()
           },
-          openingDrawCount: 0
+          openingDrawCount: 6,
+          shuffleLibraries: false
         }
       );
+      for (const player of room.gameState.players) {
+        player.manaPool = {
+          white: 0,
+          blue: 6,
+          black: 0,
+          red: 0,
+          green: 0,
+          colorless: 6
+        };
+      }
       room.stateVersion = 1;
       room.lastAppliedEventSeq = 0;
       room.gameEvents = [
