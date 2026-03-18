@@ -315,4 +315,121 @@ describe("GameplayView targeted casts", () => {
     expect(container.textContent).not.toContain("Select a stack spell for memory-lapse.");
     expect(container.querySelector('[data-testid="stack-target-obj-stack"]')).toBeNull();
   });
+
+  it("does not enter target selection when the opponent has priority", () => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={{
+            ...createGameView(),
+            turnState: {
+              phase: "MAIN_1",
+              activePlayerId: "player-1",
+              priorityPlayerId: "player-2"
+            }
+          }}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={vi.fn()}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const beginTargetButton = container.querySelector(
+      '[data-testid="cast-spell-targeted-obj-ml"]'
+    ) as HTMLButtonElement | null;
+
+    expect(beginTargetButton).toBeTruthy();
+    expect((beginTargetButton as HTMLButtonElement).disabled).toBe(true);
+
+    act(() => {
+      beginTargetButton?.click();
+    });
+
+    expect(container.textContent).not.toContain("Select a stack spell for memory-lapse.");
+  });
+
+  it("does not submit a target after priority changes to the opponent", () => {
+    const onCastSpell = vi.fn();
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    const initialView = createGameView();
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={initialView}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={vi.fn()}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={onCastSpell}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const beginTargetButton = container.querySelector(
+      '[data-testid="cast-spell-targeted-obj-ml"]'
+    ) as HTMLButtonElement | null;
+    act(() => {
+      beginTargetButton?.click();
+    });
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={{
+            ...initialView,
+            stateVersion: 6,
+            turnState: {
+              phase: "MAIN_1",
+              activePlayerId: "player-1",
+              priorityPlayerId: "player-2"
+            }
+          }}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={vi.fn()}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={onCastSpell}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const targetButton = container.querySelector(
+      '[data-testid="stack-target-obj-stack"]'
+    ) as HTMLButtonElement | null;
+
+    expect(targetButton).toBeTruthy();
+    expect((targetButton as HTMLButtonElement).disabled).toBe(true);
+
+    act(() => {
+      targetButton?.click();
+    });
+
+    expect(onCastSpell).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("Select a stack spell for memory-lapse.");
+  });
 });

@@ -44,6 +44,7 @@ describe("HandPanel", () => {
       root.render(
         <HandPanel
           hand={[createHandCard("obj-1", "island"), createHandCard("obj-2", "brainstorm")]}
+          viewerHasPriority={true}
           isSubmitting={false}
           onPlayLand={vi.fn()}
           onCastSpell={vi.fn()}
@@ -66,6 +67,7 @@ describe("HandPanel", () => {
       root.render(
         <HandPanel
           hand={[createHandCard("obj-1", "island")]}
+          viewerHasPriority={true}
           isSubmitting={false}
           onPlayLand={onPlayLand}
           onCastSpell={vi.fn()}
@@ -96,6 +98,7 @@ describe("HandPanel", () => {
       root.render(
         <HandPanel
           hand={[createHandCard("obj-2", "brainstorm")]}
+          viewerHasPriority={true}
           isSubmitting={false}
           onPlayLand={vi.fn()}
           onCastSpell={onCastSpell}
@@ -126,6 +129,7 @@ describe("HandPanel", () => {
       root.render(
         <HandPanel
           hand={[createHandCard("obj-3", "memory-lapse")]}
+          viewerHasPriority={true}
           isSubmitting={false}
           onPlayLand={vi.fn()}
           onCastSpell={vi.fn()}
@@ -156,6 +160,7 @@ describe("HandPanel", () => {
       root.render(
         <HandPanel
           hand={[createHandCard("obj-1", "island"), createHandCard("obj-2", "brainstorm")]}
+          viewerHasPriority={true}
           isSubmitting={true}
           onPlayLand={vi.fn()}
           onCastSpell={vi.fn()}

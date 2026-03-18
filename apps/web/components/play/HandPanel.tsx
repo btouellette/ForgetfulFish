@@ -5,6 +5,7 @@ import styles from "./HandPanel.module.css";
 
 type HandPanelProps = {
   hand: PlayerGameView["viewer"]["hand"];
+  viewerHasPriority: boolean;
   isSubmitting: boolean;
   onPlayLand: (cardId: string) => void;
   onCastSpell: (cardId: string) => void;
@@ -19,11 +20,14 @@ function canCastFromHandWithoutTargetPicker(cardDefId: string) {
 
 export function HandPanel({
   hand,
+  viewerHasPriority,
   isSubmitting,
   onPlayLand,
   onCastSpell,
   onBeginTargetedCast
 }: HandPanelProps) {
+  const areHandActionsDisabled = isSubmitting || !viewerHasPriority;
+
   return (
     <section className={styles.handPanel}>
       <h3>Hand</h3>
@@ -43,8 +47,14 @@ export function HandPanel({
                 <button
                   type="button"
                   data-testid={`play-land-${card.id}`}
-                  onClick={() => onPlayLand(card.id)}
-                  disabled={isSubmitting}
+                  onClick={() => {
+                    if (areHandActionsDisabled) {
+                      return;
+                    }
+
+                    onPlayLand(card.id);
+                  }}
+                  disabled={areHandActionsDisabled}
                 >
                   Play land
                 </button>
@@ -52,8 +62,14 @@ export function HandPanel({
                 <button
                   type="button"
                   data-testid={`cast-spell-${card.id}`}
-                  onClick={() => onCastSpell(card.id)}
-                  disabled={isSubmitting}
+                  onClick={() => {
+                    if (areHandActionsDisabled) {
+                      return;
+                    }
+
+                    onCastSpell(card.id);
+                  }}
+                  disabled={areHandActionsDisabled}
                 >
                   Cast spell
                 </button>
@@ -61,8 +77,14 @@ export function HandPanel({
                 <button
                   type="button"
                   data-testid={`cast-spell-targeted-${card.id}`}
-                  onClick={() => onBeginTargetedCast(card.id)}
-                  disabled={isSubmitting}
+                  onClick={() => {
+                    if (areHandActionsDisabled) {
+                      return;
+                    }
+
+                    onBeginTargetedCast(card.id);
+                  }}
+                  disabled={areHandActionsDisabled}
                 >
                   Pick target
                 </button>

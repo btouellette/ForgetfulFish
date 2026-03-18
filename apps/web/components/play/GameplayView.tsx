@@ -93,9 +93,16 @@ export function GameplayView({
     };
   }, [gameView, canvasVersion]);
 
-  const handleBeginTargetedCast = useCallback((cardId: string) => {
-    setTargetingCardId(cardId);
-  }, []);
+  const handleBeginTargetedCast = useCallback(
+    (cardId: string) => {
+      if (!gameView || gameView.turnState.priorityPlayerId !== gameView.viewerPlayerId) {
+        return;
+      }
+
+      setTargetingCardId(cardId);
+    },
+    [gameView]
+  );
 
   const activeTargetingCardId =
     targetingCardId && (gameView?.viewer.hand.some((card) => card.id === targetingCardId) ?? false)
@@ -113,10 +120,14 @@ export function GameplayView({
         return;
       }
 
+      if (!gameView || gameView.turnState.priorityPlayerId !== gameView.viewerPlayerId) {
+        return;
+      }
+
       onCastSpell(activeTargetingCardId, [target]);
       setTargetingCardId(null);
     },
-    [activeTargetingCardId, onCastSpell]
+    [activeTargetingCardId, gameView, onCastSpell]
   );
 
   const handleCancelTargetSelection = useCallback(() => {
@@ -136,6 +147,8 @@ export function GameplayView({
     );
   }
 
+  const viewerHasPriority = gameView.turnState.priorityPlayerId === gameView.viewerPlayerId;
+
   return (
     <section className={styles.gameplayView}>
       <div className={styles.canvasArea}>
@@ -150,6 +163,7 @@ export function GameplayView({
         />
         <HandPanel
           hand={gameView.viewer.hand}
+          viewerHasPriority={viewerHasPriority}
           isSubmitting={isSubmittingCommand}
           onPlayLand={onPlayLand}
           onCastSpell={onCastSpell}
@@ -158,6 +172,7 @@ export function GameplayView({
         <StackPanel
           stack={gameView.stack}
           objectPool={gameView.objectPool}
+          viewerHasPriority={viewerHasPriority}
           isSubmitting={isSubmittingCommand}
           targetingCardLabel={targetingCardLabel}
           onSelectStackTarget={handleSelectStackTarget}
@@ -166,6 +181,7 @@ export function GameplayView({
         <CommandPanel
           viewerPlayerId={gameView.viewerPlayerId}
           pendingChoice={pendingChoice}
+          viewerHasPriority={viewerHasPriority}
           isSubmitting={isSubmittingCommand}
           error={error}
           onPassPriority={onPassPriority}

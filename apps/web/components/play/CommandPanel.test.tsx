@@ -43,6 +43,7 @@ describe("CommandPanel", () => {
     const mergedProps: React.ComponentProps<typeof CommandPanel> = {
       viewerPlayerId: "player-1",
       pendingChoice: null,
+      viewerHasPriority: true,
       isSubmitting: false,
       error: null,
       onPassPriority: vi.fn(),
@@ -64,6 +65,7 @@ describe("CommandPanel", () => {
       <CommandPanel
         viewerPlayerId="player-1"
         pendingChoice={null}
+        viewerHasPriority={true}
         isSubmitting={false}
         error={null}
         onPassPriority={vi.fn()}
@@ -82,6 +84,7 @@ describe("CommandPanel", () => {
       <CommandPanel
         viewerPlayerId="player-1"
         pendingChoice={createPendingChoice()}
+        viewerHasPriority={true}
         isSubmitting={false}
         error={null}
         onPassPriority={vi.fn()}
@@ -102,6 +105,7 @@ describe("CommandPanel", () => {
       <CommandPanel
         viewerPlayerId="player-1"
         pendingChoice={createPendingChoice()}
+        viewerHasPriority={true}
         isSubmitting={true}
         error="Priority pass failed"
         onPassPriority={vi.fn()}
@@ -122,6 +126,7 @@ describe("CommandPanel", () => {
       <CommandPanel
         viewerPlayerId="player-1"
         pendingChoice={createPendingChoice({ forPlayer: "player-2" })}
+        viewerHasPriority={true}
         isSubmitting={false}
         error={null}
         onPassPriority={vi.fn()}
@@ -145,6 +150,7 @@ describe("CommandPanel", () => {
           type: "ORDER_CARDS",
           constraints: { min: 1, max: 1 }
         })}
+        viewerHasPriority={true}
         isSubmitting={false}
         error={null}
         onPassPriority={vi.fn()}
@@ -284,6 +290,7 @@ describe("CommandPanel", () => {
             prompt: "Pick cards",
             constraints: { candidates: ["obj-c", "obj-d"], min: 1, max: 1 }
           })}
+          viewerHasPriority={true}
           isSubmitting={false}
           error={null}
           onPassPriority={vi.fn()}

@@ -10,6 +10,7 @@ type MakeChoicePayload = Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payl
 type CommandPanelProps = {
   viewerPlayerId: string;
   pendingChoice: GameplayPendingChoice | null;
+  viewerHasPriority: boolean;
   isSubmitting: boolean;
   error: string | null;
   onPassPriority: () => void;
@@ -21,6 +22,7 @@ type CommandPanelProps = {
 export function CommandPanel({
   viewerPlayerId,
   pendingChoice,
+  viewerHasPriority,
   isSubmitting,
   error,
   onPassPriority,
@@ -108,6 +110,14 @@ export function CommandPanel({
     if (window.confirm("Concede the game?")) {
       onConcede();
     }
+  }
+
+  function handlePassPriority() {
+    if (!viewerHasPriority || isSubmitting) {
+      return;
+    }
+
+    onPassPriority();
   }
 
   return (
@@ -264,7 +274,11 @@ export function CommandPanel({
         </div>
       ) : null}
       <div className={styles.actionRow}>
-        <button type="button" onClick={onPassPriority} disabled={isSubmitting}>
+        <button
+          type="button"
+          onClick={handlePassPriority}
+          disabled={isSubmitting || !viewerHasPriority}
+        >
           Pass priority
         </button>
         <button
