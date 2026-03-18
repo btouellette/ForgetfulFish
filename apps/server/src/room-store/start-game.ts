@@ -93,7 +93,7 @@ export async function startGameInDatabase(
         playerOne: createGameplayDeckPreset(),
         playerTwo: createGameplayDeckPreset()
       },
-      openingDrawCount: 0
+      openingDrawCount: 7
     }
   );
   const serializedInitialState = toPersistedGameState(initialState);

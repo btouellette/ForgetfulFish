@@ -295,7 +295,7 @@ export function createInMemoryRoomStore() {
             playerOne: createGameplayDeckPreset(),
             playerTwo: createGameplayDeckPreset()
           },
-          openingDrawCount: 0
+          openingDrawCount: 7
         }
       );
       room.gameState = gameState;

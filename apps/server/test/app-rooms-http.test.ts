@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+
+import { prisma } from "@forgetful-fish/database";
 import { describe, expect, it } from "vitest";
 
 import { playerGameViewSchema } from "@forgetful-fish/realtime-contract";
@@ -550,7 +553,7 @@ describe("server room routes", () => {
         playerOne: createGameplayDeckPreset(),
         playerTwo: createGameplayDeckPreset()
       },
-      openingDrawCount: 0
+      openingDrawCount: 7
     });
 
     const room = roomStore.inspectRoom(roomId);
@@ -579,6 +582,96 @@ describe("server room routes", () => {
         ]
       }
     });
+  });
+
+  it("persists a 7-card opening hand in the database-backed start flow", async () => {
+    if (!process.env.DATABASE_URL) {
+      return;
+    }
+
+    const roomId = randomUUID();
+    const ownerId = `db-owner-${roomId}`;
+    const playerId = `db-player-${roomId}`;
+    const ownerEmail = `${ownerId}@example.com`;
+    const playerEmail = `${playerId}@example.com`;
+
+    await prisma.user.create({
+      data: {
+        id: ownerId,
+        email: ownerEmail
+      }
+    });
+    await prisma.user.create({
+      data: {
+        id: playerId,
+        email: playerEmail
+      }
+    });
+    await prisma.room.create({
+      data: {
+        id: roomId,
+        participants: {
+          create: [
+            {
+              userId: ownerId,
+              seat: "P1",
+              ready: true
+            },
+            {
+              userId: playerId,
+              seat: "P2",
+              ready: true
+            }
+          ]
+        }
+      }
+    });
+
+    const app = buildServer({
+      sessionLookup: buildAuthedSessionLookup(ownerId)
+    });
+
+    try {
+      const startResponse = await app.inject({
+        method: "POST",
+        url: `/api/rooms/${roomId}/start`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      expect(startResponse.statusCode).toBe(200);
+
+      const gameResponse = await app.inject({
+        method: "GET",
+        url: `/api/rooms/${roomId}/game`,
+        headers: {
+          cookie: "authjs.session-token=valid"
+        }
+      });
+
+      expect(gameResponse.statusCode).toBe(200);
+
+      const parsed = playerGameViewSchema.parse(gameResponse.json());
+
+      expect(parsed.viewer.hand).toHaveLength(7);
+      expect(parsed.viewer.handCount).toBe(7);
+      expect(parsed.opponent.handCount).toBe(7);
+    } finally {
+      await app.close();
+      await prisma.room.deleteMany({
+        where: {
+          id: roomId
+        }
+      });
+      await prisma.user.deleteMany({
+        where: {
+          id: {
+            in: [ownerId, playerId]
+          }
+        }
+      });
+    }
   });
 
   it("completes end-to-end lobby flow through game start", async () => {
@@ -768,8 +861,9 @@ describe("server room routes", () => {
     expect(parsed.stateVersion).toBe(1);
     expect(parsed.viewer.id).toBe("owner-1");
     expect(parsed.opponent.id).toBe("player-2");
-    expect(parsed.viewer.hand).toEqual([]);
-    expect(parsed.opponent.handCount).toBeGreaterThanOrEqual(0);
+    expect(parsed.viewer.hand).toHaveLength(7);
+    expect(parsed.viewer.handCount).toBe(7);
+    expect(parsed.opponent.handCount).toBe(7);
     expect(parsed.pendingChoice).toBeNull();
     expect(parsed.stack).toEqual([]);
     expect(parsed.zones.length).toBeGreaterThan(0);
