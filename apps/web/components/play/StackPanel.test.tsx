@@ -63,6 +63,7 @@ describe("StackPanel", () => {
             [first.objectView.id]: first.objectView,
             [second.objectView.id]: second.objectView
           }}
+          viewerHasPriority={true}
           isSubmitting={false}
           targetingCardLabel={null}
           onSelectStackTarget={vi.fn()}
@@ -87,6 +88,7 @@ describe("StackPanel", () => {
         <StackPanel
           stack={[item.stackItem]}
           objectPool={{ [item.objectView.id]: item.objectView }}
+          viewerHasPriority={true}
           isSubmitting={false}
           targetingCardLabel="memory-lapse"
           onSelectStackTarget={onSelectStackTarget}

@@ -13,6 +13,7 @@ export type ObjectTarget =
 type StackPanelProps = {
   stack: PlayerGameView["stack"];
   objectPool: PlayerGameView["objectPool"];
+  viewerHasPriority: boolean;
   isSubmitting: boolean;
   targetingCardLabel: string | null;
   onSelectStackTarget: (target: ObjectTarget) => void;
@@ -31,12 +32,14 @@ function formatStackLabel(
 export function StackPanel({
   stack,
   objectPool,
+  viewerHasPriority,
   isSubmitting,
   targetingCardLabel,
   onSelectStackTarget,
   onCancelTargetSelection
 }: StackPanelProps) {
   const isTargeting = targetingCardLabel !== null;
+  const areTargetActionsDisabled = isSubmitting || !viewerHasPriority;
 
   return (
     <section className={styles.stackPanel}>
@@ -68,13 +71,17 @@ export function StackPanel({
               <button
                 type="button"
                 data-testid={`stack-target-${stackItem.object.id}`}
-                disabled={isSubmitting}
-                onClick={() =>
+                disabled={areTargetActionsDisabled}
+                onClick={() => {
+                  if (areTargetActionsDisabled) {
+                    return;
+                  }
+
                   onSelectStackTarget({
                     kind: "object",
                     object: stackItem.object
-                  })
-                }
+                  });
+                }}
               >
                 Target this spell
               </button>

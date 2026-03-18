@@ -270,6 +270,81 @@ describe("createGameStore", () => {
     expect(store.getState().gameView?.viewerPlayerId).toBe("player-1");
   });
 
+  it("does not submit pass priority when the viewer does not have priority", async () => {
+    const submitGameplayCommand = vi.fn().mockResolvedValue(undefined);
+    const store = createGameStore();
+
+    store.getState().applyGameView(
+      createGameView({
+        turnState: {
+          phase: "MAIN_1",
+          activePlayerId: "player-1",
+          priorityPlayerId: "player-2"
+        }
+      })
+    );
+    store.getState().attachAdapter({
+      fetchGameState: vi.fn().mockResolvedValue(createGameView()),
+      submitGameplayCommand
+    });
+
+    await store.getState().passPriority();
+
+    expect(submitGameplayCommand).not.toHaveBeenCalled();
+    expect(store.getState().isSubmittingCommand).toBe(false);
+    expect(store.getState().error).toBeNull();
+  });
+
+  it("does not submit play land when the viewer does not have priority", async () => {
+    const submitGameplayCommand = vi.fn().mockResolvedValue(undefined);
+    const store = createGameStore();
+
+    store.getState().applyGameView(
+      createGameView({
+        turnState: {
+          phase: "MAIN_1",
+          activePlayerId: "player-1",
+          priorityPlayerId: "player-2"
+        }
+      })
+    );
+    store.getState().attachAdapter({
+      fetchGameState: vi.fn().mockResolvedValue(createGameView()),
+      submitGameplayCommand
+    });
+
+    await store.getState().playLand("land-1");
+
+    expect(submitGameplayCommand).not.toHaveBeenCalled();
+    expect(store.getState().isSubmittingCommand).toBe(false);
+    expect(store.getState().error).toBeNull();
+  });
+
+  it("does not submit cast spell when the viewer does not have priority", async () => {
+    const submitGameplayCommand = vi.fn().mockResolvedValue(undefined);
+    const store = createGameStore();
+
+    store.getState().applyGameView(
+      createGameView({
+        turnState: {
+          phase: "MAIN_1",
+          activePlayerId: "player-1",
+          priorityPlayerId: "player-2"
+        }
+      })
+    );
+    store.getState().attachAdapter({
+      fetchGameState: vi.fn().mockResolvedValue(createGameView()),
+      submitGameplayCommand
+    });
+
+    await store.getState().castSpell("spell-1");
+
+    expect(submitGameplayCommand).not.toHaveBeenCalled();
+    expect(store.getState().isSubmittingCommand).toBe(false);
+    expect(store.getState().error).toBeNull();
+  });
+
   it("tracks loading and error state for game-state fetches", async () => {
     const error = new Error("boom");
     const store = createGameStore();

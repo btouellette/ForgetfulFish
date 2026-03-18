@@ -1,9 +1,17 @@
+// @vitest-environment jsdom
+
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { GameplayPendingChoice, PlayerGameView } from "@forgetful-fish/realtime-contract";
 
 import { GameplayView } from "./GameplayView";
+
+vi.mock("../../lib/renderer/battlefield-renderer", () => ({
+  renderBattlefield: vi.fn()
+}));
 
 function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView {
   return {
@@ -94,6 +102,18 @@ function createPendingChoice(
 }
 
 describe("GameplayView", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  afterEach(() => {
+    act(() => {
+      root?.unmount();
+    });
+    container?.remove();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
   it("renders all gameplay panels and a live canvas host", () => {
     const html = renderToStaticMarkup(
       <GameplayView
@@ -146,5 +166,137 @@ describe("GameplayView", () => {
     expect(html).toContain("Waiting for projected game state...");
     expect(html).not.toContain("Status");
     expect(html).not.toContain("Commands");
+  });
+
+  it("disables pass priority when the opponent has priority", () => {
+    const onPassPriority = vi.fn();
+
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class MockResizeObserver {
+        observe() {}
+        disconnect() {}
+      }
+    );
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      setTransform: vi.fn()
+    } as unknown as CanvasRenderingContext2D);
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={createGameView({
+            turnState: {
+              phase: "MAIN_1",
+              activePlayerId: "player-1",
+              priorityPlayerId: "player-2"
+            }
+          })}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={onPassPriority}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const passPriorityButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Pass priority"
+    );
+
+    expect(passPriorityButton).toBeInstanceOf(HTMLButtonElement);
+    expect((passPriorityButton as HTMLButtonElement).disabled).toBe(true);
+
+    act(() => {
+      (passPriorityButton as HTMLButtonElement).click();
+    });
+
+    expect(onPassPriority).not.toHaveBeenCalled();
+  });
+
+  it("disables play and cast actions when the opponent has priority", () => {
+    const onPlayLand = vi.fn();
+    const onCastSpell = vi.fn();
+
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class MockResizeObserver {
+        observe() {}
+        disconnect() {}
+      }
+    );
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      setTransform: vi.fn()
+    } as unknown as CanvasRenderingContext2D);
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={createGameView({
+            turnState: {
+              phase: "MAIN_1",
+              activePlayerId: "player-1",
+              priorityPlayerId: "player-2"
+            }
+          })}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={vi.fn()}
+          onConcede={vi.fn()}
+          onPlayLand={onPlayLand}
+          onCastSpell={onCastSpell}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const playLandButton = container.querySelector(
+      '[data-testid="play-land-obj-1"]'
+    ) as HTMLButtonElement | null;
+    const castSpellButton = container.querySelector(
+      '[data-testid="cast-spell-obj-2"]'
+    ) as HTMLButtonElement | null;
+
+    expect(playLandButton).toBeInstanceOf(HTMLButtonElement);
+    expect(castSpellButton).toBeInstanceOf(HTMLButtonElement);
+    expect((playLandButton as HTMLButtonElement).disabled).toBe(true);
+    expect((castSpellButton as HTMLButtonElement).disabled).toBe(true);
+
+    act(() => {
+      (playLandButton as HTMLButtonElement).click();
+      (castSpellButton as HTMLButtonElement).click();
+    });
+
+    expect(onPlayLand).not.toHaveBeenCalled();
+    expect(onCastSpell).not.toHaveBeenCalled();
   });
 });
