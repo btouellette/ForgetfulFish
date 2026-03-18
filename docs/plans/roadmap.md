@@ -45,7 +45,7 @@ Status: complete
 Status: in progress
 
 - [x] Deterministic engine foundations, turn flow, and stack-resolution basics are in place through rules-engine phases 0-2.
-- [ ] Deliver a web-usable prototype for the currently implemented card set (execution plan: `docs/plans/web-prototype-current-cards.md`).
+- [x] Deliver a web-usable prototype for the currently implemented card set (execution plan: `docs/plans/web-prototype-current-cards.md`).
 - [ ] Complete continuous effects, layers, and remaining core-loop behaviors needed for deck fidelity.
 - [ ] Keep the engine plan aligned with the split phase files under `docs/plans/rules-engine/`.
 

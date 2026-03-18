@@ -1,6 +1,6 @@
 # Web Prototype Plan (Current Card Set)
 
-Status: active implementation plan for making the existing ruleset playable from the web UI.
+Status: complete execution plan for making the existing ruleset playable from the web UI.
 
 ## Goal
 
@@ -245,7 +245,7 @@ Recommended implementation order:
 
 ---
 
-### [ ] WP8 - Final verification and roadmap sync
+### [x] WP8 - Final verification and roadmap sync
 
 **Goal**: Close the prototype plan with explicit verification evidence and roadmap linkage.
 
@@ -269,6 +269,15 @@ Recommended implementation order:
 - Prototype plan has completed checklist items and any deferred items explicitly marked.
 
 **Commit target**: `Close web prototype slice with verification and roadmap updates`
+
+**Verification evidence** (`2026-03-18`):
+
+- `pnpm --filter @forgetful-fish/web test`
+- `pnpm --filter @forgetful-fish/server test`
+- `pnpm --filter @forgetful-fish/game-engine test`
+- `CI=true pnpm exec playwright test e2e/room-realtime.spec.ts -g "covers current-card gameplay interactions from browser clients"`
+- `pnpm typecheck`
+- `pnpm lint`
 
 ## Prototype Exit Criteria
 
