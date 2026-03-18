@@ -24,6 +24,118 @@ type PageDebugBuffers = {
   requestFailures: string[];
 };
 
+type TestGameView = {
+  stateVersion: number;
+  viewer: {
+    hand: Array<{ id: string; cardDefId: string }>;
+  };
+  objectPool: Record<string, { cardDefId: string }>;
+  stack: Array<{ object: { id: string; zcc: number } }>;
+  turnState: {
+    activePlayerId: string;
+    priorityPlayerId: string;
+    phase:
+      | "UNTAP"
+      | "UPKEEP"
+      | "DRAW"
+      | "MAIN_1"
+      | "BEGIN_COMBAT"
+      | "DECLARE_ATTACKERS"
+      | "DECLARE_BLOCKERS"
+      | "COMBAT_DAMAGE"
+      | "END_COMBAT"
+      | "MAIN_2"
+      | "END"
+      | "CLEANUP";
+  };
+  pendingChoice: {
+    id: string;
+    forPlayer: string;
+    type: "CHOOSE_CARDS" | "ORDER_CARDS" | "NAME_CARD" | "CHOOSE_YES_NO";
+    constraints?: {
+      candidates?: string[];
+      cards?: string[];
+      min?: number;
+      max?: number;
+    };
+  } | null;
+};
+
+async function getGameViewForPlayer(request: APIRequestContext, roomId: string, token: string) {
+  const response = await request.get(`${serverBaseUrl}/api/rooms/${roomId}/game`, {
+    headers: {
+      cookie: `authjs.session-token=${token}`
+    }
+  });
+
+  expect(response.ok()).toBe(true);
+  return (await response.json()) as TestGameView;
+}
+
+function getCardIdByDef(gameView: TestGameView, cardDefId: string) {
+  const card = gameView.viewer.hand.find((entry) => entry.cardDefId === cardDefId);
+  if (!card) {
+    throw new Error(`expected '${cardDefId}' in hand`);
+  }
+
+  return card.id;
+}
+
+async function waitForStateChange(
+  request: APIRequestContext,
+  roomId: string,
+  token: string,
+  previousStateVersion: number
+) {
+  await expect
+    .poll(async () => {
+      const next = await getGameViewForPlayer(request, roomId, token);
+      return next.stateVersion;
+    })
+    .toBeGreaterThan(previousStateVersion);
+}
+
+async function passPriorityForCurrentPriorityHolder(options: {
+  ownerPage: Page;
+  secondPage: Page;
+  ownerGameView: TestGameView;
+}) {
+  const { ownerPage, secondPage, ownerGameView } = options;
+  const passButton =
+    ownerGameView.turnState.priorityPlayerId === "owner-1"
+      ? ownerPage.getByRole("button", { name: "Pass priority" })
+      : secondPage.getByRole("button", { name: "Pass priority" });
+
+  await passButton.click();
+}
+
+async function advanceUntil(
+  request: APIRequestContext,
+  roomId: string,
+  ownerPage: Page,
+  secondPage: Page,
+  predicate: (ownerGameView: TestGameView, secondGameView: TestGameView) => boolean,
+  maxPasses = 120
+) {
+  for (let index = 0; index < maxPasses; index += 1) {
+    const ownerGameView = await getGameViewForPlayer(request, roomId, ownerToken);
+    const secondGameView = await getGameViewForPlayer(request, roomId, secondToken);
+
+    if (predicate(ownerGameView, secondGameView)) {
+      return {
+        ownerGameView,
+        secondGameView
+      };
+    }
+
+    const previousStateVersion = ownerGameView.stateVersion;
+    await passPriorityForCurrentPriorityHolder({ ownerPage, secondPage, ownerGameView });
+    await waitForStateChange(request, roomId, ownerToken, previousStateVersion);
+  }
+
+  throw new Error("failed to reach expected gameplay state before max passes");
+}
+
 function pushDebugLine(lines: string[], nextLine: string) {
   lines.push(nextLine);
 
@@ -320,6 +432,239 @@ test("resyncs canonical lobby state after reconnect", async ({ browser, request 
       timeout: 20_000
     });
     await expect(ownerPage.getByText("P2: player-2 (ready)")).toBeVisible();
+  } finally {
+    await Promise.all([ownerContext.close(), secondContext.close()]);
+  }
+});
+
+test("covers current-card gameplay interactions from browser clients", async ({
+  browser,
+  request
+}) => {
+  test.setTimeout(180_000);
+
+  const roomId = await createRoom(request);
+  const ownerContext = await browser.newContext();
+  const secondContext = await browser.newContext();
+
+  await Promise.all([
+    addSessionCookie(ownerContext, ownerToken),
+    addSessionCookie(secondContext, secondToken)
+  ]);
+
+  const ownerPage = await ownerContext.newPage();
+  const secondPage = await secondContext.newPage();
+
+  try {
+    await Promise.all([ownerPage.goto(`/play/${roomId}`), secondPage.goto(`/play/${roomId}`)]);
+    await Promise.all([expectRoomLoaded(ownerPage, "P1"), expectRoomLoaded(secondPage, "P2")]);
+
+    await ownerPage.getByRole("button", { name: "Mark ready" }).click();
+    await secondPage.getByRole("button", { name: "Mark ready" }).click();
+    await ownerPage.getByRole("button", { name: "Start game" }).click();
+    await Promise.all([
+      expect(ownerPage.getByText(/Game: started \(/)).toBeVisible(),
+      expect(secondPage.getByText(/Game: started \(/)).toBeVisible()
+    ]);
+
+    const openingTurn = await advanceUntil(
+      request,
+      roomId,
+      ownerPage,
+      secondPage,
+      (owner) => owner.turnState.activePlayerId === "owner-1" && owner.turnState.phase === "MAIN_1"
+    );
+    const openingOwner = openingTurn.ownerGameView;
+    const openingSecond = openingTurn.secondGameView;
+
+    expect(openingOwner.viewer.hand.some((card) => card.cardDefId === "brainstorm")).toBe(true);
+    expect(openingOwner.viewer.hand.some((card) => card.cardDefId === "memory-lapse")).toBe(true);
+    expect(
+      openingOwner.viewer.hand.some((card) => card.cardDefId === "accumulated-knowledge")
+    ).toBe(true);
+    expect(openingSecond.viewer.hand.some((card) => card.cardDefId === "predict")).toBe(true);
+    expect(openingSecond.viewer.hand.some((card) => card.cardDefId === "mystical-tutor")).toBe(
+      true
+    );
+    expect(
+      openingSecond.viewer.hand.some((card) => card.cardDefId === "accumulated-knowledge")
+    ).toBe(true);
+
+    const ownerIslandId = getCardIdByDef(openingOwner, "island");
+    const prePlayLandVersion = openingOwner.stateVersion;
+    await ownerPage.locator(`[data-testid="play-land-${ownerIslandId}"]`).click();
+    await waitForStateChange(request, roomId, ownerToken, prePlayLandVersion);
+
+    let ownerGameView = await getGameViewForPlayer(request, roomId, ownerToken);
+    const brainstormId = getCardIdByDef(ownerGameView, "brainstorm");
+    const preBrainstormCastVersion = ownerGameView.stateVersion;
+    await ownerPage.locator(`[data-testid="cast-spell-${brainstormId}"]`).click();
+    await waitForStateChange(request, roomId, ownerToken, preBrainstormCastVersion);
+
+    const chooseCardsState = await advanceUntil(
+      request,
+      roomId,
+      ownerPage,
+      secondPage,
+      (owner) => owner.pendingChoice?.type === "CHOOSE_CARDS"
+    );
+    ownerGameView = chooseCardsState.ownerGameView;
+    const chooseCardsConstraints = ownerGameView.pendingChoice?.constraints;
+    const chooseCandidates = chooseCardsConstraints?.candidates ?? [];
+    const chooseMin = chooseCardsConstraints?.min ?? 0;
+    const cardsToPutBack = chooseCandidates
+      .filter((candidateId) => ownerGameView.objectPool[candidateId]?.cardDefId === "island")
+      .slice(0, chooseMin);
+
+    expect(cardsToPutBack).toHaveLength(chooseMin);
+
+    for (const candidateId of cardsToPutBack) {
+      await ownerPage.locator(`[data-testid="choose-card-${candidateId}"]`).click();
+    }
+    await ownerPage.locator('[data-testid="choose-cards-submit"]').click();
+    await waitForStateChange(request, roomId, ownerToken, ownerGameView.stateVersion);
+
+    ownerGameView = await getGameViewForPlayer(request, roomId, ownerToken);
+    expect(ownerGameView.pendingChoice?.type).toBe("ORDER_CARDS");
+    const orderCards = ownerGameView.pendingChoice?.constraints?.cards ?? [];
+    if (orderCards.length > 1) {
+      await ownerPage.locator(`[data-testid="order-down-${orderCards[0]}"]`).click();
+    }
+    await ownerPage.locator('[data-testid="order-cards-submit"]').click();
+    await waitForStateChange(request, roomId, ownerToken, ownerGameView.stateVersion);
+
+    const mysticalTurn = await advanceUntil(
+      request,
+      roomId,
+      ownerPage,
+      secondPage,
+      (owner, second) =>
+        owner.turnState.activePlayerId === "player-2" &&
+        owner.turnState.phase === "MAIN_1" &&
+        second.viewer.hand.some((card) => card.cardDefId === "mystical-tutor")
+    );
+
+    const secondIslandId = getCardIdByDef(mysticalTurn.secondGameView, "island");
+    await secondPage.locator(`[data-testid="play-land-${secondIslandId}"]`).click();
+    await waitForStateChange(request, roomId, ownerToken, mysticalTurn.ownerGameView.stateVersion);
+
+    const secondAfterLand = await getGameViewForPlayer(request, roomId, secondToken);
+    const mysticalTutorId = getCardIdByDef(secondAfterLand, "mystical-tutor");
+    await secondPage.locator(`[data-testid="cast-spell-${mysticalTutorId}"]`).click();
+    await waitForStateChange(request, roomId, ownerToken, secondAfterLand.stateVersion);
+
+    const optionalChooseCardsState = await advanceUntil(
+      request,
+      roomId,
+      ownerPage,
+      secondPage,
+      (_owner, second) => second.pendingChoice?.type === "CHOOSE_CARDS"
+    );
+
+    await secondPage.locator('[data-testid="choose-cards-submit"]').click();
+    await waitForStateChange(
+      request,
+      roomId,
+      ownerToken,
+      optionalChooseCardsState.ownerGameView.stateVersion
+    );
+
+    const predictTurn = await advanceUntil(
+      request,
+      roomId,
+      ownerPage,
+      secondPage,
+      (owner, second) =>
+        owner.turnState.activePlayerId === "player-2" &&
+        owner.turnState.phase === "MAIN_1" &&
+        second.viewer.hand.some((card) => card.cardDefId === "predict") &&
+        second.viewer.hand.some((card) => card.cardDefId === "island")
+    );
+
+    const secondBeforePredict = await getGameViewForPlayer(request, roomId, secondToken);
+    const predictId = getCardIdByDef(secondBeforePredict, "predict");
+    await secondPage.locator(`[data-testid="cast-spell-${predictId}"]`).click();
+    await waitForStateChange(request, roomId, ownerToken, secondBeforePredict.stateVersion);
+
+    const nameCardState = await advanceUntil(
+      request,
+      roomId,
+      ownerPage,
+      secondPage,
+      (_owner, second) => second.pendingChoice?.type === "NAME_CARD"
+    );
+
+    await secondPage.locator('[data-testid="name-card-input"]').fill("island");
+    await secondPage.locator('[data-testid="name-card-submit"]').click();
+    await waitForStateChange(request, roomId, ownerToken, nameCardState.ownerGameView.stateVersion);
+
+    const memoryLapseTurn = await advanceUntil(
+      request,
+      roomId,
+      ownerPage,
+      secondPage,
+      (owner, second) =>
+        owner.turnState.activePlayerId === "player-2" &&
+        owner.turnState.phase === "MAIN_1" &&
+        second.viewer.hand.some((card) => card.cardDefId === "accumulated-knowledge") &&
+        second.viewer.hand.some((card) => card.cardDefId === "island") &&
+        owner.viewer.hand.some((card) => card.cardDefId === "memory-lapse")
+    );
+
+    const secondBeforeAk = await getGameViewForPlayer(request, roomId, secondToken);
+    const opponentAkId = getCardIdByDef(secondBeforeAk, "accumulated-knowledge");
+    await secondPage.locator(`[data-testid="cast-spell-${opponentAkId}"]`).click();
+    await waitForStateChange(request, roomId, ownerToken, secondBeforeAk.stateVersion);
+
+    const memoryLapseResponseWindow = await advanceUntil(
+      request,
+      roomId,
+      ownerPage,
+      secondPage,
+      (owner) =>
+        owner.turnState.activePlayerId === "player-2" &&
+        owner.turnState.priorityPlayerId === "owner-1" &&
+        owner.stack.length > 0
+    );
+
+    const ownerBeforeMemoryLapse = memoryLapseResponseWindow.ownerGameView;
+    const memoryLapseId = getCardIdByDef(ownerBeforeMemoryLapse, "memory-lapse");
+    const stackObjectId = ownerBeforeMemoryLapse.stack[0]?.object.id;
+    if (!stackObjectId) {
+      throw new Error("expected a stack object for memory lapse targeting");
+    }
+
+    await ownerPage.locator(`[data-testid="cast-spell-targeted-${memoryLapseId}"]`).click();
+    await ownerPage.locator(`[data-testid="stack-target-${stackObjectId}"]`).click();
+    await waitForStateChange(request, roomId, ownerToken, ownerBeforeMemoryLapse.stateVersion);
+
+    const ownerAccumulatedKnowledgeTurn = await advanceUntil(
+      request,
+      roomId,
+      ownerPage,
+      secondPage,
+      (owner) =>
+        owner.turnState.activePlayerId === "owner-1" &&
+        owner.turnState.phase === "MAIN_1" &&
+        owner.viewer.hand.some((card) => card.cardDefId === "accumulated-knowledge")
+    );
+
+    const ownerBeforeAk = ownerAccumulatedKnowledgeTurn.ownerGameView;
+    const ownerAkId = getCardIdByDef(ownerBeforeAk, "accumulated-knowledge");
+    await ownerPage.locator(`[data-testid="cast-spell-${ownerAkId}"]`).click();
+    await waitForStateChange(request, roomId, ownerToken, ownerBeforeAk.stateVersion);
+
+    const preResolveVersion = (await getGameViewForPlayer(request, roomId, ownerToken))
+      .stateVersion;
+    const ownerAfterAk = await advanceUntil(
+      request,
+      roomId,
+      ownerPage,
+      secondPage,
+      (owner) => owner.stack.length === 0 && owner.stateVersion > preResolveVersion
+    );
+
+    expect(ownerAfterAk.ownerGameView.viewer.hand.length).toBe(ownerBeforeAk.viewer.hand.length);
   } finally {
     await Promise.all([ownerContext.close(), secondContext.close()]);
   }
