@@ -93,11 +93,7 @@ function trimRecentEvents(recentEvents: Array<{ seq: number; eventType: string }
   return recentEvents.slice(-maxRecentEvents);
 }
 
-function canSubmitPassPriority(gameView: PlayerGameView | null) {
-  return gameView === null || gameView.turnState.priorityPlayerId === gameView.viewerPlayerId;
-}
-
-function canSubmitPriorityAction(gameView: PlayerGameView | null) {
+function viewerHasPriority(gameView: PlayerGameView | null) {
   return gameView === null || gameView.turnState.priorityPlayerId === gameView.viewerPlayerId;
 }
 
@@ -235,7 +231,7 @@ export function createGameStore() {
         throw new Error("game store adapter is not attached");
       }
 
-      if (!canSubmitPassPriority(get().gameView)) {
+      if (!viewerHasPriority(get().gameView)) {
         return;
       }
 
@@ -317,7 +313,7 @@ export function createGameStore() {
         throw new Error("game store adapter is not attached");
       }
 
-      if (!canSubmitPriorityAction(get().gameView)) {
+      if (!viewerHasPriority(get().gameView)) {
         return;
       }
 
@@ -361,7 +357,7 @@ export function createGameStore() {
         throw new Error("game store adapter is not attached");
       }
 
-      if (!canSubmitPriorityAction(get().gameView)) {
+      if (!viewerHasPriority(get().gameView)) {
         return;
       }
 
