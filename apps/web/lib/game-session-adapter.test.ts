@@ -463,6 +463,68 @@ describe("createGameSessionAdapter", () => {
     });
   });
 
+  it("clears gameplay projection and version tracking when lobby updates end the game", async () => {
+    let lobbyUpdatedHandler: LobbyUpdatedHandler = () => {};
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      createRealtimeClient: (options: CreateRealtimeClientOptions) => {
+        lobbyUpdatedHandler = options.onLobbyUpdated;
+        return {
+          connect: vi.fn(),
+          disconnect: vi.fn()
+        };
+      },
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        getGameState: vi.fn().mockResolvedValue(createPlayerGameView()),
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand: vi.fn().mockResolvedValue({
+          roomId: "00000000-0000-4000-8000-000000000001",
+          gameId: "10000000-0000-4000-8000-000000000001",
+          stateVersion: 3,
+          lastAppliedEventSeq: 7,
+          pendingChoice: null,
+          emittedEvents: [{ seq: 7, eventType: "PLAYER_LOST" }]
+        })
+      }
+    });
+
+    adapter.connect();
+    await adapter.fetchGameState();
+    await adapter.submitGameplayCommand({ type: "CONCEDE" });
+
+    expect(adapter.getGameView()).not.toBeNull();
+    expect(adapter.getLatestAppliedVersion()).toEqual({
+      stateVersion: 3,
+      lastAppliedEventSeq: 7
+    });
+
+    lobbyUpdatedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      participants: [{ userId: "u-2", seat: "P2", ready: false }],
+      gameId: null,
+      gameStatus: "not_started"
+    });
+
+    expect(adapter.getViewModel()).toMatchObject({
+      participants: [{ userId: "u-2", seat: "P2", ready: false }],
+      gameId: null,
+      gameStatus: "not_started",
+      pendingChoice: null,
+      lastEventType: null,
+      latestAppliedVersion: null
+    });
+    expect(adapter.getGameView()).toBeNull();
+    expect(adapter.getLatestAppliedVersion()).toBeNull();
+  });
+
   it("resets gameplay projection fields when game start event arrives", () => {
     let gameStartedHandler: GameStartedHandler = () => {};
     let gameUpdatedHandler: GameUpdatedHandler = () => {};

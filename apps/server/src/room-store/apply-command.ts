@@ -64,6 +64,10 @@ function toInvalidCommandResult(error: unknown): ApplyGameplayCommandResult {
   };
 }
 
+function endsCurrentGame(events: readonly GameEvent[]) {
+  return events.some((event) => event.type === "PLAYER_LOST");
+}
+
 class ForbiddenGameplayCommandError extends Error {
   constructor(message: string) {
     super(message);
@@ -332,6 +336,7 @@ export async function applyGameplayCommandInDatabase(
       const applied = applyCommandToState(currentState, parsedCommand, actor.id);
       const nextState = applied.nextState;
       const emittedEvents = applied.newEvents;
+      const gameEnded = endsCurrentGame(emittedEvents);
       const firstPersistedEventSeq = game.lastAppliedEventSeq + 1;
       const nextStateVersion = game.stateVersion + 1;
       const nextLastAppliedEventSeq = game.lastAppliedEventSeq + emittedEvents.length;
@@ -373,10 +378,28 @@ export async function applyGameplayCommandInDatabase(
         });
       }
 
+      if (gameEnded) {
+        await tx.roomParticipant.updateMany({
+          where: {
+            roomId: room.id
+          },
+          data: {
+            ready: false
+          }
+        });
+
+        await tx.game.delete({
+          where: {
+            id: game.id
+          }
+        });
+      }
+
       return {
         status: "applied",
         roomId: room.id,
         gameId: game.id,
+        gameStatus: gameEnded ? "not_started" : "started",
         stateVersion: nextStateVersion,
         lastAppliedEventSeq: nextLastAppliedEventSeq,
         pendingChoice: toPersistedPendingChoice(applied.pendingChoice),
@@ -387,9 +410,7 @@ export async function applyGameplayCommandInDatabase(
     return result;
   } catch (error) {
     if (error instanceof ForbiddenGameplayCommandError) {
-      return {
-        status: "forbidden"
-      };
+      return toInvalidCommandResult(error);
     }
 
     return toInvalidCommandResult(error);

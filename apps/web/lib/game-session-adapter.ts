@@ -140,6 +140,19 @@ export function createGameSessionAdapter({
   }
 
   function applyLobbyProjection(snapshot: RoomLobbySnapshot) {
+    if (snapshot.gameStatus !== "started" || snapshot.gameId === null) {
+      latestAppliedVersion = null;
+      updateViewModel({
+        participants: snapshot.participants,
+        gameId: null,
+        gameStatus: snapshot.gameStatus,
+        pendingChoice: null,
+        lastEventType: null
+      });
+      setGameView(null);
+      return;
+    }
+
     updateViewModel({
       participants: snapshot.participants,
       gameId: snapshot.gameId,

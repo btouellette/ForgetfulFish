@@ -1001,8 +1001,11 @@ describe("server room routes", () => {
       }
     });
 
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({ error: "forbidden" });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: "invalid_command",
+      message: "command can only be submitted by player with priority"
+    });
   });
 
   it("rejects declare-attackers outside declare-attackers step", async () => {
@@ -1020,8 +1023,12 @@ describe("server room routes", () => {
       }
     });
 
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({ error: "forbidden" });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: "invalid_command",
+      message:
+        "declare-attackers command requires active player priority during declare attackers step"
+    });
   });
 
   it("rejects declare-blockers when submitted by active player", async () => {
@@ -1051,11 +1058,15 @@ describe("server room routes", () => {
       }
     });
 
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({ error: "forbidden" });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: "invalid_command",
+      message:
+        "declare-blockers command requires non-active player priority during declare blockers step"
+    });
   });
 
-  it("applies concede for the authenticated actor even without priority", async () => {
+  it("applies concede for the authenticated actor even without priority and returns room to lobby", async () => {
     const roomStore = createInMemoryRoomStore();
     const { roomId, gameId } = await startGameForTwoPlayers(roomStore);
 
@@ -1080,9 +1091,28 @@ describe("server room routes", () => {
     });
 
     const room = roomStore.inspectRoom(roomId);
-    expect(room?.gameState?.players[1]?.id).toBe("player-2");
-    expect(room?.gameState?.players[1]?.hasLost).toBe(true);
-    expect(room?.gameEvents[1]?.eventType).toBe("PLAYER_LOST");
+    expect(room?.gameId).toBeNull();
+    expect(room?.gameState).toBeNull();
+    expect(room?.stateVersion).toBeNull();
+    expect(room?.lastAppliedEventSeq).toBeNull();
+    expect(room?.participants.get("P1")?.ready).toBe(false);
+    expect(room?.participants.get("P2")?.ready).toBe(false);
+
+    const lobbyResponse = await injectAs(roomStore, "owner-1", {
+      method: "GET",
+      url: `/api/rooms/${roomId}`
+    });
+
+    expect(lobbyResponse.statusCode).toBe(200);
+    expect(lobbyResponse.json()).toMatchObject({
+      roomId,
+      gameId: null,
+      gameStatus: "not_started",
+      participants: [
+        { userId: "owner-1", seat: "P1", ready: false },
+        { userId: "player-2", seat: "P2", ready: false }
+      ]
+    });
   });
 
   it("rejects make-choice from participant who is not pending choice player", async () => {
@@ -1110,8 +1140,11 @@ describe("server room routes", () => {
       }
     });
 
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toEqual({ error: "forbidden" });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toEqual({
+      error: "invalid_command",
+      message: "choice command can only be submitted by pending choice player"
+    });
   });
 
   it("returns 409 when room store reports command conflict", async () => {

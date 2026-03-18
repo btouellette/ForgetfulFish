@@ -410,9 +410,23 @@ describe("createGameStore", () => {
 
     await expect(store.getState().passPriority()).rejects.toThrow("conflict");
 
-    expect(store.getState().error).toBe(
-      "Command was rejected. Wait for the next state refresh, then try again."
-    );
+    expect(store.getState().error).toBe("That action is not legal right now.");
+  });
+
+  it("keeps active gameplay lifecycle on invalid command responses", async () => {
+    const store = createGameStore();
+
+    store.getState().applyConnectionStatus("connected");
+    store.getState().applyViewModel(createViewModel({ gameStatus: "started", gameId: "game-a" }));
+    store.getState().attachAdapter({
+      fetchGameState: vi.fn().mockResolvedValue(createGameView()),
+      submitGameplayCommand: vi.fn().mockRejectedValue(new ServerApiError(409, "invalid"))
+    });
+
+    await expect(store.getState().playLand("land-1")).rejects.toThrow("invalid");
+
+    expect(store.getState().error).toBe("That action is not legal right now.");
+    expect(store.getState().lifecycleState).toBe("game_active");
   });
 
   it("shows server-issue message for 5xx command failures", async () => {
