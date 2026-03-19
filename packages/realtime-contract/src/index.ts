@@ -240,6 +240,7 @@ export const gameplayCommandResponseSchema = z
   .object({
     roomId: z.string().uuid(),
     gameId: z.string().uuid(),
+    gameStatus: z.enum(["not_started", "started"]),
     stateVersion: z.number().int().min(1),
     lastAppliedEventSeq: z.number().int().min(0),
     pendingChoice: gameplayPendingChoiceSchema.nullable(),

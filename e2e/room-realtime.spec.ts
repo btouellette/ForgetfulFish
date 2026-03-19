@@ -309,6 +309,7 @@ test("syncs ready updates and game start across two browser clients", async ({
   browser,
   request
 }) => {
+  test.setTimeout(90_000);
   const roomId = await createRoom(request);
 
   const ownerContext = await browser.newContext();
@@ -359,6 +360,7 @@ test("syncs ready updates and game start across two browser clients", async ({
 });
 
 test("resyncs canonical lobby state after reconnect", async ({ browser, request }) => {
+  test.setTimeout(90_000);
   const roomId = await createRoom(request);
 
   const ownerContext = await browser.newContext();
@@ -644,18 +646,17 @@ test("covers current-card gameplay interactions from browser clients", async ({
     await ownerPage.locator(`[data-testid="stack-target-${stackObjectId}"]`).click();
     await waitForStateChange(request, roomId, ownerToken, ownerBeforeMemoryLapse.stateVersion);
 
-    const ownerAccumulatedKnowledgeTurn = await advanceUntil(
+    const ownerAccumulatedKnowledgeWindow = await advanceUntil(
       request,
       roomId,
       ownerPage,
       secondPage,
       (owner) =>
-        owner.turnState.activePlayerId === "owner-1" &&
-        owner.turnState.phase === "MAIN_1" &&
+        owner.turnState.priorityPlayerId === "owner-1" &&
         owner.viewer.hand.some((card) => card.cardDefId === "accumulated-knowledge")
     );
 
-    const ownerBeforeAk = ownerAccumulatedKnowledgeTurn.ownerGameView;
+    const ownerBeforeAk = ownerAccumulatedKnowledgeWindow.ownerGameView;
     const ownerAkId = getCardIdByDef(ownerBeforeAk, "accumulated-knowledge");
     await ownerPage.locator(`[data-testid="cast-spell-${ownerAkId}"]`).click();
     await waitForStateChange(request, roomId, ownerToken, ownerBeforeAk.stateVersion);

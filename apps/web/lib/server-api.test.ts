@@ -73,7 +73,8 @@ describe("server API request errors", () => {
       expect(error).toBeInstanceOf(ServerApiError);
       expect(error).toMatchObject({
         status: 409,
-        message: "server request failed (409)"
+        message: "server request failed (409)",
+        code: "room_full"
       });
     } finally {
       fetchSpy.mockRestore();
@@ -88,6 +89,7 @@ describe("submitGameplayCommand", () => {
         JSON.stringify({
           roomId: "00000000-0000-4000-8000-000000000001",
           gameId: "10000000-0000-4000-8000-000000000001",
+          gameStatus: "started",
           stateVersion: 2,
           lastAppliedEventSeq: 1,
           pendingChoice: null,

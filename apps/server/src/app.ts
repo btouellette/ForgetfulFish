@@ -642,6 +642,7 @@ export function buildServer({
       const responsePayload = gameplayCommandRouteResponseSchema.parse({
         roomId: applyResult.roomId,
         gameId: applyResult.gameId,
+        gameStatus: applyResult.gameStatus,
         stateVersion: applyResult.stateVersion,
         lastAppliedEventSeq: applyResult.lastAppliedEventSeq,
         pendingChoice: applyResult.pendingChoice,

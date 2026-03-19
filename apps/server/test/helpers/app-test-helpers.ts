@@ -12,6 +12,7 @@ import type { GameplayCommand } from "@forgetful-fish/realtime-contract";
 
 import { buildServer } from "../../src/app";
 import { createGameplayDeckPreset } from "../../src/room-store/deck-preset";
+import { OPENING_DRAW_COUNT } from "../../src/room-store/start-game";
 
 export function createInMemoryRoomStore() {
   type RoomState = {
@@ -295,7 +296,7 @@ export function createInMemoryRoomStore() {
             playerOne: createGameplayDeckPreset(),
             playerTwo: createGameplayDeckPreset()
           },
-          openingDrawCount: 7
+          openingDrawCount: OPENING_DRAW_COUNT
         }
       );
       room.gameState = gameState;

@@ -145,7 +145,7 @@ export function createGameSessionAdapter({
       updateViewModel({
         participants: snapshot.participants,
         gameId: null,
-        gameStatus: snapshot.gameStatus,
+        gameStatus: "not_started",
         pendingChoice: null,
         lastEventType: null
       });
@@ -162,9 +162,22 @@ export function createGameSessionAdapter({
 
   function applyGameplayUpdate(payload: GameplayCommandResponse) {
     const latestEvent = payload.emittedEvents[payload.emittedEvents.length - 1];
+
+    if (payload.gameStatus !== "started") {
+      latestAppliedVersion = null;
+      updateViewModel({
+        gameId: null,
+        gameStatus: "not_started",
+        pendingChoice: null,
+        lastEventType: latestEvent?.eventType ?? null
+      });
+      setGameView(null);
+      return;
+    }
+
     updateViewModel({
       gameId: payload.gameId,
-      gameStatus: "started",
+      gameStatus: payload.gameStatus,
       pendingChoice: payload.pendingChoice,
       lastEventType: latestEvent?.eventType ?? null
     });
@@ -322,6 +335,10 @@ export function createGameSessionAdapter({
       const response = await api.submitGameplayCommand(roomId, command);
       if (trackAppliedVersion(response)) {
         applyGameplayUpdate(response);
+
+        if (response.gameStatus === "started") {
+          refreshGameState();
+        }
       }
       return response;
     },

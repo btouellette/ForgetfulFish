@@ -56,6 +56,10 @@ function toErrorMessage(error: unknown) {
 function toCommandErrorMessage(error: unknown) {
   if (error instanceof ServerApiError) {
     if (error.status === 409) {
+      if (error.code === "conflict") {
+        return "The game state changed. Wait for refresh, then try again.";
+      }
+
       return "That action is not legal right now.";
     }
 
@@ -74,7 +78,11 @@ function toCommandErrorMessage(error: unknown) {
 }
 
 function commandErrorAffectsLifecycle(error: unknown) {
-  return !(error instanceof ServerApiError && error.status === 409);
+  return !(
+    error instanceof ServerApiError &&
+    error.status === 409 &&
+    error.code === "invalid_command"
+  );
 }
 
 function createLobbySnapshot(viewModel: GameSessionViewModel) {

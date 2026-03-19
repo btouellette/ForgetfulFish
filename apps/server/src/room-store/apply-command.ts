@@ -409,10 +409,6 @@ export async function applyGameplayCommandInDatabase(
 
     return result;
   } catch (error) {
-    if (error instanceof ForbiddenGameplayCommandError) {
-      return toInvalidCommandResult(error);
-    }
-
     return toInvalidCommandResult(error);
   }
 }

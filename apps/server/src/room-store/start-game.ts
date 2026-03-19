@@ -8,6 +8,8 @@ import { toPersistedGameState } from "./state-persistence";
 import type { StartGameResult } from "./types";
 import { compareSeats, isUniqueConstraintError, normalizeRoomSeat } from "./utils";
 
+export const OPENING_DRAW_COUNT = 7;
+
 export async function startGameInDatabase(
   roomId: string,
   userId: string
@@ -93,7 +95,7 @@ export async function startGameInDatabase(
         playerOne: createGameplayDeckPreset(),
         playerTwo: createGameplayDeckPreset()
       },
-      openingDrawCount: 7
+      openingDrawCount: OPENING_DRAW_COUNT
     }
   );
   const serializedInitialState = toPersistedGameState(initialState);

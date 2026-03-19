@@ -15,6 +15,7 @@ import {
   injectAs
 } from "./helpers/app-test-helpers";
 import { createGameplayDeckPreset } from "../src/room-store/deck-preset";
+import { OPENING_DRAW_COUNT } from "../src/room-store/start-game";
 
 describe("server room routes", () => {
   async function startGameForTwoPlayers(roomStore: ReturnType<typeof createInMemoryRoomStore>) {
@@ -553,7 +554,7 @@ describe("server room routes", () => {
         playerOne: createGameplayDeckPreset(),
         playerTwo: createGameplayDeckPreset()
       },
-      openingDrawCount: 7
+      openingDrawCount: OPENING_DRAW_COUNT
     });
 
     const room = roomStore.inspectRoom(roomId);
@@ -584,95 +585,94 @@ describe("server room routes", () => {
     });
   });
 
-  it("persists a 7-card opening hand in the database-backed start flow", async () => {
-    if (!process.env.DATABASE_URL) {
-      return;
-    }
+  it.skipIf(!process.env.DATABASE_URL)(
+    "persists a 7-card opening hand in the database-backed start flow",
+    async () => {
+      const roomId = randomUUID();
+      const ownerId = `db-owner-${roomId}`;
+      const playerId = `db-player-${roomId}`;
+      const ownerEmail = `${ownerId}@example.com`;
+      const playerEmail = `${playerId}@example.com`;
 
-    const roomId = randomUUID();
-    const ownerId = `db-owner-${roomId}`;
-    const playerId = `db-player-${roomId}`;
-    const ownerEmail = `${ownerId}@example.com`;
-    const playerEmail = `${playerId}@example.com`;
-
-    await prisma.user.create({
-      data: {
-        id: ownerId,
-        email: ownerEmail
-      }
-    });
-    await prisma.user.create({
-      data: {
-        id: playerId,
-        email: playerEmail
-      }
-    });
-    await prisma.room.create({
-      data: {
-        id: roomId,
-        participants: {
-          create: [
-            {
-              userId: ownerId,
-              seat: "P1",
-              ready: true
-            },
-            {
-              userId: playerId,
-              seat: "P2",
-              ready: true
-            }
-          ]
-        }
-      }
-    });
-
-    const app = buildServer({
-      sessionLookup: buildAuthedSessionLookup(ownerId)
-    });
-
-    try {
-      const startResponse = await app.inject({
-        method: "POST",
-        url: `/api/rooms/${roomId}/start`,
-        headers: {
-          cookie: "authjs.session-token=valid"
-        }
+      const app = buildServer({
+        sessionLookup: buildAuthedSessionLookup(ownerId)
       });
 
-      expect(startResponse.statusCode).toBe(200);
-
-      const gameResponse = await app.inject({
-        method: "GET",
-        url: `/api/rooms/${roomId}/game`,
-        headers: {
-          cookie: "authjs.session-token=valid"
-        }
-      });
-
-      expect(gameResponse.statusCode).toBe(200);
-
-      const parsed = playerGameViewSchema.parse(gameResponse.json());
-
-      expect(parsed.viewer.hand).toHaveLength(7);
-      expect(parsed.viewer.handCount).toBe(7);
-      expect(parsed.opponent.handCount).toBe(7);
-    } finally {
-      await app.close();
-      await prisma.room.deleteMany({
-        where: {
-          id: roomId
-        }
-      });
-      await prisma.user.deleteMany({
-        where: {
-          id: {
-            in: [ownerId, playerId]
+      try {
+        await prisma.user.create({
+          data: {
+            id: ownerId,
+            email: ownerEmail
           }
-        }
-      });
+        });
+        await prisma.user.create({
+          data: {
+            id: playerId,
+            email: playerEmail
+          }
+        });
+        await prisma.room.create({
+          data: {
+            id: roomId,
+            participants: {
+              create: [
+                {
+                  userId: ownerId,
+                  seat: "P1",
+                  ready: true
+                },
+                {
+                  userId: playerId,
+                  seat: "P2",
+                  ready: true
+                }
+              ]
+            }
+          }
+        });
+
+        const startResponse = await app.inject({
+          method: "POST",
+          url: `/api/rooms/${roomId}/start`,
+          headers: {
+            cookie: "authjs.session-token=valid"
+          }
+        });
+
+        expect(startResponse.statusCode).toBe(200);
+
+        const gameResponse = await app.inject({
+          method: "GET",
+          url: `/api/rooms/${roomId}/game`,
+          headers: {
+            cookie: "authjs.session-token=valid"
+          }
+        });
+
+        expect(gameResponse.statusCode).toBe(200);
+
+        const parsed = playerGameViewSchema.parse(gameResponse.json());
+
+        expect(parsed.viewer.hand).toHaveLength(7);
+        expect(parsed.viewer.handCount).toBe(7);
+        expect(parsed.opponent.handCount).toBe(7);
+      } finally {
+        await app.close();
+        await prisma.room.deleteMany({
+          where: {
+            id: roomId
+          }
+        });
+        await prisma.user.deleteMany({
+          where: {
+            id: {
+              in: [ownerId, playerId]
+            }
+          }
+        });
+      }
     }
-  });
+  );
 
   it("completes end-to-end lobby flow through game start", async () => {
     const roomStore = createInMemoryRoomStore();
@@ -963,6 +963,7 @@ describe("server room routes", () => {
     expect(response.json()).toEqual({
       roomId,
       gameId: startResponse.json().gameId,
+      gameStatus: "started",
       stateVersion: 2,
       lastAppliedEventSeq: 1,
       pendingChoice: null,
@@ -1084,6 +1085,7 @@ describe("server room routes", () => {
     expect(response.json()).toEqual({
       roomId,
       gameId,
+      gameStatus: "not_started",
       stateVersion: 2,
       lastAppliedEventSeq: 1,
       pendingChoice: null,
