@@ -105,6 +105,25 @@ describe("GameplayView", () => {
   let container: HTMLDivElement;
   let root: Root;
 
+  function installLocalStorageMock(overrides: Partial<Storage> = {}) {
+    const storageMock = {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+      key: vi.fn(() => null),
+      length: 0,
+      ...overrides
+    } satisfies Storage;
+
+    Object.defineProperty(window, "localStorage", {
+      value: storageMock,
+      configurable: true
+    });
+
+    return storageMock;
+  }
+
   afterEach(() => {
     act(() => {
       root?.unmount();
@@ -298,5 +317,348 @@ describe("GameplayView", () => {
 
     expect(onPlayLand).not.toHaveBeenCalled();
     expect(onCastSpell).not.toHaveBeenCalled();
+  });
+
+  it("auto-passes once per state version when enabled and no apparent actions exist", () => {
+    const onPassPriority = vi.fn();
+    installLocalStorageMock();
+
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class MockResizeObserver {
+        observe() {}
+        disconnect() {}
+      }
+    );
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      setTransform: vi.fn()
+    } as unknown as CanvasRenderingContext2D);
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    const initialGameView = createGameView({
+      stateVersion: 7,
+      turnState: {
+        phase: "MAIN_1",
+        activePlayerId: "player-1",
+        priorityPlayerId: "player-1"
+      },
+      viewer: {
+        id: "player-1",
+        life: 20,
+        manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+        hand: [],
+        handCount: 0
+      },
+      objectPool: {},
+      stack: []
+    });
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={initialGameView}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={onPassPriority}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const checkbox = container.querySelector(
+      '[data-testid="auto-pass-checkbox"]'
+    ) as HTMLInputElement | null;
+
+    act(() => {
+      checkbox?.click();
+    });
+
+    expect(onPassPriority).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={initialGameView}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={onPassPriority}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    expect(onPassPriority).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={{ ...initialGameView, stateVersion: 8 }}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={onPassPriority}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    expect(onPassPriority).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not auto-pass when an Island would enable a visible spell", () => {
+    const onPassPriority = vi.fn();
+    installLocalStorageMock();
+
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class MockResizeObserver {
+        observe() {}
+        disconnect() {}
+      }
+    );
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      setTransform: vi.fn()
+    } as unknown as CanvasRenderingContext2D);
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    const gameView = createGameView({
+      turnState: {
+        phase: "MAIN_1",
+        activePlayerId: "player-1",
+        priorityPlayerId: "player-1"
+      },
+      viewer: {
+        id: "player-1",
+        life: 20,
+        manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+        hand: [
+          {
+            id: "obj-2",
+            zcc: 0,
+            cardDefId: "brainstorm",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          }
+        ],
+        handCount: 1
+      },
+      objectPool: {
+        island: {
+          id: "island",
+          zcc: 0,
+          cardDefId: "island",
+          owner: "player-1",
+          controller: "player-1",
+          counters: {},
+          damage: 0,
+          tapped: false,
+          summoningSick: false,
+          attachments: [],
+          zone: { kind: "battlefield", scope: "shared" }
+        }
+      },
+      stack: []
+    });
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={gameView}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={onPassPriority}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const checkbox = container.querySelector(
+      '[data-testid="auto-pass-checkbox"]'
+    ) as HTMLInputElement | null;
+
+    act(() => {
+      checkbox?.click();
+    });
+
+    expect(onPassPriority).not.toHaveBeenCalled();
+  });
+
+  it("restores the saved auto-pass preference from localStorage on mount", () => {
+    installLocalStorageMock({ getItem: vi.fn(() => "true") });
+
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class MockResizeObserver {
+        observe() {}
+        disconnect() {}
+      }
+    );
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      setTransform: vi.fn()
+    } as unknown as CanvasRenderingContext2D);
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={createGameView({
+            turnState: {
+              phase: "MAIN_1",
+              activePlayerId: "player-1",
+              priorityPlayerId: "player-1"
+            },
+            viewer: {
+              id: "player-1",
+              life: 20,
+              manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+              hand: [],
+              handCount: 0
+            },
+            objectPool: {},
+            stack: []
+          })}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={vi.fn()}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const checkbox = container.querySelector(
+      '[data-testid="auto-pass-checkbox"]'
+    ) as HTMLInputElement | null;
+
+    expect(checkbox?.checked).toBe(true);
+  });
+
+  it("persists the auto-pass preference when the checkbox is toggled", () => {
+    const localStorageMock = installLocalStorageMock();
+
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class MockResizeObserver {
+        observe() {}
+        disconnect() {}
+      }
+    );
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      setTransform: vi.fn()
+    } as unknown as CanvasRenderingContext2D);
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={createGameView({
+            turnState: {
+              phase: "MAIN_1",
+              activePlayerId: "player-1",
+              priorityPlayerId: "player-1"
+            },
+            viewer: {
+              id: "player-1",
+              life: 20,
+              manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+              hand: [],
+              handCount: 0
+            },
+            objectPool: {},
+            stack: []
+          })}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={vi.fn()}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const checkbox = container.querySelector(
+      '[data-testid="auto-pass-checkbox"]'
+    ) as HTMLInputElement | null;
+
+    act(() => {
+      checkbox?.click();
+    });
+
+    expect(localStorageMock.setItem).toHaveBeenCalledWith("ff:autoPassEnabled", "true");
   });
 });

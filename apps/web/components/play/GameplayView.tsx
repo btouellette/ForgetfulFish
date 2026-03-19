@@ -8,6 +8,7 @@ import type {
   PlayerGameView
 } from "@forgetful-fish/realtime-contract";
 
+import { shouldAutoPass } from "../../lib/auto-pass";
 import { renderBattlefield } from "../../lib/renderer/battlefield-renderer";
 import { CommandPanel } from "./CommandPanel";
 import { EventRail } from "./EventRail";
@@ -17,6 +18,8 @@ import { StatusRail } from "./StatusRail";
 import { ZonesSummaryPanel } from "./ZonesSummaryPanel";
 import { CanvasHost } from "./renderer/CanvasHost";
 import styles from "./PlayRoom.module.css";
+
+const autoPassPreferenceStorageKey = "ff:autoPassEnabled";
 
 type GameplayViewProps = {
   gameView: PlayerGameView | null;
@@ -52,6 +55,9 @@ export function GameplayView({
   const rafRef = useRef<number | null>(null);
   const [canvasVersion, setCanvasVersion] = useState(0);
   const [targetingCardId, setTargetingCardId] = useState<string | null>(null);
+  const [autoPassEnabled, setAutoPassEnabled] = useState(false);
+  const lastAutoPassedStateVersionRef = useRef<number | null>(null);
+  const skipNextAutoPassPersistRef = useRef(true);
 
   const handleCanvasResize = useCallback(() => {
     setCanvasVersion((version) => version + 1);
@@ -138,6 +144,59 @@ export function GameplayView({
     ? (gameView?.objectPool[activeTargetingCardId]?.cardDefId ?? activeTargetingCardId)
     : null;
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const savedPreference = window.localStorage.getItem(autoPassPreferenceStorageKey);
+      if (savedPreference === "true") {
+        setAutoPassEnabled(true);
+      }
+    } catch {
+      return;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (skipNextAutoPassPersistRef.current) {
+      skipNextAutoPassPersistRef.current = false;
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(autoPassPreferenceStorageKey, autoPassEnabled ? "true" : "false");
+    } catch {
+      return;
+    }
+  }, [autoPassEnabled]);
+
+  useEffect(() => {
+    if (!gameView) {
+      return;
+    }
+
+    const viewerHasPriority = gameView.turnState.priorityPlayerId === gameView.viewerPlayerId;
+    if (
+      !autoPassEnabled ||
+      !viewerHasPriority ||
+      isSubmittingCommand ||
+      pendingChoice !== null ||
+      lastAutoPassedStateVersionRef.current === gameView.stateVersion ||
+      !shouldAutoPass(gameView)
+    ) {
+      return;
+    }
+
+    lastAutoPassedStateVersionRef.current = gameView.stateVersion;
+    onPassPriority();
+  }, [autoPassEnabled, gameView, isSubmittingCommand, onPassPriority, pendingChoice]);
+
   if (!gameView) {
     return (
       <section className={styles.gameplayView} data-testid="game-active-placeholder">
@@ -180,10 +239,13 @@ export function GameplayView({
         />
         <CommandPanel
           viewerPlayerId={gameView.viewerPlayerId}
+          gameView={gameView}
           pendingChoice={pendingChoice}
           viewerHasPriority={viewerHasPriority}
           isSubmitting={isSubmittingCommand}
           error={error}
+          autoPassEnabled={autoPassEnabled}
+          onAutoPassEnabledChange={setAutoPassEnabled}
           onPassPriority={onPassPriority}
           onConcede={onConcede}
           onMakeChoice={onMakeChoice}

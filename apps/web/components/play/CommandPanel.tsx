@@ -1,6 +1,11 @@
 import React from "react";
-import type { GameplayCommand, GameplayPendingChoice } from "@forgetful-fish/realtime-contract";
+import type {
+  GameplayCommand,
+  GameplayPendingChoice,
+  PlayerGameView
+} from "@forgetful-fish/realtime-contract";
 
+import { assessAutoPass, shouldAutoPass } from "../../lib/auto-pass";
 import { parsePendingChoice } from "../../lib/pending-choice";
 
 import styles from "./CommandPanel.module.css";
@@ -9,10 +14,13 @@ type MakeChoicePayload = Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payl
 
 type CommandPanelProps = {
   viewerPlayerId: string;
+  gameView?: PlayerGameView | null;
   pendingChoice: GameplayPendingChoice | null;
   viewerHasPriority: boolean;
   isSubmitting: boolean;
   error: string | null;
+  autoPassEnabled: boolean;
+  onAutoPassEnabledChange: (enabled: boolean) => void;
   onPassPriority: () => void;
   onConcede: () => void;
   onMakeChoice: (payload: MakeChoicePayload) => void;
@@ -21,10 +29,13 @@ type CommandPanelProps = {
 
 export function CommandPanel({
   viewerPlayerId,
+  gameView,
   pendingChoice,
   viewerHasPriority,
   isSubmitting,
   error,
+  autoPassEnabled,
+  onAutoPassEnabledChange,
   onPassPriority,
   onConcede,
   onMakeChoice,
@@ -118,6 +129,26 @@ export function CommandPanel({
     }
 
     onPassPriority();
+  }
+
+  let autoPassHint: string | null = null;
+  if (autoPassEnabled) {
+    if (!gameView) {
+      autoPassHint = "Auto-pass is enabled and waiting for the next visible game state.";
+    } else if (pendingChoice !== null) {
+      autoPassHint = "Auto-pass is enabled but waiting for the current choice to finish.";
+    } else if (!viewerHasPriority) {
+      autoPassHint = "Auto-pass is enabled and waiting until you regain priority.";
+    } else if (isSubmitting) {
+      autoPassHint = "Auto-pass is enabled but waiting for the current action to finish.";
+    } else if (shouldAutoPass(gameView)) {
+      autoPassHint = "Auto-pass will pass priority automatically on this state.";
+    } else {
+      const autoPassAssessment = assessAutoPass(gameView);
+      autoPassHint = autoPassAssessment.hasApparentAction
+        ? "Auto-pass is holding because you have an apparent action available."
+        : "Auto-pass is holding because the client cannot verify every action safely.";
+    }
   }
 
   return (
@@ -273,6 +304,19 @@ export function CommandPanel({
           )}
         </div>
       ) : null}
+      <label className={styles.choiceOption}>
+        <input
+          type="checkbox"
+          data-testid="auto-pass-checkbox"
+          checked={autoPassEnabled}
+          onChange={(event) => onAutoPassEnabledChange(event.currentTarget.checked)}
+        />
+        <span>
+          Auto-pass priority when no apparent actions
+          {gameView ? ` (state ${gameView.stateVersion})` : ""}
+        </span>
+      </label>
+      {autoPassHint ? <p className={styles.autoPassHint}>{autoPassHint}</p> : null}
       <div className={styles.actionRow}>
         <button
           type="button"
