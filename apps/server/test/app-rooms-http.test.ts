@@ -963,7 +963,6 @@ describe("server room routes", () => {
     expect(response.json()).toEqual({
       roomId,
       gameId: startResponse.json().gameId,
-      gameStatus: "started",
       stateVersion: 2,
       lastAppliedEventSeq: 1,
       pendingChoice: null,
@@ -1085,7 +1084,6 @@ describe("server room routes", () => {
     expect(response.json()).toEqual({
       roomId,
       gameId,
-      gameStatus: "not_started",
       stateVersion: 2,
       lastAppliedEventSeq: 1,
       pendingChoice: null,
