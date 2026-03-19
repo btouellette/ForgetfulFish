@@ -5,7 +5,7 @@ import type {
   PlayerGameView
 } from "@forgetful-fish/realtime-contract";
 
-import { assessAutoPass, shouldAutoPass } from "../../lib/auto-pass";
+import { shouldAutoPass } from "../../lib/auto-pass";
 import { parsePendingChoice } from "../../lib/pending-choice";
 
 import styles from "./CommandPanel.module.css";
@@ -144,10 +144,7 @@ export function CommandPanel({
     } else if (shouldAutoPass(gameView)) {
       autoPassHint = "Auto-pass will pass priority automatically on this state.";
     } else {
-      const autoPassAssessment = assessAutoPass(gameView);
-      autoPassHint = autoPassAssessment.hasApparentAction
-        ? "Auto-pass is holding because you have an apparent action available."
-        : "Auto-pass is holding because the client cannot verify every action safely.";
+      autoPassHint = "Auto-pass is holding because you have an apparent action available.";
     }
   }
 

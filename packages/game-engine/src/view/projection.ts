@@ -132,7 +132,7 @@ function addManaPool(base: Readonly<ManaPool>, mana: Readonly<ManaAmount>): Mana
     black: base.black + (mana.black ?? 0),
     red: base.red + (mana.red ?? 0),
     green: base.green + (mana.green ?? 0),
-    colorless: base.colorless + (mana.colorless ?? 0)
+    colorless: base.colorless + (mana.colorless ?? 0) + (mana.generic ?? 0)
   };
 }
 
@@ -288,7 +288,6 @@ function createLegalActionsView(
   state: Readonly<GameState>,
   viewerPlayerId: PlayerId
 ): LegalActionsView {
-  const legalCommands = getLegalCommands(state);
   const choice = state.pendingChoice?.forPlayer === viewerPlayerId ? state.pendingChoice : null;
   const legalActions: LegalActionsView = {
     passPriority: null,
@@ -303,6 +302,8 @@ function createLegalActionsView(
   if (!viewerHasPriority && choice === null) {
     return legalActions;
   }
+
+  const legalCommands = getLegalCommands(state);
 
   const manaAbilityOptions: ManaAbilityOption[] = [];
   for (const command of legalCommands) {
