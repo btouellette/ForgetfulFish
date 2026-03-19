@@ -22,6 +22,18 @@ import styles from "./PlayRoom.module.css";
 
 const autoPassPreferenceStorageKey = "ff:autoPassEnabled";
 
+function getInitialAutoPassPreference(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    return window.localStorage.getItem(autoPassPreferenceStorageKey) === "true";
+  } catch {
+    return false;
+  }
+}
+
 type GameplayViewProps = {
   gameView: PlayerGameView | null;
   recentEvents: Array<{ seq: number; eventType: string }>;
@@ -58,7 +70,7 @@ export function GameplayView({
   const rafRef = useRef<number | null>(null);
   const [canvasVersion, setCanvasVersion] = useState(0);
   const [targetingCardId, setTargetingCardId] = useState<string | null>(null);
-  const [autoPassEnabled, setAutoPassEnabled] = useState(false);
+  const [autoPassEnabled, setAutoPassEnabled] = useState(getInitialAutoPassPreference);
   const lastAutoPassedStateVersionRef = useRef<number | null>(null);
   const skipNextAutoPassPersistRef = useRef(true);
 
@@ -146,21 +158,6 @@ export function GameplayView({
   const targetingCardLabel = activeTargetingCardId
     ? (gameView?.objectPool[activeTargetingCardId]?.cardDefId ?? activeTargetingCardId)
     : null;
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    try {
-      const savedPreference = window.localStorage.getItem(autoPassPreferenceStorageKey);
-      if (savedPreference === "true") {
-        setAutoPassEnabled(true);
-      }
-    } catch {
-      return;
-    }
-  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
