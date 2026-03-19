@@ -19,7 +19,8 @@ function hasNonPassAction(gameView: PlayerGameView): boolean {
   return (
     gameView.legalActions.choice !== null ||
     hasActionEntries(gameView.legalActions.hand) ||
-    hasBlockingBattlefieldAction(gameView)
+    hasBlockingBattlefieldAction(gameView) ||
+    gameView.legalActions.hasOtherBlockingActions
   );
 }
 

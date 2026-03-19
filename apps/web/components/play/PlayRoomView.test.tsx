@@ -85,7 +85,8 @@ describe("PlayRoomView", () => {
             concede: { command: { type: "CONCEDE" } },
             choice: null,
             hand: {},
-            battlefield: {}
+            battlefield: {},
+            hasOtherBlockingActions: false
           }
         }}
         recentEvents={[]}

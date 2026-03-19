@@ -14,7 +14,8 @@ const legalActionsFixture = {
   concede: { command: { type: "CONCEDE" as const } },
   choice: null,
   hand: {},
-  battlefield: {}
+  battlefield: {},
+  hasOtherBlockingActions: false
 };
 
 describe("realtime contract schemas", () => {

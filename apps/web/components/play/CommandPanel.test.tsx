@@ -53,7 +53,8 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
       concede: { command: { type: "CONCEDE" } },
       choice: null,
       hand: {},
-      battlefield: {}
+      battlefield: {},
+      hasOtherBlockingActions: false
     }
   };
 
@@ -578,7 +579,8 @@ describe("CommandPanel", () => {
                 }
               ]
             },
-            battlefield: {}
+            battlefield: {},
+            hasOtherBlockingActions: false
           }
         })}
         pendingChoice={null}
@@ -614,7 +616,8 @@ describe("CommandPanel", () => {
                 }
               ]
             },
-            battlefield: {}
+            battlefield: {},
+            hasOtherBlockingActions: false
           }
         })}
         pendingChoice={null}

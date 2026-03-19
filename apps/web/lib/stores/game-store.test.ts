@@ -53,7 +53,8 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
       concede: { command: { type: "CONCEDE" } },
       choice: null,
       hand: {},
-      battlefield: {}
+      battlefield: {},
+      hasOtherBlockingActions: false
     }
   };
 

@@ -99,7 +99,8 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
           }
         ]
       },
-      battlefield: {}
+      battlefield: {},
+      hasOtherBlockingActions: false
     }
   };
 
@@ -138,10 +139,7 @@ describe("GameplayView", () => {
       ...overrides
     } satisfies Storage;
 
-    Object.defineProperty(window, "localStorage", {
-      value: storageMock,
-      configurable: true
-    });
+    vi.stubGlobal("localStorage", storageMock);
 
     return storageMock;
   }
@@ -186,7 +184,8 @@ describe("GameplayView", () => {
                   blocksAutoPass: true
                 }
               ]
-            }
+            },
+            hasOtherBlockingActions: false
           },
           objectPool: {
             ...createGameView().objectPool,
@@ -300,7 +299,8 @@ describe("GameplayView", () => {
                     blocksAutoPass: true
                   }
                 ]
-              }
+              },
+              hasOtherBlockingActions: false
             }
           })}
           recentEvents={[]}
@@ -531,7 +531,8 @@ describe("GameplayView", () => {
         concede: { command: { type: "CONCEDE" } },
         choice: null,
         hand: {},
-        battlefield: {}
+        battlefield: {},
+        hasOtherBlockingActions: false
       }
     });
 
@@ -587,6 +588,106 @@ describe("GameplayView", () => {
       root.render(
         <GameplayView
           gameView={{ ...initialGameView, stateVersion: 8 }}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={onPassPriority}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    expect(onPassPriority).toHaveBeenCalledTimes(2);
+  });
+
+  it("resets auto-pass dedupe when state version sequence restarts", () => {
+    const onPassPriority = vi.fn();
+    installLocalStorageMock();
+
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class MockResizeObserver {
+        observe() {}
+        disconnect() {}
+      }
+    );
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      setTransform: vi.fn()
+    } as unknown as CanvasRenderingContext2D);
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    const gameView = createGameView({
+      stateVersion: 5,
+      turnState: {
+        phase: "MAIN_1",
+        activePlayerId: "player-1",
+        priorityPlayerId: "player-1"
+      },
+      viewer: {
+        id: "player-1",
+        life: 20,
+        manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+        hand: [],
+        handCount: 0
+      },
+      objectPool: {},
+      stack: [],
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {},
+        battlefield: {},
+        hasOtherBlockingActions: false
+      }
+    });
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={gameView}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={onPassPriority}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const checkbox = container.querySelector(
+      '[data-testid="auto-pass-checkbox"]'
+    ) as HTMLInputElement | null;
+
+    act(() => {
+      checkbox?.click();
+    });
+
+    expect(onPassPriority).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={{ ...gameView, stateVersion: 1 }}
           recentEvents={[]}
           pendingChoice={null}
           isSubmittingCommand={false}
@@ -686,7 +787,8 @@ describe("GameplayView", () => {
             }
           ]
         },
-        battlefield: {}
+        battlefield: {},
+        hasOtherBlockingActions: false
       }
     });
 
@@ -778,7 +880,8 @@ describe("GameplayView", () => {
         concede: { command: { type: "CONCEDE" } },
         choice: null,
         hand: {},
-        battlefield: {}
+        battlefield: {},
+        hasOtherBlockingActions: false
       }
     });
 
@@ -861,7 +964,8 @@ describe("GameplayView", () => {
               concede: { command: { type: "CONCEDE" } },
               choice: null,
               hand: {},
-              battlefield: {}
+              battlefield: {},
+              hasOtherBlockingActions: false
             }
           })}
           recentEvents={[]}
@@ -932,7 +1036,8 @@ describe("GameplayView", () => {
               concede: { command: { type: "CONCEDE" } },
               choice: null,
               hand: {},
-              battlefield: {}
+              battlefield: {},
+              hasOtherBlockingActions: false
             }
           })}
           recentEvents={[]}

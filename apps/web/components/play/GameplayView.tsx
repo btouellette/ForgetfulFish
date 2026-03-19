@@ -72,6 +72,7 @@ export function GameplayView({
   const [targetingCardId, setTargetingCardId] = useState<string | null>(null);
   const [autoPassEnabled, setAutoPassEnabled] = useState(getInitialAutoPassPreference);
   const lastAutoPassedStateVersionRef = useRef<number | null>(null);
+  const lastSeenStateVersionRef = useRef<number | null>(null);
   const skipNextAutoPassPersistRef = useRef(true);
 
   const handleCanvasResize = useCallback(() => {
@@ -180,6 +181,14 @@ export function GameplayView({
     if (!gameView) {
       return;
     }
+
+    if (
+      lastSeenStateVersionRef.current !== null &&
+      gameView.stateVersion < lastSeenStateVersionRef.current
+    ) {
+      lastAutoPassedStateVersionRef.current = null;
+    }
+    lastSeenStateVersionRef.current = gameView.stateVersion;
 
     const viewerHasPriority = gameView.turnState.priorityPlayerId === gameView.viewerPlayerId;
     if (

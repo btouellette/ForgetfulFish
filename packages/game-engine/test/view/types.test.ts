@@ -75,7 +75,8 @@ describe("view/types", () => {
         concede: { command: { type: "CONCEDE" } },
         choice: null,
         hand: {},
-        battlefield: {}
+        battlefield: {},
+        hasOtherBlockingActions: false
       }
     };
 

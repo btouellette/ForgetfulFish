@@ -15,6 +15,8 @@ import type {
   ZoneView
 } from "./types";
 
+const maxManaSearchStates = 256;
+
 function createRecord<V>(): Record<string, V> {
   return Object.create(null) as Record<string, V>;
 }
@@ -212,11 +214,35 @@ function groupManaAbilityOptions(options: ManaAbilityOption[]) {
 
 function canPotentialManaUnlockBlockingAction(
   state: Readonly<GameState>,
+  legalCommands: readonly Command[],
   manaOptions: ManaAbilityOption[]
 ): boolean {
+  if (manaOptions.length === 0) {
+    return false;
+  }
+
+  if (legalCommands.some((command) => commandBlocksAutoPass(state, command))) {
+    return true;
+  }
+
   const groupedOptions = groupManaAbilityOptions(manaOptions);
+  const upperBoundStates = groupedOptions.reduce(
+    (total, options) => total * (options.length + 1),
+    1
+  );
+
+  if (upperBoundStates > maxManaSearchStates) {
+    return true;
+  }
+
+  let visitedStates = 0;
 
   function dfs(index: number, simulatedState: GameState): boolean {
+    visitedStates += 1;
+    if (visitedStates > maxManaSearchStates) {
+      return true;
+    }
+
     if (
       getLegalCommands(simulatedState).some((command) =>
         commandBlocksAutoPass(simulatedState, command)
@@ -269,7 +295,8 @@ function createLegalActionsView(
     concede: { command: { type: "CONCEDE" } },
     choice,
     hand: createRecord<HandLegalActionView[]>(),
-    battlefield: createRecord<BattlefieldLegalActionView[]>()
+    battlefield: createRecord<BattlefieldLegalActionView[]>(),
+    hasOtherBlockingActions: false
   };
 
   const viewerHasPriority = state.turnState.priorityState.playerWithPriority === viewerPlayerId;
@@ -297,6 +324,7 @@ function createLegalActionsView(
 
   const manaAbilitiesUnlockBlockingAction = canPotentialManaUnlockBlockingAction(
     state,
+    legalCommands,
     manaAbilityOptions
   );
 
@@ -350,6 +378,9 @@ function createLegalActionsView(
         break;
       }
       default:
+        if (commandBlocksAutoPass(state, command)) {
+          legalActions.hasOtherBlockingActions = true;
+        }
         break;
     }
   }

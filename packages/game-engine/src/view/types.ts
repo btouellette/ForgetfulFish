@@ -41,6 +41,7 @@ export type LegalActionsView = {
   choice: PendingChoice | null;
   hand: Record<ObjectId, HandLegalActionView[]>;
   battlefield: Record<ObjectId, BattlefieldLegalActionView[]>;
+  hasOtherBlockingActions: boolean;
 };
 
 export type GameObjectView = Omit<GameObject, "abilities" | "counters"> & {

@@ -34,7 +34,8 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
       concede: { command: { type: "CONCEDE" } },
       choice: null,
       hand: {},
-      battlefield: {}
+      battlefield: {},
+      hasOtherBlockingActions: false
     }
   };
 
@@ -83,7 +84,8 @@ describe("auto-pass helper", () => {
             { type: "PLAY_LAND", command: { type: "PLAY_LAND", cardId: "hand-island" } }
           ]
         },
-        battlefield: {}
+        battlefield: {},
+        hasOtherBlockingActions: false
       }
     });
 
@@ -101,7 +103,8 @@ describe("auto-pass helper", () => {
         concede: { command: { type: "CONCEDE" } },
         choice: null,
         hand: {},
-        battlefield: {}
+        battlefield: {},
+        hasOtherBlockingActions: false
       }
     });
 
@@ -124,7 +127,8 @@ describe("auto-pass helper", () => {
             }
           ]
         },
-        battlefield: {}
+        battlefield: {},
+        hasOtherBlockingActions: false
       }
     });
 
@@ -149,7 +153,8 @@ describe("auto-pass helper", () => {
               blocksAutoPass: true
             }
           ]
-        }
+        },
+        hasOtherBlockingActions: false
       }
     });
 
@@ -174,7 +179,8 @@ describe("auto-pass helper", () => {
               blocksAutoPass: false
             }
           ]
-        }
+        },
+        hasOtherBlockingActions: false
       }
     });
 
@@ -201,10 +207,26 @@ describe("auto-pass helper", () => {
         concede: { command: { type: "CONCEDE" } },
         choice: null,
         hand: {},
-        battlefield: {}
+        battlefield: {},
+        hasOtherBlockingActions: false
       }
     });
 
     expect(shouldAutoPass(gameView)).toBe(true);
+  });
+
+  it("blocks auto-pass when the engine projects other blocking actions", () => {
+    const gameView = createGameView({
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {},
+        battlefield: {},
+        hasOtherBlockingActions: true
+      }
+    });
+
+    expect(shouldAutoPass(gameView)).toBe(false);
   });
 });

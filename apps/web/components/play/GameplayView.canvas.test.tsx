@@ -96,7 +96,8 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
             blocksAutoPass: true
           }
         ]
-      }
+      },
+      hasOtherBlockingActions: false
     }
   };
 

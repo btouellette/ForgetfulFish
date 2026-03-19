@@ -93,7 +93,8 @@ function createGameView(): PlayerGameView {
           }
         ]
       },
-      battlefield: {}
+      battlefield: {},
+      hasOtherBlockingActions: false
     }
   };
 }

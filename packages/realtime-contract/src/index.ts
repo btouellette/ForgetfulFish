@@ -401,7 +401,8 @@ export const legalActionsViewSchema = z
       .strict(),
     choice: gameplayPendingChoiceSchema.nullable(),
     hand: z.record(objectIdSchema, z.array(handLegalActionViewSchema)),
-    battlefield: z.record(objectIdSchema, z.array(battlefieldLegalActionViewSchema))
+    battlefield: z.record(objectIdSchema, z.array(battlefieldLegalActionViewSchema)),
+    hasOtherBlockingActions: z.boolean()
   })
   .strict();
 
