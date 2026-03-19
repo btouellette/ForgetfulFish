@@ -12,6 +12,7 @@ import type { GameplayCommand } from "@forgetful-fish/realtime-contract";
 
 import { buildServer } from "../../src/app";
 import { createGameplayDeckPreset } from "../../src/room-store/deck-preset";
+import { OPENING_DRAW_COUNT } from "../../src/room-store/start-game";
 
 export function createInMemoryRoomStore() {
   type RoomState = {
@@ -295,7 +296,7 @@ export function createInMemoryRoomStore() {
             playerOne: createGameplayDeckPreset(),
             playerTwo: createGameplayDeckPreset()
           },
-          openingDrawCount: 0
+          openingDrawCount: OPENING_DRAW_COUNT
         }
       );
       room.gameState = gameState;
@@ -369,7 +370,10 @@ export function createInMemoryRoomStore() {
       try {
         const parsedCommand = gameplayCommandSchema.parse(command);
 
-        const assertActorCanSubmitCommand = (state: GameState, nextCommand: GameplayCommand) => {
+        const getUnauthorizedGameplayCommandMessage = (
+          state: GameState,
+          nextCommand: GameplayCommand
+        ) => {
           const priorityHolder = state.turnState.priorityState.playerWithPriority;
           const activePlayerId = state.turnState.activePlayerId;
           const currentStep = state.turnState.step;
@@ -379,31 +383,41 @@ export function createInMemoryRoomStore() {
             case "PLAY_LAND":
             case "CAST_SPELL":
             case "ACTIVATE_ABILITY":
-              return priorityHolder === actor.id;
+              return priorityHolder === actor.id
+                ? null
+                : "command can only be submitted by player with priority";
             case "DECLARE_ATTACKERS":
-              return (
-                priorityHolder === actor.id &&
+              return priorityHolder === actor.id &&
                 currentStep === "DECLARE_ATTACKERS" &&
                 actor.id === activePlayerId
-              );
+                ? null
+                : "declare-attackers command requires active player priority during declare attackers step";
             case "DECLARE_BLOCKERS":
-              return (
-                priorityHolder === actor.id &&
+              return priorityHolder === actor.id &&
                 currentStep === "DECLARE_BLOCKERS" &&
                 actor.id !== activePlayerId
-              );
+                ? null
+                : "declare-blockers command requires non-active player priority during declare blockers step";
             case "MAKE_CHOICE":
-              return state.pendingChoice !== null && state.pendingChoice.forPlayer === actor.id;
+              return state.pendingChoice !== null && state.pendingChoice.forPlayer === actor.id
+                ? null
+                : "choice command can only be submitted by pending choice player";
             case "CONCEDE":
-              return true;
+              return null;
             default:
-              return false;
+              return "unrecognized or unauthorized gameplay command";
           }
         };
 
-        if (!assertActorCanSubmitCommand(room.gameState, parsedCommand)) {
+        const commandPermissionError = getUnauthorizedGameplayCommandMessage(
+          room.gameState,
+          parsedCommand
+        );
+
+        if (commandPermissionError !== null) {
           return {
-            status: "forbidden" as const
+            status: "invalid_command" as const,
+            message: commandPermissionError
           };
         }
 
@@ -443,12 +457,33 @@ export function createInMemoryRoomStore() {
         }))
       );
 
+      const endedGame = result.newEvents.some((event) => event.type === "PLAYER_LOST");
+      const responseGameId = room.gameId;
+      const responseStateVersion = room.stateVersion;
+      const responseLastAppliedEventSeq = room.lastAppliedEventSeq;
+
+      if (endedGame) {
+        room.gameId = null;
+        room.gameState = null;
+        room.stateVersion = null;
+        room.lastAppliedEventSeq = null;
+        room.gameEvents = [];
+
+        for (const [seat, participant] of room.participants.entries()) {
+          room.participants.set(seat, {
+            ...participant,
+            ready: false
+          });
+        }
+      }
+
       return {
         status: "applied" as const,
         roomId,
-        gameId: room.gameId,
-        stateVersion: room.stateVersion,
-        lastAppliedEventSeq: room.lastAppliedEventSeq,
+        gameId: responseGameId ?? result.nextState.id,
+        gameStatus: endedGame ? ("not_started" as const) : ("started" as const),
+        stateVersion: responseStateVersion ?? 0,
+        lastAppliedEventSeq: responseLastAppliedEventSeq ?? priorSeq,
         pendingChoice: result.pendingChoice,
         emittedEvents: result.newEvents.map((event, index) => ({
           seq: priorSeq + index + 1,

@@ -73,7 +73,8 @@ describe("server API request errors", () => {
       expect(error).toBeInstanceOf(ServerApiError);
       expect(error).toMatchObject({
         status: 409,
-        message: "server request failed (409)"
+        message: "server request failed (409)",
+        code: "room_full"
       });
     } finally {
       fetchSpy.mockRestore();

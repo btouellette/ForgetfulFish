@@ -35,6 +35,7 @@ type GameStoreState = {
   isSubmittingCommand: boolean;
   isLoadingGameState: boolean;
   error: string | null;
+  errorAffectsLifecycle: boolean;
   attachAdapter: (adapter: GameStoreAdapter) => void;
   applyConnectionStatus: (status: RoomRealtimeStatus) => void;
   applyViewModel: (viewModel: GameSessionViewModel) => void;
@@ -54,6 +55,14 @@ function toErrorMessage(error: unknown) {
 
 function toCommandErrorMessage(error: unknown) {
   if (error instanceof ServerApiError) {
+    if (error.status === 409) {
+      if (error.code === "conflict") {
+        return "The game state changed. Wait for refresh, then try again.";
+      }
+
+      return "That action is not legal right now.";
+    }
+
     if (error.status === 401 || error.status === 403) {
       return "Session issue detected. Re-verify your sign-in and try again.";
     }
@@ -66,6 +75,14 @@ function toCommandErrorMessage(error: unknown) {
   }
 
   return "Command failed. Wait for the next state refresh, then try again.";
+}
+
+function commandErrorAffectsLifecycle(error: unknown) {
+  return !(
+    error instanceof ServerApiError &&
+    error.status === 409 &&
+    error.code === "invalid_command"
+  );
 }
 
 function createLobbySnapshot(viewModel: GameSessionViewModel) {
@@ -111,6 +128,7 @@ export function createGameStore() {
     isSubmittingCommand: false,
     isLoadingGameState: false,
     error: null,
+    errorAffectsLifecycle: false,
     attachAdapter(nextAdapter) {
       adapter = nextAdapter;
     },
@@ -119,7 +137,7 @@ export function createGameStore() {
       set((state) => ({
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
-          hasError: state.error !== null,
+          hasError: state.errorAffectsLifecycle,
           connectionStatus
         })
       }));
@@ -162,7 +180,7 @@ export function createGameStore() {
           recentEvents: trimRecentEvents(nextEvents),
           lifecycleState: computeLifecycleState({
             viewModel,
-            hasError: state.error !== null,
+            hasError: state.errorAffectsLifecycle,
             connectionStatus
           })
         };
@@ -177,6 +195,7 @@ export function createGameStore() {
     clearError() {
       set((state) => ({
         error: null,
+        errorAffectsLifecycle: false,
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
           hasError: false,
@@ -192,6 +211,7 @@ export function createGameStore() {
       set((state) => ({
         isLoadingGameState: true,
         error: null,
+        errorAffectsLifecycle: false,
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
           hasError: false,
@@ -205,9 +225,10 @@ export function createGameStore() {
           gameView,
           pendingChoice: gameView.pendingChoice,
           isLoadingGameState: false,
+          errorAffectsLifecycle: state.errorAffectsLifecycle,
           lifecycleState: computeLifecycleState({
             viewModel: state.viewModel,
-            hasError: state.error !== null,
+            hasError: state.errorAffectsLifecycle,
             connectionStatus
           })
         }));
@@ -216,6 +237,7 @@ export function createGameStore() {
         const message = toErrorMessage(error);
         set((state) => ({
           error: message,
+          errorAffectsLifecycle: true,
           isLoadingGameState: false,
           lifecycleState: computeLifecycleState({
             viewModel: state.viewModel,
@@ -238,6 +260,7 @@ export function createGameStore() {
       set((state) => ({
         isSubmittingCommand: true,
         error: null,
+        errorAffectsLifecycle: false,
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
           hasError: false,
@@ -249,12 +272,14 @@ export function createGameStore() {
         await adapter.submitGameplayCommand({ type: "PASS_PRIORITY" });
       } catch (error) {
         const message = toCommandErrorMessage(error);
+        const hasFatalError = commandErrorAffectsLifecycle(error);
         set((state) => ({
           error: message,
+          errorAffectsLifecycle: hasFatalError,
           isSubmittingCommand: false,
           lifecycleState: computeLifecycleState({
             viewModel: state.viewModel,
-            hasError: true,
+            hasError: hasFatalError,
             connectionStatus
           })
         }));
@@ -264,7 +289,7 @@ export function createGameStore() {
         isSubmittingCommand: false,
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
-          hasError: state.error !== null,
+          hasError: state.errorAffectsLifecycle,
           connectionStatus
         })
       }));
@@ -277,6 +302,7 @@ export function createGameStore() {
       set((state) => ({
         isSubmittingCommand: true,
         error: null,
+        errorAffectsLifecycle: false,
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
           hasError: false,
@@ -288,12 +314,14 @@ export function createGameStore() {
         await adapter.submitGameplayCommand({ type: "MAKE_CHOICE", payload });
       } catch (error) {
         const message = toCommandErrorMessage(error);
+        const hasFatalError = commandErrorAffectsLifecycle(error);
         set((state) => ({
           error: message,
+          errorAffectsLifecycle: hasFatalError,
           isSubmittingCommand: false,
           lifecycleState: computeLifecycleState({
             viewModel: state.viewModel,
-            hasError: true,
+            hasError: hasFatalError,
             connectionStatus
           })
         }));
@@ -303,7 +331,7 @@ export function createGameStore() {
         isSubmittingCommand: false,
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
-          hasError: state.error !== null,
+          hasError: state.errorAffectsLifecycle,
           connectionStatus
         })
       }));
@@ -320,6 +348,7 @@ export function createGameStore() {
       set((state) => ({
         isSubmittingCommand: true,
         error: null,
+        errorAffectsLifecycle: false,
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
           hasError: false,
@@ -331,12 +360,14 @@ export function createGameStore() {
         await adapter.submitGameplayCommand({ type: "PLAY_LAND", cardId });
       } catch (error) {
         const message = toCommandErrorMessage(error);
+        const hasFatalError = commandErrorAffectsLifecycle(error);
         set((state) => ({
           error: message,
+          errorAffectsLifecycle: hasFatalError,
           isSubmittingCommand: false,
           lifecycleState: computeLifecycleState({
             viewModel: state.viewModel,
-            hasError: true,
+            hasError: hasFatalError,
             connectionStatus
           })
         }));
@@ -347,7 +378,7 @@ export function createGameStore() {
         isSubmittingCommand: false,
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
-          hasError: state.error !== null,
+          hasError: state.errorAffectsLifecycle,
           connectionStatus
         })
       }));
@@ -364,6 +395,7 @@ export function createGameStore() {
       set((state) => ({
         isSubmittingCommand: true,
         error: null,
+        errorAffectsLifecycle: false,
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
           hasError: false,
@@ -379,12 +411,14 @@ export function createGameStore() {
         });
       } catch (error) {
         const message = toCommandErrorMessage(error);
+        const hasFatalError = commandErrorAffectsLifecycle(error);
         set((state) => ({
           error: message,
+          errorAffectsLifecycle: hasFatalError,
           isSubmittingCommand: false,
           lifecycleState: computeLifecycleState({
             viewModel: state.viewModel,
-            hasError: true,
+            hasError: hasFatalError,
             connectionStatus
           })
         }));
@@ -395,7 +429,7 @@ export function createGameStore() {
         isSubmittingCommand: false,
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
-          hasError: state.error !== null,
+          hasError: state.errorAffectsLifecycle,
           connectionStatus
         })
       }));
@@ -408,6 +442,7 @@ export function createGameStore() {
       set((state) => ({
         isSubmittingCommand: true,
         error: null,
+        errorAffectsLifecycle: false,
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
           hasError: false,
@@ -419,12 +454,14 @@ export function createGameStore() {
         await adapter.submitGameplayCommand({ type: "CONCEDE" });
       } catch (error) {
         const message = toCommandErrorMessage(error);
+        const hasFatalError = commandErrorAffectsLifecycle(error);
         set((state) => ({
           error: message,
+          errorAffectsLifecycle: hasFatalError,
           isSubmittingCommand: false,
           lifecycleState: computeLifecycleState({
             viewModel: state.viewModel,
-            hasError: true,
+            hasError: hasFatalError,
             connectionStatus
           })
         }));
@@ -434,7 +471,7 @@ export function createGameStore() {
         isSubmittingCommand: false,
         lifecycleState: computeLifecycleState({
           viewModel: state.viewModel,
-          hasError: state.error !== null,
+          hasError: state.errorAffectsLifecycle,
           connectionStatus
         })
       }));

@@ -77,6 +77,7 @@ describe("createGameSessionAdapter", () => {
     const submitGameplayCommand = vi.fn().mockResolvedValue({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
+      gameStatus: "started",
       stateVersion: 2,
       lastAppliedEventSeq: 5,
       pendingChoice: null,
@@ -162,6 +163,7 @@ describe("createGameSessionAdapter", () => {
     secondResponse.resolve({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
+      gameStatus: "started",
       stateVersion: 3,
       lastAppliedEventSeq: 7,
       pendingChoice: null,
@@ -172,6 +174,7 @@ describe("createGameSessionAdapter", () => {
     firstResponse.resolve({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
+      gameStatus: "started",
       stateVersion: 2,
       lastAppliedEventSeq: 5,
       pendingChoice: null,
@@ -463,6 +466,65 @@ describe("createGameSessionAdapter", () => {
     });
   });
 
+  it("clears gameplay projection and version tracking when lobby updates end the game", async () => {
+    let lobbyUpdatedHandler: LobbyUpdatedHandler = () => {};
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      createRealtimeClient: (options: CreateRealtimeClientOptions) => {
+        lobbyUpdatedHandler = options.onLobbyUpdated;
+        return {
+          connect: vi.fn(),
+          disconnect: vi.fn()
+        };
+      },
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        getGameState: vi.fn().mockResolvedValue(createPlayerGameView()),
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand: vi.fn().mockResolvedValue({
+          roomId: "00000000-0000-4000-8000-000000000001",
+          gameId: "10000000-0000-4000-8000-000000000001",
+          stateVersion: 3,
+          lastAppliedEventSeq: 7,
+          pendingChoice: null,
+          emittedEvents: [{ seq: 7, eventType: "PLAYER_LOST" }]
+        })
+      }
+    });
+
+    adapter.connect();
+    await adapter.fetchGameState();
+    await adapter.submitGameplayCommand({ type: "CONCEDE" });
+
+    expect(adapter.getGameView()).toBeNull();
+    expect(adapter.getLatestAppliedVersion()).toBeNull();
+
+    lobbyUpdatedHandler({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      participants: [{ userId: "u-2", seat: "P2", ready: false }],
+      gameId: null,
+      gameStatus: "not_started"
+    });
+
+    expect(adapter.getViewModel()).toMatchObject({
+      participants: [{ userId: "u-2", seat: "P2", ready: false }],
+      gameId: null,
+      gameStatus: "not_started",
+      pendingChoice: null,
+      lastEventType: null,
+      latestAppliedVersion: null
+    });
+    expect(adapter.getGameView()).toBeNull();
+    expect(adapter.getLatestAppliedVersion()).toBeNull();
+  });
+
   it("resets gameplay projection fields when game start event arrives", () => {
     let gameStartedHandler: GameStartedHandler = () => {};
     let gameUpdatedHandler: GameUpdatedHandler = () => {};
@@ -569,6 +631,86 @@ describe("createGameSessionAdapter", () => {
       }
     });
     expect(onViewModelChange).toHaveBeenCalled();
+  });
+
+  it("refreshes projected game state after successful started-game command submissions", async () => {
+    const getGameState = vi.fn().mockResolvedValue(createPlayerGameView());
+    const submitGameplayCommand = vi.fn().mockResolvedValue({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      stateVersion: 8,
+      lastAppliedEventSeq: 21,
+      pendingChoice: null,
+      emittedEvents: [{ seq: 21, eventType: "PRIORITY_PASSED" }]
+    });
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      createRealtimeClient: () => ({
+        connect: vi.fn(),
+        disconnect: vi.fn()
+      }),
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        getGameState,
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand
+      }
+    });
+
+    await adapter.submitGameplayCommand({ type: "PASS_PRIORITY" });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(getGameState).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000001");
+  });
+
+  it("resets to lobby state immediately when command response ends the game", async () => {
+    const submitGameplayCommand = vi.fn().mockResolvedValue({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      gameId: "10000000-0000-4000-8000-000000000001",
+      stateVersion: 8,
+      lastAppliedEventSeq: 21,
+      pendingChoice: null,
+      emittedEvents: [{ seq: 21, eventType: "PLAYER_LOST" }]
+    });
+
+    const adapter = createGameSessionAdapter({
+      roomId: "00000000-0000-4000-8000-000000000001",
+      onStatusChange: () => {},
+      onLobbySnapshot: () => {},
+      onLobbyUpdated: () => {},
+      onGameStarted: () => {},
+      createRealtimeClient: () => ({
+        connect: vi.fn(),
+        disconnect: vi.fn()
+      }),
+      api: {
+        joinRoom: vi.fn(),
+        getRoomLobby: vi.fn(),
+        getGameState: vi.fn(),
+        setRoomReady: vi.fn(),
+        startRoomGame: vi.fn(),
+        submitGameplayCommand
+      }
+    });
+
+    await adapter.submitGameplayCommand({ type: "CONCEDE" });
+
+    expect(adapter.getViewModel()).toMatchObject({
+      gameId: null,
+      gameStatus: "not_started",
+      pendingChoice: null,
+      lastEventType: "PLAYER_LOST",
+      latestAppliedVersion: null
+    });
+    expect(adapter.getGameView()).toBeNull();
   });
 
   it("returns an immutable snapshot from getViewModel", () => {

@@ -409,12 +409,33 @@ function createInMemoryRoomStore() {
         }))
       );
 
+      const endedGame = result.newEvents.some((event) => event.type === "PLAYER_LOST");
+      const responseGameId = room.gameId;
+      const responseStateVersion = room.stateVersion;
+      const responseLastAppliedEventSeq = room.lastAppliedEventSeq;
+
+      if (endedGame) {
+        room.gameId = null;
+        room.gameState = null;
+        room.stateVersion = null;
+        room.lastAppliedEventSeq = null;
+        room.gameEvents = [];
+
+        for (const [seat, participant] of room.participants.entries()) {
+          room.participants.set(seat, {
+            ...participant,
+            ready: false
+          });
+        }
+      }
+
       return {
         status: "applied" as const,
         roomId,
-        gameId: room.gameId,
-        stateVersion: room.stateVersion,
-        lastAppliedEventSeq: room.lastAppliedEventSeq,
+        gameId: responseGameId ?? result.nextState.id,
+        gameStatus: endedGame ? ("not_started" as const) : ("started" as const),
+        stateVersion: responseStateVersion ?? 0,
+        lastAppliedEventSeq: responseLastAppliedEventSeq ?? priorSeq,
         pendingChoice: result.pendingChoice,
         emittedEvents: result.newEvents.map((event, index) => ({
           seq: priorSeq + index + 1,

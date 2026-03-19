@@ -55,12 +55,35 @@ type RoomStarted = {
 
 export class ServerApiError extends Error {
   readonly status: number;
+  readonly code: string | null;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code: string | null = null) {
     super(message);
     this.name = "ServerApiError";
     this.status = status;
+    this.code = code;
   }
+}
+
+async function readErrorCode(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (!contentType.includes("application/json")) {
+    return null;
+  }
+
+  const payload = (await response.json()) as unknown;
+
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "error" in payload &&
+    typeof payload.error === "string"
+  ) {
+    return payload.error;
+  }
+
+  return null;
 }
 
 function normalizeBaseUrl(baseUrl: string) {
@@ -85,7 +108,8 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new ServerApiError(response.status, `server request failed (${response.status})`);
+    const code = await readErrorCode(response);
+    throw new ServerApiError(response.status, `server request failed (${response.status})`, code);
   }
 
   return (await response.json()) as T;

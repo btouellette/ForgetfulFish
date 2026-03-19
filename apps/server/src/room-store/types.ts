@@ -72,6 +72,7 @@ export type ApplyGameplayCommandResult =
       status: "applied";
       roomId: string;
       gameId: string;
+      gameStatus: "not_started" | "started";
       stateVersion: number;
       lastAppliedEventSeq: number;
       pendingChoice: unknown | null;

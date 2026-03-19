@@ -648,7 +648,12 @@ export function buildServer({
         emittedEvents: applyResult.emittedEvents
       });
 
-      broadcastRoomGameUpdated(responsePayload);
+      if (applyResult.gameStatus === "started") {
+        broadcastRoomGameUpdated(responsePayload);
+      } else {
+        await broadcastRoomLobbyUpdate(params.id, request.actor.userId);
+      }
+
       return responsePayload;
     }
   );
