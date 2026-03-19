@@ -160,10 +160,14 @@ export function createGameSessionAdapter({
     });
   }
 
+  function gameplayUpdateEndedGame(payload: GameplayCommandResponse) {
+    return payload.emittedEvents.some((event) => event.eventType === "PLAYER_LOST");
+  }
+
   function applyGameplayUpdate(payload: GameplayCommandResponse) {
     const latestEvent = payload.emittedEvents[payload.emittedEvents.length - 1];
 
-    if (payload.gameStatus !== "started") {
+    if (gameplayUpdateEndedGame(payload)) {
       latestAppliedVersion = null;
       updateViewModel({
         gameId: null,
@@ -177,7 +181,7 @@ export function createGameSessionAdapter({
 
     updateViewModel({
       gameId: payload.gameId,
-      gameStatus: payload.gameStatus,
+      gameStatus: "started",
       pendingChoice: payload.pendingChoice,
       lastEventType: latestEvent?.eventType ?? null
     });
@@ -336,7 +340,7 @@ export function createGameSessionAdapter({
       if (trackAppliedVersion(response)) {
         applyGameplayUpdate(response);
 
-        if (response.gameStatus === "started") {
+        if (!gameplayUpdateEndedGame(response)) {
           refreshGameState();
         }
       }

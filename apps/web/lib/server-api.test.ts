@@ -89,7 +89,6 @@ describe("submitGameplayCommand", () => {
         JSON.stringify({
           roomId: "00000000-0000-4000-8000-000000000001",
           gameId: "10000000-0000-4000-8000-000000000001",
-          gameStatus: "started",
           stateVersion: 2,
           lastAppliedEventSeq: 1,
           pendingChoice: null,

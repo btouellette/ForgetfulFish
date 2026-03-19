@@ -224,7 +224,6 @@ describe("createGameSessionAdapter", () => {
     gameUpdatedHandler({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 3,
       lastAppliedEventSeq: 7,
       pendingChoice: null,
@@ -234,7 +233,6 @@ describe("createGameSessionAdapter", () => {
     gameUpdatedHandler({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 2,
       lastAppliedEventSeq: 5,
       pendingChoice: null,
@@ -287,7 +285,6 @@ describe("createGameSessionAdapter", () => {
     gameUpdatedHandler({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 5,
       lastAppliedEventSeq: 11,
       pendingChoice: null,
@@ -304,7 +301,6 @@ describe("createGameSessionAdapter", () => {
     gameUpdatedHandler({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 2,
       lastAppliedEventSeq: 4,
       pendingChoice: null,
@@ -401,7 +397,6 @@ describe("createGameSessionAdapter", () => {
     gameUpdatedHandler({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 7,
       lastAppliedEventSeq: 19,
       pendingChoice: {
@@ -496,7 +491,6 @@ describe("createGameSessionAdapter", () => {
         submitGameplayCommand: vi.fn().mockResolvedValue({
           roomId: "00000000-0000-4000-8000-000000000001",
           gameId: "10000000-0000-4000-8000-000000000001",
-          gameStatus: "not_started",
           stateVersion: 3,
           lastAppliedEventSeq: 7,
           pendingChoice: null,
@@ -566,7 +560,6 @@ describe("createGameSessionAdapter", () => {
     gameUpdatedHandler({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 5,
       lastAppliedEventSeq: 9,
       pendingChoice: {
@@ -599,7 +592,6 @@ describe("createGameSessionAdapter", () => {
     const submitGameplayCommand = vi.fn().mockResolvedValue({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 8,
       lastAppliedEventSeq: 21,
       pendingChoice: null,
@@ -646,7 +638,6 @@ describe("createGameSessionAdapter", () => {
     const submitGameplayCommand = vi.fn().mockResolvedValue({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 8,
       lastAppliedEventSeq: 21,
       pendingChoice: null,
@@ -684,7 +675,6 @@ describe("createGameSessionAdapter", () => {
     const submitGameplayCommand = vi.fn().mockResolvedValue({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "not_started",
       stateVersion: 8,
       lastAppliedEventSeq: 21,
       pendingChoice: null,
@@ -756,7 +746,6 @@ describe("createGameSessionAdapter", () => {
     gameUpdatedHandler({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 4,
       lastAppliedEventSeq: 7,
       pendingChoice: null,
@@ -896,7 +885,6 @@ describe("createGameSessionAdapter", () => {
     gameUpdatedHandler({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 3,
       lastAppliedEventSeq: 7,
       pendingChoice: null,
@@ -1025,7 +1013,6 @@ describe("createGameSessionAdapter", () => {
     gameUpdatedHandler({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 3,
       lastAppliedEventSeq: 7,
       pendingChoice: null,
@@ -1034,7 +1021,6 @@ describe("createGameSessionAdapter", () => {
     gameUpdatedHandler({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 4,
       lastAppliedEventSeq: 8,
       pendingChoice: null,
@@ -1043,7 +1029,6 @@ describe("createGameSessionAdapter", () => {
     gameUpdatedHandler({
       roomId: "00000000-0000-4000-8000-000000000001",
       gameId: "10000000-0000-4000-8000-000000000001",
-      gameStatus: "started",
       stateVersion: 5,
       lastAppliedEventSeq: 9,
       pendingChoice: null,
