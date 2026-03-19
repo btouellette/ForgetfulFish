@@ -5,6 +5,7 @@ import styles from "./HandPanel.module.css";
 
 type HandPanelProps = {
   hand: PlayerGameView["viewer"]["hand"];
+  legalActions: PlayerGameView["legalActions"]["hand"];
   viewerHasPriority: boolean;
   isSubmitting: boolean;
   onPlayLand: (cardId: string) => void;
@@ -12,14 +13,9 @@ type HandPanelProps = {
   onBeginTargetedCast: (cardId: string) => void;
 };
 
-const cardsRequiringTargetSelection = new Set(["memory-lapse"]);
-
-function canCastFromHandWithoutTargetPicker(cardDefId: string) {
-  return !cardsRequiringTargetSelection.has(cardDefId);
-}
-
 export function HandPanel({
   hand,
+  legalActions,
   viewerHasPriority,
   isSubmitting,
   onPlayLand,
@@ -33,8 +29,9 @@ export function HandPanel({
       <h3>Hand</h3>
       {hand.length === 0 ? <p>No cards in hand.</p> : null}
       {hand.map((card) => {
-        const isLand = card.cardDefId === "island";
-        const canCastWithoutTargetPicker = canCastFromHandWithoutTargetPicker(card.cardDefId);
+        const cardActions = legalActions[card.id] ?? [];
+        const playLandAction = cardActions.find((action) => action.type === "PLAY_LAND");
+        const castSpellAction = cardActions.find((action) => action.type === "CAST_SPELL");
 
         return (
           <div key={card.id} className={styles.cardRow}>
@@ -43,7 +40,7 @@ export function HandPanel({
               <span>{card.id}</span>
             </div>
             <div className={styles.actions}>
-              {isLand ? (
+              {playLandAction ? (
                 <button
                   type="button"
                   data-testid={`play-land-${card.id}`}
@@ -58,7 +55,7 @@ export function HandPanel({
                 >
                   Play land
                 </button>
-              ) : canCastWithoutTargetPicker ? (
+              ) : castSpellAction && !castSpellAction.requiresTargets ? (
                 <button
                   type="button"
                   data-testid={`cast-spell-${card.id}`}
@@ -73,7 +70,7 @@ export function HandPanel({
                 >
                   Cast spell
                 </button>
-              ) : (
+              ) : castSpellAction ? (
                 <button
                   type="button"
                   data-testid={`cast-spell-targeted-${card.id}`}
@@ -88,7 +85,7 @@ export function HandPanel({
                 >
                   Pick target
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         );

@@ -19,6 +19,8 @@ type GameStoreAdapter = {
 type MakeChoicePayload = Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"];
 type CastSpellCommand = Extract<GameplayCommand, { type: "CAST_SPELL" }>;
 type CastSpellTargets = NonNullable<CastSpellCommand["targets"]>;
+type ActivateAbilityCommand = Extract<GameplayCommand, { type: "ACTIVATE_ABILITY" }>;
+type ActivateAbilityTargets = NonNullable<ActivateAbilityCommand["targets"]>;
 const maxRecentEvents = 10;
 
 type GameStoreState = {
@@ -45,6 +47,11 @@ type GameStoreState = {
   passPriority: () => Promise<void>;
   playLand: (cardId: string) => Promise<void>;
   castSpell: (cardId: CastSpellCommand["cardId"], targets?: CastSpellTargets) => Promise<void>;
+  activateAbility: (
+    sourceId: ActivateAbilityCommand["sourceId"],
+    abilityIndex: ActivateAbilityCommand["abilityIndex"],
+    targets?: ActivateAbilityTargets
+  ) => Promise<void>;
   makeChoice: (payload: MakeChoicePayload) => Promise<void>;
   concede: () => Promise<void>;
 };
@@ -407,6 +414,58 @@ export function createGameStore() {
         await adapter.submitGameplayCommand({
           type: "CAST_SPELL",
           cardId,
+          ...(targets ? { targets } : {})
+        });
+      } catch (error) {
+        const message = toCommandErrorMessage(error);
+        const hasFatalError = commandErrorAffectsLifecycle(error);
+        set((state) => ({
+          error: message,
+          errorAffectsLifecycle: hasFatalError,
+          isSubmittingCommand: false,
+          lifecycleState: computeLifecycleState({
+            viewModel: state.viewModel,
+            hasError: hasFatalError,
+            connectionStatus
+          })
+        }));
+        throw error;
+      }
+
+      set((state) => ({
+        isSubmittingCommand: false,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: state.errorAffectsLifecycle,
+          connectionStatus
+        })
+      }));
+    },
+    async activateAbility(sourceId, abilityIndex, targets) {
+      if (!adapter) {
+        throw new Error("game store adapter is not attached");
+      }
+
+      if (!viewerHasPriority(get().gameView)) {
+        return;
+      }
+
+      set((state) => ({
+        isSubmittingCommand: true,
+        error: null,
+        errorAffectsLifecycle: false,
+        lifecycleState: computeLifecycleState({
+          viewModel: state.viewModel,
+          hasError: false,
+          connectionStatus
+        })
+      }));
+
+      try {
+        await adapter.submitGameplayCommand({
+          type: "ACTIVATE_ABILITY",
+          sourceId,
+          abilityIndex,
           ...(targets ? { targets } : {})
         });
       } catch (error) {

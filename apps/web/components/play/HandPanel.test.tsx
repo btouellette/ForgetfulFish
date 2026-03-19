@@ -24,6 +24,12 @@ function createHandCard(id: string, cardDefId: string): PlayerGameView["viewer"]
   };
 }
 
+function createLegalActions(
+  actions: PlayerGameView["legalActions"]["hand"] = {}
+): PlayerGameView["legalActions"]["hand"] {
+  return actions;
+}
+
 describe("HandPanel", () => {
   let container: HTMLDivElement;
   let root: Root;
@@ -44,6 +50,17 @@ describe("HandPanel", () => {
       root.render(
         <HandPanel
           hand={[createHandCard("obj-1", "island"), createHandCard("obj-2", "brainstorm")]}
+          legalActions={createLegalActions({
+            "obj-1": [{ type: "PLAY_LAND", command: { type: "PLAY_LAND", cardId: "obj-1" } }],
+            "obj-2": [
+              {
+                type: "CAST_SPELL",
+                commandBase: { type: "CAST_SPELL", cardId: "obj-2" },
+                requiresTargets: false,
+                availableModes: []
+              }
+            ]
+          })}
           viewerHasPriority={true}
           isSubmitting={false}
           onPlayLand={vi.fn()}
@@ -67,6 +84,9 @@ describe("HandPanel", () => {
       root.render(
         <HandPanel
           hand={[createHandCard("obj-1", "island")]}
+          legalActions={createLegalActions({
+            "obj-1": [{ type: "PLAY_LAND", command: { type: "PLAY_LAND", cardId: "obj-1" } }]
+          })}
           viewerHasPriority={true}
           isSubmitting={false}
           onPlayLand={onPlayLand}
@@ -98,6 +118,16 @@ describe("HandPanel", () => {
       root.render(
         <HandPanel
           hand={[createHandCard("obj-2", "brainstorm")]}
+          legalActions={createLegalActions({
+            "obj-2": [
+              {
+                type: "CAST_SPELL",
+                commandBase: { type: "CAST_SPELL", cardId: "obj-2" },
+                requiresTargets: false,
+                availableModes: []
+              }
+            ]
+          })}
           viewerHasPriority={true}
           isSubmitting={false}
           onPlayLand={vi.fn()}
@@ -129,6 +159,16 @@ describe("HandPanel", () => {
       root.render(
         <HandPanel
           hand={[createHandCard("obj-3", "memory-lapse")]}
+          legalActions={createLegalActions({
+            "obj-3": [
+              {
+                type: "CAST_SPELL",
+                commandBase: { type: "CAST_SPELL", cardId: "obj-3" },
+                requiresTargets: true,
+                availableModes: []
+              }
+            ]
+          })}
           viewerHasPriority={true}
           isSubmitting={false}
           onPlayLand={vi.fn()}
@@ -160,6 +200,17 @@ describe("HandPanel", () => {
       root.render(
         <HandPanel
           hand={[createHandCard("obj-1", "island"), createHandCard("obj-2", "brainstorm")]}
+          legalActions={createLegalActions({
+            "obj-1": [{ type: "PLAY_LAND", command: { type: "PLAY_LAND", cardId: "obj-1" } }],
+            "obj-2": [
+              {
+                type: "CAST_SPELL",
+                commandBase: { type: "CAST_SPELL", cardId: "obj-2" },
+                requiresTargets: false,
+                availableModes: []
+              }
+            ]
+          })}
           viewerHasPriority={true}
           isSubmitting={true}
           onPlayLand={vi.fn()}

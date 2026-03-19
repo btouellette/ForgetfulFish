@@ -10,6 +10,7 @@ import type {
 
 import { shouldAutoPass } from "../../lib/auto-pass";
 import { renderBattlefield } from "../../lib/renderer/battlefield-renderer";
+import { BattlefieldActionsPanel } from "./BattlefieldActionsPanel";
 import { CommandPanel } from "./CommandPanel";
 import { EventRail } from "./EventRail";
 import { HandPanel } from "./HandPanel";
@@ -34,6 +35,7 @@ type GameplayViewProps = {
     cardId: string,
     targets?: NonNullable<Extract<GameplayCommand, { type: "CAST_SPELL" }>["targets"]>
   ) => void;
+  onActivateAbility?: (sourceId: string, abilityIndex: number) => void;
   onMakeChoice: (payload: Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"]) => void;
   onClearError: () => void;
 };
@@ -48,6 +50,7 @@ export function GameplayView({
   onConcede,
   onPlayLand,
   onCastSpell,
+  onActivateAbility = () => {},
   onMakeChoice,
   onClearError
 }: GameplayViewProps) {
@@ -222,11 +225,19 @@ export function GameplayView({
         />
         <HandPanel
           hand={gameView.viewer.hand}
+          legalActions={gameView.legalActions.hand}
           viewerHasPriority={viewerHasPriority}
           isSubmitting={isSubmittingCommand}
           onPlayLand={onPlayLand}
           onCastSpell={onCastSpell}
           onBeginTargetedCast={handleBeginTargetedCast}
+        />
+        <BattlefieldActionsPanel
+          legalActions={gameView.legalActions.battlefield}
+          objectPool={gameView.objectPool}
+          viewerHasPriority={viewerHasPriority}
+          isSubmitting={isSubmittingCommand}
+          onActivateAbility={onActivateAbility}
         />
         <StackPanel
           stack={gameView.stack}

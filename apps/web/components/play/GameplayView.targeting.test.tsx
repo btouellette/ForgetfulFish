@@ -78,7 +78,23 @@ function createGameView(): PlayerGameView {
       }
     },
     stack: [{ object: { id: "obj-stack", zcc: 0 }, controller: "player-2" }],
-    pendingChoice: null
+    pendingChoice: null,
+    legalActions: {
+      passPriority: { command: { type: "PASS_PRIORITY" } },
+      concede: { command: { type: "CONCEDE" } },
+      choice: null,
+      hand: {
+        "obj-ml": [
+          {
+            type: "CAST_SPELL",
+            commandBase: { type: "CAST_SPELL", cardId: "obj-ml" },
+            requiresTargets: true,
+            availableModes: []
+          }
+        ]
+      },
+      battlefield: {}
+    }
   };
 }
 

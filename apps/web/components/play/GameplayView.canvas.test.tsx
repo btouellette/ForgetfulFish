@@ -15,7 +15,7 @@ vi.mock("../../lib/renderer/battlefield-renderer", () => ({
 }));
 
 function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView {
-  return {
+  const baseView: PlayerGameView = {
     viewerPlayerId: "player-1",
     stateVersion: 2,
     turnState: {
@@ -80,7 +80,30 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
     },
     stack: [],
     pendingChoice: null,
-    ...overrides
+    legalActions: {
+      passPriority: null,
+      concede: { command: { type: "CONCEDE" } },
+      choice: null,
+      hand: {},
+      battlefield: {
+        alpha: [
+          {
+            type: "ACTIVATE_ABILITY",
+            commandBase: { type: "ACTIVATE_ABILITY", sourceId: "alpha", abilityIndex: 0 },
+            requiresTargets: false,
+            isManaAbility: false,
+            manaProduced: null,
+            blocksAutoPass: true
+          }
+        ]
+      }
+    }
+  };
+
+  return {
+    ...baseView,
+    ...overrides,
+    legalActions: overrides.legalActions ?? baseView.legalActions
   };
 }
 

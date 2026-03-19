@@ -47,6 +47,7 @@ function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
   const concede = useGameStore((state) => state.concede);
   const playLand = useGameStore((state) => state.playLand);
   const castSpell = useGameStore((state) => state.castSpell);
+  const activateAbility = useGameStore((state) => state.activateAbility);
   const clearError = useGameStore((state) => state.clearError);
   const store = useGameStoreApi();
   const participants = lobbySnapshot?.participants ?? emptyParticipants;
@@ -330,6 +331,9 @@ function PlayRoomContainerContent({ roomId }: PlayRoomContainerProps) {
       }}
       onCastSpell={(cardId, targets) => {
         void castSpell(cardId, targets);
+      }}
+      onActivateAbility={(sourceId, abilityIndex) => {
+        void activateAbility(sourceId, abilityIndex);
       }}
       onMakeChoice={(payload) => {
         void makeChoice(payload);

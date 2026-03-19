@@ -23,7 +23,7 @@ function createViewModel(overrides: Partial<GameSessionViewModel> = {}): GameSes
 }
 
 function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView {
-  return {
+  const baseView: PlayerGameView = {
     viewerPlayerId: "player-1",
     stateVersion: 2,
     turnState: {
@@ -48,7 +48,19 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
     objectPool: {},
     stack: [],
     pendingChoice: null,
-    ...overrides
+    legalActions: {
+      passPriority: null,
+      concede: { command: { type: "CONCEDE" } },
+      choice: null,
+      hand: {},
+      battlefield: {}
+    }
+  };
+
+  return {
+    ...baseView,
+    ...overrides,
+    legalActions: overrides.legalActions ?? baseView.legalActions
   };
 }
 
@@ -219,6 +231,7 @@ describe("createGameStore", () => {
     const makeChoice = vi.fn().mockResolvedValue(undefined);
     const playLand = vi.fn().mockResolvedValue(undefined);
     const castSpell = vi.fn().mockResolvedValue(undefined);
+    const activateAbility = vi.fn().mockResolvedValue(undefined);
     const concede = vi.fn().mockResolvedValue(undefined);
     const fetchGameState = vi.fn().mockResolvedValue(createGameView());
     const store = createGameStore();
@@ -235,6 +248,8 @@ describe("createGameStore", () => {
             return playLand(command);
           case "CAST_SPELL":
             return castSpell(command);
+          case "ACTIVATE_ABILITY":
+            return activateAbility(command);
           case "CONCEDE":
             return concede(command);
           default:
@@ -250,6 +265,7 @@ describe("createGameStore", () => {
     await store
       .getState()
       .castSpell("spell-2", [{ kind: "object", object: { id: "stack-obj", zcc: 0 } }]);
+    await store.getState().activateAbility("island-1", 0);
     await store.getState().concede();
     await store.getState().fetchGameState();
 
@@ -264,6 +280,11 @@ describe("createGameStore", () => {
       type: "CAST_SPELL",
       cardId: "spell-2",
       targets: [{ kind: "object", object: { id: "stack-obj", zcc: 0 } }]
+    });
+    expect(activateAbility).toHaveBeenCalledWith({
+      type: "ACTIVATE_ABILITY",
+      sourceId: "island-1",
+      abilityIndex: 0
     });
     expect(concede).toHaveBeenCalledWith({ type: "CONCEDE" });
     expect(fetchGameState).toHaveBeenCalledTimes(1);

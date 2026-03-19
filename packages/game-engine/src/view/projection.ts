@@ -1,8 +1,19 @@
+import { cardRegistry } from "../cards";
+import type { ActivatedAbilityAst, ManaAmount } from "../cards/abilityAst";
+import { getLegalCommands } from "../commands/validate";
 import type { GameObject } from "../state/gameObject";
-import type { GameState, PlayerInfo } from "../state/gameState";
+import type { GameState, ManaPool, PlayerInfo } from "../state/gameState";
 import type { ObjectId, PlayerId } from "../state/objectRef";
 import { zoneKey, type ZoneRef } from "../state/zones";
-import type { GameObjectView, PlayerGameView, ZoneView } from "./types";
+import type { Command } from "../commands/command";
+import type {
+  BattlefieldLegalActionView,
+  GameObjectView,
+  HandLegalActionView,
+  LegalActionsView,
+  PlayerGameView,
+  ZoneView
+} from "./types";
 
 function createRecord<V>(): Record<string, V> {
   return Object.create(null) as Record<string, V>;
@@ -85,6 +96,267 @@ function requireObject(state: Readonly<GameState>, objectId: ObjectId): GameObje
   return object;
 }
 
+function spellRequiresTargets(cardDefId: string): boolean {
+  const cardDefinition = cardRegistry.get(cardDefId);
+  return cardDefinition?.onResolve.some((effect) => effect.id === "COUNTER_SPELL") ?? false;
+}
+
+function isPureManaAbility(
+  ability: ActivatedAbilityAst | undefined
+): ability is ActivatedAbilityAst & {
+  effect: { kind: "add_mana"; mana: ManaAmount };
+} {
+  return ability?.isManaAbility === true && ability.effect.kind === "add_mana";
+}
+
+function getActivatedAbility(
+  state: Readonly<GameState>,
+  sourceId: ObjectId,
+  abilityIndex: number
+): ActivatedAbilityAst | undefined {
+  const sourceObject = state.objectPool.get(sourceId);
+  if (sourceObject === undefined) {
+    return undefined;
+  }
+
+  const cardDefinition = cardRegistry.get(sourceObject.cardDefId);
+  return cardDefinition?.activatedAbilities[abilityIndex];
+}
+
+function addManaPool(base: Readonly<ManaPool>, mana: Readonly<ManaAmount>): ManaPool {
+  return {
+    white: base.white + (mana.white ?? 0),
+    blue: base.blue + (mana.blue ?? 0),
+    black: base.black + (mana.black ?? 0),
+    red: base.red + (mana.red ?? 0),
+    green: base.green + (mana.green ?? 0),
+    colorless: base.colorless + (mana.colorless ?? 0)
+  };
+}
+
+function cloneStateForManaSimulation(state: Readonly<GameState>): GameState {
+  return {
+    ...state,
+    players: state.players.map((player) => ({
+      ...player,
+      manaPool: { ...player.manaPool },
+      hand: [...player.hand]
+    })) as GameState["players"],
+    zones: new Map(state.zones),
+    objectPool: new Map(state.objectPool),
+    stack: [...state.stack],
+    turnState: {
+      ...state.turnState,
+      priorityState: { ...state.turnState.priorityState },
+      attackers: [...state.turnState.attackers],
+      blockers: [...state.turnState.blockers]
+    },
+    continuousEffects: [...state.continuousEffects],
+    lkiStore: new Map(state.lkiStore),
+    triggerQueue: [...state.triggerQueue]
+  };
+}
+
+function applyManaAbilitySimulation(
+  state: GameState,
+  playerId: PlayerId,
+  sourceId: ObjectId,
+  manaProduced: Readonly<ManaAmount>
+) {
+  const sourceObject = state.objectPool.get(sourceId);
+  if (sourceObject !== undefined) {
+    state.objectPool.set(sourceId, { ...sourceObject, tapped: true });
+  }
+
+  const playerIndex = state.players.findIndex((player) => player.id === playerId);
+  if (playerIndex >= 0) {
+    const currentPlayer = state.players[playerIndex]!;
+    state.players[playerIndex] = {
+      ...currentPlayer,
+      manaPool: addManaPool(currentPlayer.manaPool, manaProduced)
+    };
+  }
+}
+
+function commandBlocksAutoPass(state: Readonly<GameState>, command: Command): boolean {
+  switch (command.type) {
+    case "PASS_PRIORITY":
+    case "CONCEDE":
+      return false;
+    case "ACTIVATE_ABILITY": {
+      const ability = getActivatedAbility(state, command.sourceId, command.abilityIndex);
+      return !isPureManaAbility(ability);
+    }
+    default:
+      return true;
+  }
+}
+
+type ManaAbilityOption = {
+  sourceId: ObjectId;
+  abilityIndex: number;
+  manaProduced: ManaAmount;
+};
+
+function groupManaAbilityOptions(options: ManaAbilityOption[]) {
+  const grouped = new Map<ObjectId, ManaAbilityOption[]>();
+
+  for (const option of options) {
+    const existing = grouped.get(option.sourceId) ?? [];
+    existing.push(option);
+    grouped.set(option.sourceId, existing);
+  }
+
+  return [...grouped.values()];
+}
+
+function canPotentialManaUnlockBlockingAction(
+  state: Readonly<GameState>,
+  manaOptions: ManaAbilityOption[]
+): boolean {
+  const groupedOptions = groupManaAbilityOptions(manaOptions);
+
+  function dfs(index: number, simulatedState: GameState): boolean {
+    if (
+      getLegalCommands(simulatedState).some((command) =>
+        commandBlocksAutoPass(simulatedState, command)
+      )
+    ) {
+      return true;
+    }
+
+    if (index >= groupedOptions.length) {
+      return false;
+    }
+
+    if (dfs(index + 1, simulatedState)) {
+      return true;
+    }
+
+    const optionsForSource = groupedOptions[index];
+    if (optionsForSource === undefined) {
+      return false;
+    }
+
+    for (const option of optionsForSource) {
+      const nextState = cloneStateForManaSimulation(simulatedState);
+      applyManaAbilitySimulation(
+        nextState,
+        nextState.turnState.priorityState.playerWithPriority,
+        option.sourceId,
+        option.manaProduced
+      );
+
+      if (dfs(index + 1, nextState)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  return dfs(0, cloneStateForManaSimulation(state));
+}
+
+function createLegalActionsView(
+  state: Readonly<GameState>,
+  viewerPlayerId: PlayerId
+): LegalActionsView {
+  const legalCommands = getLegalCommands(state);
+  const choice = state.pendingChoice?.forPlayer === viewerPlayerId ? state.pendingChoice : null;
+  const legalActions: LegalActionsView = {
+    passPriority: null,
+    concede: { command: { type: "CONCEDE" } },
+    choice,
+    hand: createRecord<HandLegalActionView[]>(),
+    battlefield: createRecord<BattlefieldLegalActionView[]>()
+  };
+
+  const viewerHasPriority = state.turnState.priorityState.playerWithPriority === viewerPlayerId;
+  if (!viewerHasPriority && choice === null) {
+    return legalActions;
+  }
+
+  const manaAbilityOptions: ManaAbilityOption[] = [];
+  for (const command of legalCommands) {
+    if (command.type !== "ACTIVATE_ABILITY") {
+      continue;
+    }
+
+    const ability = getActivatedAbility(state, command.sourceId, command.abilityIndex);
+    if (!isPureManaAbility(ability)) {
+      continue;
+    }
+
+    manaAbilityOptions.push({
+      sourceId: command.sourceId,
+      abilityIndex: command.abilityIndex,
+      manaProduced: ability.effect.mana
+    });
+  }
+
+  const manaAbilitiesUnlockBlockingAction = canPotentialManaUnlockBlockingAction(
+    state,
+    manaAbilityOptions
+  );
+
+  for (const command of legalCommands) {
+    switch (command.type) {
+      case "PASS_PRIORITY":
+        legalActions.passPriority = { command: { type: "PASS_PRIORITY" } };
+        break;
+      case "CONCEDE":
+      case "MAKE_CHOICE":
+        break;
+      case "PLAY_LAND": {
+        const existing = legalActions.hand[command.cardId] ?? [];
+        existing.push({
+          type: "PLAY_LAND",
+          command: { type: "PLAY_LAND", cardId: command.cardId }
+        });
+        legalActions.hand[command.cardId] = existing;
+        break;
+      }
+      case "CAST_SPELL": {
+        const cardObject = state.objectPool.get(command.cardId);
+        const existing = legalActions.hand[command.cardId] ?? [];
+        existing.push({
+          type: "CAST_SPELL",
+          commandBase: { type: "CAST_SPELL", cardId: command.cardId },
+          requiresTargets:
+            cardObject === undefined ? false : spellRequiresTargets(cardObject.cardDefId),
+          availableModes: []
+        });
+        legalActions.hand[command.cardId] = existing;
+        break;
+      }
+      case "ACTIVATE_ABILITY": {
+        const ability = getActivatedAbility(state, command.sourceId, command.abilityIndex);
+        const isManaAbility = isPureManaAbility(ability);
+        const existing = legalActions.battlefield[command.sourceId] ?? [];
+        existing.push({
+          type: "ACTIVATE_ABILITY",
+          commandBase: {
+            type: "ACTIVATE_ABILITY",
+            sourceId: command.sourceId,
+            abilityIndex: command.abilityIndex
+          },
+          requiresTargets: false,
+          isManaAbility,
+          manaProduced: isManaAbility ? ability.effect.mana : null,
+          blocksAutoPass: isManaAbility ? manaAbilitiesUnlockBlockingAction : true
+        });
+        legalActions.battlefield[command.sourceId] = existing;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  return legalActions;
+}
+
 export function projectPlayerView(
   state: Readonly<GameState>,
   viewerPlayerId: PlayerId
@@ -125,6 +397,7 @@ export function projectPlayerView(
     ),
     objectPool,
     stack: state.stack.map((item) => ({ object: item.object, controller: item.controller })),
-    pendingChoice: state.pendingChoice?.forPlayer === viewerPlayerId ? state.pendingChoice : null
+    pendingChoice: state.pendingChoice?.forPlayer === viewerPlayerId ? state.pendingChoice : null,
+    legalActions: createLegalActionsView(state, viewerPlayerId)
   };
 }

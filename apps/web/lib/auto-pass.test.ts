@@ -4,7 +4,7 @@ import type { PlayerGameView } from "@forgetful-fish/realtime-contract";
 import { assessAutoPass, shouldAutoPass } from "./auto-pass";
 
 function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView {
-  return {
+  const baseView: PlayerGameView = {
     viewerPlayerId: "player-1",
     stateVersion: 1,
     turnState: {
@@ -29,7 +29,19 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
     objectPool: {},
     stack: [],
     pendingChoice: null,
-    ...overrides
+    legalActions: {
+      passPriority: { command: { type: "PASS_PRIORITY" } },
+      concede: { command: { type: "CONCEDE" } },
+      choice: null,
+      hand: {},
+      battlefield: {}
+    }
+  };
+
+  return {
+    ...baseView,
+    ...overrides,
+    legalActions: overrides.legalActions ?? baseView.legalActions
   };
 }
 
@@ -60,137 +72,139 @@ describe("auto-pass helper", () => {
     expect(shouldAutoPass(createGameView())).toBe(true);
   });
 
-  it("blocks auto-pass when a land is visible in hand", () => {
+  it("blocks auto-pass when a legal hand action is available", () => {
     const gameView = createGameView({
-      viewer: {
-        id: "player-1",
-        life: 20,
-        manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
-        hand: [
-          createCard("hand-island", "island", {
-            kind: "hand",
-            scope: "player",
-            playerId: "player-1"
-          })
-        ],
-        handCount: 1
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {
+          "hand-island": [
+            { type: "PLAY_LAND", command: { type: "PLAY_LAND", cardId: "hand-island" } }
+          ]
+        },
+        battlefield: {}
       }
     });
 
-    expect(shouldAutoPass(gameView)).toBe(false);
-  });
-
-  it("blocks auto-pass when an untapped Island enables a visible blue spell", () => {
-    const gameView = createGameView({
-      viewer: {
-        id: "player-1",
-        life: 20,
-        manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
-        hand: [
-          createCard("spell-1", "brainstorm", {
-            kind: "hand",
-            scope: "player",
-            playerId: "player-1"
-          })
-        ],
-        handCount: 1
-      },
-      objectPool: {
-        island: createCard("island", "island", { kind: "battlefield", scope: "shared" })
-      }
+    expect(assessAutoPass(gameView)).toEqual({
+      hasApparentAction: true,
+      hasUncertainAction: false
     });
-
     expect(shouldAutoPass(gameView)).toBe(false);
   });
 
-  it("allows auto-pass when the only Island is tapped", () => {
+  it("allows auto-pass when only pass and concede exist", () => {
     const gameView = createGameView({
-      viewer: {
-        id: "player-1",
-        life: 20,
-        manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
-        hand: [
-          createCard("spell-1", "brainstorm", {
-            kind: "hand",
-            scope: "player",
-            playerId: "player-1"
-          })
-        ],
-        handCount: 1
-      },
-      objectPool: {
-        island: createCard(
-          "island",
-          "island",
-          { kind: "battlefield", scope: "shared" },
-          { tapped: true }
-        )
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {},
+        battlefield: {}
       }
     });
 
     expect(shouldAutoPass(gameView)).toBe(true);
   });
 
-  it("allows auto-pass for memory-lapse when the stack is empty", () => {
+  it("blocks auto-pass when a targeted spell is legal", () => {
     const gameView = createGameView({
-      viewer: {
-        id: "player-1",
-        life: 20,
-        manaPool: { white: 0, blue: 2, black: 0, red: 0, green: 0, colorless: 0 },
-        hand: [
-          createCard("spell-1", "memory-lapse", {
-            kind: "hand",
-            scope: "player",
-            playerId: "player-1"
-          })
-        ],
-        handCount: 1
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {
+          "spell-1": [
+            {
+              type: "CAST_SPELL",
+              commandBase: { type: "CAST_SPELL", cardId: "spell-1" },
+              requiresTargets: true,
+              availableModes: []
+            }
+          ]
+        },
+        battlefield: {}
       }
-    });
-
-    expect(shouldAutoPass(gameView)).toBe(true);
-  });
-
-  it("blocks auto-pass for memory-lapse when the stack is non-empty and mana is available", () => {
-    const gameView = createGameView({
-      viewer: {
-        id: "player-1",
-        life: 20,
-        manaPool: { white: 0, blue: 2, black: 0, red: 0, green: 0, colorless: 0 },
-        hand: [
-          createCard("spell-1", "memory-lapse", {
-            kind: "hand",
-            scope: "player",
-            playerId: "player-1"
-          })
-        ],
-        handCount: 1
-      },
-      stack: [{ object: { id: "stack-1", zcc: 0 }, controller: "player-2" }]
     });
 
     expect(shouldAutoPass(gameView)).toBe(false);
   });
 
-  it("fails closed for unknown hand cards", () => {
-    const assessment = assessAutoPass(
-      createGameView({
-        viewer: {
-          id: "player-1",
-          life: 20,
-          manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
-          hand: [
-            createCard("spell-1", "future-card", {
-              kind: "hand",
-              scope: "player",
-              playerId: "player-1"
-            })
-          ],
-          handCount: 1
+  it("blocks auto-pass when a battlefield activation is legal", () => {
+    const gameView = createGameView({
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {},
+        battlefield: {
+          island: [
+            {
+              type: "ACTIVATE_ABILITY",
+              commandBase: { type: "ACTIVATE_ABILITY", sourceId: "island", abilityIndex: 0 },
+              requiresTargets: false,
+              isManaAbility: true,
+              manaProduced: { blue: 1 },
+              blocksAutoPass: true
+            }
+          ]
         }
-      })
-    );
+      }
+    });
 
-    expect(assessment).toEqual({ hasApparentAction: false, hasUncertainAction: true });
+    expect(shouldAutoPass(gameView)).toBe(false);
+  });
+
+  it("allows auto-pass when a mana-only battlefield activation is marked non-blocking", () => {
+    const gameView = createGameView({
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {},
+        battlefield: {
+          island: [
+            {
+              type: "ACTIVATE_ABILITY",
+              commandBase: { type: "ACTIVATE_ABILITY", sourceId: "island", abilityIndex: 0 },
+              requiresTargets: false,
+              isManaAbility: true,
+              manaProduced: { blue: 1 },
+              blocksAutoPass: false
+            }
+          ]
+        }
+      }
+    });
+
+    expect(shouldAutoPass(gameView)).toBe(true);
+  });
+
+  it("allows auto-pass when the player only has inert visible cards", () => {
+    const gameView = createGameView({
+      viewer: {
+        id: "player-1",
+        life: 20,
+        manaPool: { white: 0, blue: 2, black: 0, red: 0, green: 0, colorless: 0 },
+        hand: [
+          createCard("spell-1", "memory-lapse", {
+            kind: "hand",
+            scope: "player",
+            playerId: "player-1"
+          })
+        ],
+        handCount: 1
+      },
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {},
+        battlefield: {}
+      }
+    });
+
+    expect(shouldAutoPass(gameView)).toBe(true);
   });
 });

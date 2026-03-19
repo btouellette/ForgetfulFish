@@ -23,7 +23,7 @@ function createPendingChoice(
 }
 
 function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView {
-  return {
+  const baseView: PlayerGameView = {
     viewerPlayerId: "player-1",
     stateVersion: 2,
     turnState: {
@@ -48,7 +48,19 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
     objectPool: {},
     stack: [],
     pendingChoice: null,
-    ...overrides
+    legalActions: {
+      passPriority: { command: { type: "PASS_PRIORITY" } },
+      concede: { command: { type: "CONCEDE" } },
+      choice: null,
+      hand: {},
+      battlefield: {}
+    }
+  };
+
+  return {
+    ...baseView,
+    ...overrides,
+    legalActions: overrides.legalActions ?? baseView.legalActions
   };
 }
 
@@ -547,31 +559,26 @@ describe("CommandPanel", () => {
     expect(html).toContain("Auto-pass will pass priority automatically on this state.");
   });
 
-  it("renders an apparent-action hint when enabled but a visible play exists", () => {
+  it("renders an apparent-action hint when enabled and a visible cast exists", () => {
     const html = renderToStaticMarkup(
       <CommandPanel
         viewerPlayerId="player-1"
         gameView={createGameView({
-          viewer: {
-            id: "player-1",
-            life: 20,
-            manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
-            hand: [
-              {
-                id: "hand-island",
-                zcc: 0,
-                cardDefId: "island",
-                owner: "player-1",
-                controller: "player-1",
-                counters: {},
-                damage: 0,
-                tapped: false,
-                summoningSick: false,
-                attachments: [],
-                zone: { kind: "hand", scope: "player", playerId: "player-1" }
-              }
-            ],
-            handCount: 1
+          legalActions: {
+            passPriority: { command: { type: "PASS_PRIORITY" } },
+            concede: { command: { type: "CONCEDE" } },
+            choice: null,
+            hand: {
+              "brainstorm-card": [
+                {
+                  type: "CAST_SPELL",
+                  commandBase: { type: "CAST_SPELL", cardId: "brainstorm-card" },
+                  requiresTargets: false,
+                  availableModes: []
+                }
+              ]
+            },
+            battlefield: {}
           }
         })}
         pendingChoice={null}
@@ -590,31 +597,24 @@ describe("CommandPanel", () => {
     expect(html).toContain("Auto-pass is holding because you have an apparent action available.");
   });
 
-  it("renders an uncertainty hint when enabled but the client cannot verify actions safely", () => {
+  it("renders an apparent-action hint when enabled and a land play exists", () => {
     const html = renderToStaticMarkup(
       <CommandPanel
         viewerPlayerId="player-1"
         gameView={createGameView({
-          viewer: {
-            id: "player-1",
-            life: 20,
-            manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
-            hand: [
-              {
-                id: "future-card",
-                zcc: 0,
-                cardDefId: "future-card",
-                owner: "player-1",
-                controller: "player-1",
-                counters: {},
-                damage: 0,
-                tapped: false,
-                summoningSick: false,
-                attachments: [],
-                zone: { kind: "hand", scope: "player", playerId: "player-1" }
-              }
-            ],
-            handCount: 1
+          legalActions: {
+            passPriority: { command: { type: "PASS_PRIORITY" } },
+            concede: { command: { type: "CONCEDE" } },
+            choice: null,
+            hand: {
+              "hand-island": [
+                {
+                  type: "PLAY_LAND",
+                  command: { type: "PLAY_LAND", cardId: "hand-island" }
+                }
+              ]
+            },
+            battlefield: {}
           }
         })}
         pendingChoice={null}
@@ -630,9 +630,28 @@ describe("CommandPanel", () => {
       />
     );
 
-    expect(html).toContain(
-      "Auto-pass is holding because the client cannot verify every action safely."
+    expect(html).toContain("Auto-pass is holding because you have an apparent action available.");
+  });
+
+  it("renders a will-auto-pass hint when enabled and no projected actions remain", () => {
+    const html = renderToStaticMarkup(
+      <CommandPanel
+        viewerPlayerId="player-1"
+        gameView={createGameView()}
+        pendingChoice={null}
+        viewerHasPriority={true}
+        isSubmitting={false}
+        error={null}
+        autoPassEnabled={true}
+        onAutoPassEnabledChange={vi.fn()}
+        onPassPriority={vi.fn()}
+        onConcede={vi.fn()}
+        onMakeChoice={vi.fn()}
+        onClearError={vi.fn()}
+      />
     );
+
+    expect(html).toContain("Auto-pass will pass priority automatically on this state.");
   });
 
   it("forwards auto-pass checkbox changes", () => {

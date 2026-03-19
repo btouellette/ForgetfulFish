@@ -14,7 +14,7 @@ vi.mock("../../lib/renderer/battlefield-renderer", () => ({
 }));
 
 function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView {
-  return {
+  const baseView: PlayerGameView = {
     viewerPlayerId: "player-1",
     stateVersion: 2,
     turnState: {
@@ -84,7 +84,29 @@ function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView
     },
     stack: [{ object: { id: "stack-obj-1", zcc: 0 }, controller: "player-2" }],
     pendingChoice: null,
-    ...overrides
+    legalActions: {
+      passPriority: null,
+      concede: { command: { type: "CONCEDE" } },
+      choice: null,
+      hand: {
+        "obj-1": [{ type: "PLAY_LAND", command: { type: "PLAY_LAND", cardId: "obj-1" } }],
+        "obj-2": [
+          {
+            type: "CAST_SPELL",
+            commandBase: { type: "CAST_SPELL", cardId: "obj-2" },
+            requiresTargets: false,
+            availableModes: []
+          }
+        ]
+      },
+      battlefield: {}
+    }
+  };
+
+  return {
+    ...baseView,
+    ...overrides,
+    legalActions: overrides.legalActions ?? baseView.legalActions
   };
 }
 
@@ -136,7 +158,53 @@ describe("GameplayView", () => {
   it("renders all gameplay panels and a live canvas host", () => {
     const html = renderToStaticMarkup(
       <GameplayView
-        gameView={createGameView({ pendingChoice: createPendingChoice() })}
+        gameView={createGameView({
+          pendingChoice: createPendingChoice(),
+          legalActions: {
+            passPriority: null,
+            concede: { command: { type: "CONCEDE" } },
+            choice: null,
+            hand: {
+              "obj-1": [{ type: "PLAY_LAND", command: { type: "PLAY_LAND", cardId: "obj-1" } }],
+              "obj-2": [
+                {
+                  type: "CAST_SPELL",
+                  commandBase: { type: "CAST_SPELL", cardId: "obj-2" },
+                  requiresTargets: false,
+                  availableModes: []
+                }
+              ]
+            },
+            battlefield: {
+              island: [
+                {
+                  type: "ACTIVATE_ABILITY",
+                  commandBase: { type: "ACTIVATE_ABILITY", sourceId: "island", abilityIndex: 0 },
+                  requiresTargets: false,
+                  isManaAbility: true,
+                  manaProduced: { blue: 1 },
+                  blocksAutoPass: true
+                }
+              ]
+            }
+          },
+          objectPool: {
+            ...createGameView().objectPool,
+            island: {
+              id: "island",
+              zcc: 0,
+              cardDefId: "island",
+              owner: "player-1",
+              controller: "player-1",
+              counters: {},
+              damage: 0,
+              tapped: false,
+              summoningSick: false,
+              attachments: [],
+              zone: { kind: "battlefield", scope: "shared" }
+            }
+          }
+        })}
         recentEvents={[
           { seq: 7, eventType: "PRIORITY_PASSED" },
           { seq: 8, eventType: "STACK_ITEM_RESOLVED" }
@@ -148,6 +216,7 @@ describe("GameplayView", () => {
         onConcede={vi.fn()}
         onPlayLand={vi.fn()}
         onCastSpell={vi.fn()}
+        onActivateAbility={vi.fn()}
         onMakeChoice={vi.fn()}
         onClearError={vi.fn()}
       />
@@ -156,6 +225,7 @@ describe("GameplayView", () => {
     expect(html).toContain("Status");
     expect(html).toContain("Commands");
     expect(html).toContain("Hand");
+    expect(html).toContain("Battlefield actions");
     expect(html).toContain("Stack");
     expect(html).toContain("Play land");
     expect(html).toContain("Cast spell");
@@ -163,6 +233,102 @@ describe("GameplayView", () => {
     expect(html).toContain("Zones");
     expect(html).toContain("Events");
     expect(html).toContain("<canvas");
+  });
+
+  it("submits battlefield activation intent from projected legal actions", () => {
+    const onActivateAbility = vi.fn();
+
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class MockResizeObserver {
+        observe() {}
+        disconnect() {}
+      }
+    );
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      setTransform: vi.fn()
+    } as unknown as CanvasRenderingContext2D);
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={createGameView({
+            turnState: {
+              phase: "MAIN_1",
+              activePlayerId: "player-1",
+              priorityPlayerId: "player-1"
+            },
+            objectPool: {
+              ...createGameView().objectPool,
+              island: {
+                id: "island",
+                zcc: 0,
+                cardDefId: "island",
+                owner: "player-1",
+                controller: "player-1",
+                counters: {},
+                damage: 0,
+                tapped: false,
+                summoningSick: false,
+                attachments: [],
+                zone: { kind: "battlefield", scope: "shared" }
+              }
+            },
+            legalActions: {
+              passPriority: { command: { type: "PASS_PRIORITY" } },
+              concede: { command: { type: "CONCEDE" } },
+              choice: null,
+              hand: {},
+              battlefield: {
+                island: [
+                  {
+                    type: "ACTIVATE_ABILITY",
+                    commandBase: { type: "ACTIVATE_ABILITY", sourceId: "island", abilityIndex: 0 },
+                    requiresTargets: false,
+                    isManaAbility: true,
+                    manaProduced: { blue: 1 },
+                    blocksAutoPass: true
+                  }
+                ]
+              }
+            }
+          })}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={vi.fn()}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onActivateAbility={onActivateAbility}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const activateButton = container.querySelector(
+      '[data-testid="activate-ability-island-0"]'
+    ) as HTMLButtonElement | null;
+
+    expect(activateButton).toBeTruthy();
+
+    act(() => {
+      activateButton?.click();
+    });
+
+    expect(onActivateAbility).toHaveBeenCalledWith("island", 0);
   });
 
   it("falls back to the waiting placeholder when gameView is missing", () => {
@@ -359,7 +525,14 @@ describe("GameplayView", () => {
         handCount: 0
       },
       objectPool: {},
-      stack: []
+      stack: [],
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {},
+        battlefield: {}
+      }
     });
 
     act(() => {
@@ -498,7 +671,23 @@ describe("GameplayView", () => {
           zone: { kind: "battlefield", scope: "shared" }
         }
       },
-      stack: []
+      stack: [],
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {
+          "obj-2": [
+            {
+              type: "CAST_SPELL",
+              commandBase: { type: "CAST_SPELL", cardId: "obj-2" },
+              requiresTargets: false,
+              availableModes: []
+            }
+          ]
+        },
+        battlefield: {}
+      }
     });
 
     act(() => {
@@ -528,6 +717,101 @@ describe("GameplayView", () => {
     });
 
     expect(onPassPriority).not.toHaveBeenCalled();
+  });
+
+  it("auto-passes when the only visible action is a land outside a land-play window", () => {
+    const onPassPriority = vi.fn();
+    installLocalStorageMock();
+
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.stubGlobal(
+      "ResizeObserver",
+      class MockResizeObserver {
+        observe() {}
+        disconnect() {}
+      }
+    );
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      setTransform: vi.fn()
+    } as unknown as CanvasRenderingContext2D);
+
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    const gameView = createGameView({
+      turnState: {
+        phase: "UPKEEP",
+        activePlayerId: "player-1",
+        priorityPlayerId: "player-1"
+      },
+      viewer: {
+        id: "player-1",
+        life: 20,
+        manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+        hand: [
+          {
+            id: "obj-1",
+            zcc: 0,
+            cardDefId: "island",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          }
+        ],
+        handCount: 1
+      },
+      objectPool: {},
+      stack: [],
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {},
+        battlefield: {}
+      }
+    });
+
+    act(() => {
+      root.render(
+        <GameplayView
+          gameView={gameView}
+          recentEvents={[]}
+          pendingChoice={null}
+          isSubmittingCommand={false}
+          error={null}
+          onPassPriority={onPassPriority}
+          onConcede={vi.fn()}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onMakeChoice={vi.fn()}
+          onClearError={vi.fn()}
+        />
+      );
+    });
+
+    const checkbox = container.querySelector(
+      '[data-testid="auto-pass-checkbox"]'
+    ) as HTMLInputElement | null;
+
+    act(() => {
+      checkbox?.click();
+    });
+
+    expect(onPassPriority).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain(
+      "Auto-pass will pass priority automatically on this state."
+    );
   });
 
   it("restores the saved auto-pass preference from localStorage on mount", () => {
@@ -571,7 +855,14 @@ describe("GameplayView", () => {
               handCount: 0
             },
             objectPool: {},
-            stack: []
+            stack: [],
+            legalActions: {
+              passPriority: { command: { type: "PASS_PRIORITY" } },
+              concede: { command: { type: "CONCEDE" } },
+              choice: null,
+              hand: {},
+              battlefield: {}
+            }
           })}
           recentEvents={[]}
           pendingChoice={null}
@@ -635,7 +926,14 @@ describe("GameplayView", () => {
               handCount: 0
             },
             objectPool: {},
-            stack: []
+            stack: [],
+            legalActions: {
+              passPriority: { command: { type: "PASS_PRIORITY" } },
+              concede: { command: { type: "CONCEDE" } },
+              choice: null,
+              hand: {},
+              battlefield: {}
+            }
           })}
           recentEvents={[]}
           pendingChoice={null}

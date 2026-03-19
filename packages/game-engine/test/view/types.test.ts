@@ -69,7 +69,14 @@ describe("view/types", () => {
         "obj-1": handObject
       },
       stack,
-      pendingChoice: null
+      pendingChoice: null,
+      legalActions: {
+        passPriority: null,
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {},
+        battlefield: {}
+      }
     };
 
     expect(view.viewer.hand[0]?.cardDefId).toBe("island");
