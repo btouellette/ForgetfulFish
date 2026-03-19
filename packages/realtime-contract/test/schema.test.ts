@@ -9,6 +9,14 @@ import {
   wsSubscribedMessageSchema
 } from "../src/index";
 
+const legalActionsFixture = {
+  passPriority: null,
+  concede: { command: { type: "CONCEDE" as const } },
+  choice: null,
+  hand: {},
+  battlefield: {}
+};
+
 describe("realtime contract schemas", () => {
   it("accepts canonical subscribed message payload", () => {
     const parsed = wsSubscribedMessageSchema.parse({
@@ -160,7 +168,8 @@ describe("realtime contract schemas", () => {
           controller: "player-1"
         }
       ],
-      pendingChoice: null
+      pendingChoice: null,
+      legalActions: legalActionsFixture
     });
 
     expect(parsed.viewer.hand).toHaveLength(1);
@@ -206,7 +215,8 @@ describe("realtime contract schemas", () => {
         }
       },
       stack: [],
-      pendingChoice: null
+      pendingChoice: null,
+      legalActions: legalActionsFixture
     });
 
     expect(parsed.success).toBe(false);
@@ -238,6 +248,7 @@ describe("realtime contract schemas", () => {
       objectPool: {},
       stack: [],
       pendingChoice: null,
+      legalActions: legalActionsFixture,
       rngSeed: "seed-1"
     });
 
@@ -270,6 +281,7 @@ describe("realtime contract schemas", () => {
       objectPool: {},
       stack: [],
       pendingChoice: null,
+      legalActions: legalActionsFixture,
       lkiStore: {}
     });
 
@@ -302,6 +314,7 @@ describe("realtime contract schemas", () => {
       objectPool: {},
       stack: [],
       pendingChoice: null,
+      legalActions: legalActionsFixture,
       triggerQueue: []
     });
 
