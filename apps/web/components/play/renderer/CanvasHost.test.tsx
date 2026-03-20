@@ -88,7 +88,9 @@ describe("CanvasHost", () => {
     const canvas = host.querySelector("canvas") as HTMLCanvasElement;
     setElementSize(host, 120, 80);
 
-    MockResizeObserver.instances[0]?.trigger(host);
+    act(() => {
+      MockResizeObserver.instances[0]?.trigger(host);
+    });
 
     expect(canvas.width).toBe(240);
     expect(canvas.height).toBe(160);
