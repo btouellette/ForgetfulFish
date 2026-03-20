@@ -202,9 +202,11 @@ describe("GameplayView canvas integration", () => {
     renderView(createGameView());
 
     const host = container.querySelector("div > div") as HTMLDivElement;
-    MockResizeObserver.instances[0]?.trigger(host);
+    act(() => {
+      MockResizeObserver.instances[0]?.trigger(host);
+    });
 
-    expect(rafCallbacks).toHaveLength(2);
+    expect(rafCallbacks).toHaveLength(3);
   });
 
   it("cancels a pending animation frame on unmount", () => {
