@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { cardRegistry } from "../../src/cards";
+import type { CardDefinition } from "../../src/cards/cardDefinition";
 import {
   createInitialGameState,
   projectPlayerView,
@@ -60,6 +62,79 @@ function addObject(state: GameState, object: GameObject): void {
     player.hand.push(object.id);
   }
 }
+
+function withTemporaryCardDefinitions(definitions: CardDefinition[], callback: () => void): void {
+  const previousDefinitions = definitions.map(
+    (definition) => [definition.id, cardRegistry.get(definition.id)] as const
+  );
+
+  try {
+    for (const definition of definitions) {
+      cardRegistry.set(definition.id, definition);
+    }
+
+    callback();
+  } finally {
+    for (const [definitionId, previousDefinition] of previousDefinitions) {
+      if (previousDefinition === undefined) {
+        cardRegistry.delete(definitionId);
+      } else {
+        cardRegistry.set(definitionId, previousDefinition);
+      }
+    }
+  }
+}
+
+const blueRedSpellDefinition: CardDefinition = {
+  id: "projection-blue-red-spell",
+  name: "Projection Blue Red Spell",
+  manaCost: { blue: 2, red: 1 },
+  typeLine: ["Instant"],
+  subtypes: [],
+  color: ["blue", "red"],
+  supertypes: [],
+  power: null,
+  toughness: null,
+  keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [],
+  onResolve: [],
+  continuousEffects: [],
+  replacementEffects: []
+};
+
+const dualManaLandDefinition: CardDefinition = {
+  id: "projection-dual-land",
+  name: "Projection Dual Land",
+  manaCost: {},
+  typeLine: ["Land"],
+  subtypes: [],
+  color: [],
+  supertypes: [],
+  power: null,
+  toughness: null,
+  keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [
+    {
+      kind: "activated",
+      cost: [{ kind: "tap" }],
+      effect: { kind: "add_mana", mana: { red: 1 } },
+      isManaAbility: true
+    },
+    {
+      kind: "activated",
+      cost: [{ kind: "tap" }],
+      effect: { kind: "add_mana", mana: { blue: 1 } },
+      isManaAbility: true
+    }
+  ],
+  onResolve: [],
+  continuousEffects: [],
+  replacementEffects: []
+};
 
 function createStateWithVisibleAndHiddenObjects(): GameState {
   const state = createInitialGameState("p1", "p2", {
@@ -158,5 +233,382 @@ describe("view/projection", () => {
     expect(view.objectPool["exile-card"]?.zone.kind).toBe("exile");
     expect(view.objectPool["stack-card"]?.zone.kind).toBe("stack");
     expect(view.stack).toEqual([{ object: { id: "stack-card", zcc: 0 }, controller: "p1" }]);
+  });
+
+  it("projects compact legal actions for hand and battlefield sources", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "projection-legal-actions",
+      rngSeed: "projection-legal-actions-seed"
+    });
+
+    state.turnState.phase = "MAIN_1";
+    state.turnState.step = "MAIN_1";
+    state.turnState.activePlayerId = "p1";
+    state.turnState.priorityState.playerWithPriority = "p1";
+    state.players[0].priority = true;
+    state.players[1].priority = false;
+    state.players[0].manaPool.blue = 1;
+
+    addObject(
+      state,
+      createObject(
+        "hand-island",
+        "p1",
+        { kind: "hand", scope: "player", playerId: "p1" },
+        {
+          cardDefId: "island"
+        }
+      )
+    );
+    addObject(
+      state,
+      createObject(
+        "hand-brainstorm",
+        "p1",
+        { kind: "hand", scope: "player", playerId: "p1" },
+        { cardDefId: "brainstorm" }
+      )
+    );
+    addObject(
+      state,
+      createObject(
+        "battlefield-island",
+        "p1",
+        { kind: "battlefield", scope: "shared" },
+        {
+          cardDefId: "island"
+        }
+      )
+    );
+
+    const view = projectPlayerView(state, "p1");
+
+    expect(view.legalActions.passPriority).toEqual({ command: { type: "PASS_PRIORITY" } });
+    expect(view.legalActions.concede).toEqual({ command: { type: "CONCEDE" } });
+    expect(view.legalActions.hand["hand-island"]).toEqual([
+      { type: "PLAY_LAND", command: { type: "PLAY_LAND", cardId: "hand-island" } }
+    ]);
+    expect(view.legalActions.hand["hand-brainstorm"]).toEqual([
+      {
+        type: "CAST_SPELL",
+        commandBase: { type: "CAST_SPELL", cardId: "hand-brainstorm" },
+        requiresTargets: false,
+        availableModes: []
+      }
+    ]);
+    expect(view.legalActions.battlefield["battlefield-island"]).toEqual([
+      {
+        type: "ACTIVATE_ABILITY",
+        commandBase: {
+          type: "ACTIVATE_ABILITY",
+          sourceId: "battlefield-island",
+          abilityIndex: 0
+        },
+        requiresTargets: false,
+        isManaAbility: true,
+        manaProduced: { blue: 1 },
+        blocksAutoPass: true
+      }
+    ]);
+    expect(view.legalActions.hasOtherBlockingActions).toBe(false);
+  });
+
+  it("marks mana-only activations as non-blocking when total mana cannot unlock a real action", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "projection-non-blocking-mana",
+      rngSeed: "projection-non-blocking-mana-seed"
+    });
+
+    state.turnState.phase = "MAIN_1";
+    state.turnState.step = "MAIN_1";
+    state.turnState.activePlayerId = "p1";
+    state.turnState.priorityState.playerWithPriority = "p1";
+    state.players[0].priority = true;
+    state.players[1].priority = false;
+
+    addObject(
+      state,
+      createObject(
+        "battlefield-island",
+        "p1",
+        { kind: "battlefield", scope: "shared" },
+        {
+          cardDefId: "island"
+        }
+      )
+    );
+
+    const view = projectPlayerView(state, "p1");
+
+    expect(view.legalActions.battlefield["battlefield-island"]).toEqual([
+      {
+        type: "ACTIVATE_ABILITY",
+        commandBase: {
+          type: "ACTIVATE_ABILITY",
+          sourceId: "battlefield-island",
+          abilityIndex: 0
+        },
+        requiresTargets: false,
+        isManaAbility: true,
+        manaProduced: { blue: 1 },
+        blocksAutoPass: false
+      }
+    ]);
+    expect(view.legalActions.hasOtherBlockingActions).toBe(false);
+  });
+
+  it("keeps future dual-mana lands blocking when one color choice plus other lands unlocks a spell", () => {
+    withTemporaryCardDefinitions([blueRedSpellDefinition, dualManaLandDefinition], () => {
+      const state = createInitialGameState("p1", "p2", {
+        id: "projection-dual-mana-blocking",
+        rngSeed: "projection-dual-mana-blocking-seed"
+      });
+
+      state.turnState.phase = "MAIN_1";
+      state.turnState.step = "MAIN_1";
+      state.turnState.activePlayerId = "p1";
+      state.turnState.priorityState.playerWithPriority = "p1";
+      state.players[0].priority = true;
+      state.players[1].priority = false;
+
+      addObject(
+        state,
+        createObject(
+          "island-a",
+          "p1",
+          { kind: "battlefield", scope: "shared" },
+          { cardDefId: "island" }
+        )
+      );
+      addObject(
+        state,
+        createObject(
+          "island-b",
+          "p1",
+          { kind: "battlefield", scope: "shared" },
+          { cardDefId: "island" }
+        )
+      );
+      addObject(
+        state,
+        createObject(
+          "dual-land",
+          "p1",
+          { kind: "battlefield", scope: "shared" },
+          {
+            cardDefId: dualManaLandDefinition.id
+          }
+        )
+      );
+      addObject(
+        state,
+        createObject(
+          "blue-red-spell",
+          "p1",
+          { kind: "hand", scope: "player", playerId: "p1" },
+          {
+            cardDefId: blueRedSpellDefinition.id
+          }
+        )
+      );
+
+      const view = projectPlayerView(state, "p1");
+
+      expect(view.legalActions.battlefield["dual-land"]).toEqual([
+        {
+          type: "ACTIVATE_ABILITY",
+          commandBase: {
+            type: "ACTIVATE_ABILITY",
+            sourceId: "dual-land",
+            abilityIndex: 0
+          },
+          requiresTargets: false,
+          isManaAbility: true,
+          manaProduced: { red: 1 },
+          blocksAutoPass: true
+        },
+        {
+          type: "ACTIVATE_ABILITY",
+          commandBase: {
+            type: "ACTIVATE_ABILITY",
+            sourceId: "dual-land",
+            abilityIndex: 1
+          },
+          requiresTargets: false,
+          isManaAbility: true,
+          manaProduced: { blue: 1 },
+          blocksAutoPass: true
+        }
+      ]);
+      expect(view.legalActions.battlefield["island-a"]?.[0]?.blocksAutoPass).toBe(true);
+      expect(view.legalActions.battlefield["island-b"]?.[0]?.blocksAutoPass).toBe(true);
+      expect(view.legalActions.hasOtherBlockingActions).toBe(false);
+    });
+  });
+
+  it("does not block auto-pass with only three islands when the spell still needs red mana", () => {
+    withTemporaryCardDefinitions([blueRedSpellDefinition], () => {
+      const state = createInitialGameState("p1", "p2", {
+        id: "projection-three-islands-no-red",
+        rngSeed: "projection-three-islands-no-red-seed"
+      });
+
+      state.turnState.phase = "MAIN_1";
+      state.turnState.step = "MAIN_1";
+      state.turnState.activePlayerId = "p1";
+      state.turnState.priorityState.playerWithPriority = "p1";
+      state.players[0].priority = true;
+      state.players[1].priority = false;
+
+      addObject(
+        state,
+        createObject(
+          "island-a",
+          "p1",
+          { kind: "battlefield", scope: "shared" },
+          { cardDefId: "island" }
+        )
+      );
+      addObject(
+        state,
+        createObject(
+          "island-b",
+          "p1",
+          { kind: "battlefield", scope: "shared" },
+          { cardDefId: "island" }
+        )
+      );
+      addObject(
+        state,
+        createObject(
+          "island-c",
+          "p1",
+          { kind: "battlefield", scope: "shared" },
+          { cardDefId: "island" }
+        )
+      );
+      addObject(
+        state,
+        createObject(
+          "blue-red-spell",
+          "p1",
+          { kind: "hand", scope: "player", playerId: "p1" },
+          {
+            cardDefId: blueRedSpellDefinition.id
+          }
+        )
+      );
+
+      const view = projectPlayerView(state, "p1");
+
+      expect(view.legalActions.battlefield["island-a"]?.[0]?.blocksAutoPass).toBe(false);
+      expect(view.legalActions.battlefield["island-b"]?.[0]?.blocksAutoPass).toBe(false);
+      expect(view.legalActions.battlefield["island-c"]?.[0]?.blocksAutoPass).toBe(false);
+      expect(view.legalActions.hasOtherBlockingActions).toBe(false);
+    });
+  });
+
+  it("flags combat declaration windows as other blocking actions", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "projection-combat-blocking",
+      rngSeed: "projection-combat-blocking-seed"
+    });
+
+    state.turnState.phase = "DECLARE_ATTACKERS";
+    state.turnState.step = "DECLARE_ATTACKERS";
+    state.turnState.activePlayerId = "p1";
+    state.turnState.priorityState.playerWithPriority = "p1";
+    state.players[0].priority = true;
+    state.players[1].priority = false;
+
+    const view = projectPlayerView(state, "p1");
+
+    expect(view.legalActions.hasOtherBlockingActions).toBe(true);
+  });
+
+  it("keeps mana abilities blocking when total mana across multiple lands unlocks a spell", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "projection-total-mana-blocking",
+      rngSeed: "projection-total-mana-blocking-seed"
+    });
+
+    state.turnState.phase = "MAIN_1";
+    state.turnState.step = "MAIN_1";
+    state.turnState.activePlayerId = "p1";
+    state.turnState.priorityState.playerWithPriority = "p1";
+    state.players[0].priority = true;
+    state.players[1].priority = false;
+
+    addObject(
+      state,
+      createObject(
+        "island-a",
+        "p1",
+        { kind: "battlefield", scope: "shared" },
+        {
+          cardDefId: "island"
+        }
+      )
+    );
+    addObject(
+      state,
+      createObject(
+        "island-b",
+        "p1",
+        { kind: "battlefield", scope: "shared" },
+        {
+          cardDefId: "island"
+        }
+      )
+    );
+    addObject(
+      state,
+      createObject(
+        "predict-hand",
+        "p1",
+        { kind: "hand", scope: "player", playerId: "p1" },
+        {
+          cardDefId: "predict"
+        }
+      )
+    );
+
+    const view = projectPlayerView(state, "p1");
+
+    expect(view.legalActions.battlefield["island-a"]?.[0]?.blocksAutoPass).toBe(true);
+    expect(view.legalActions.battlefield["island-b"]?.[0]?.blocksAutoPass).toBe(true);
+  });
+
+  it("does not expose another player's legal actions in the projected view", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "projection-opponent-legal-actions",
+      rngSeed: "projection-opponent-legal-actions-seed"
+    });
+
+    state.turnState.phase = "MAIN_1";
+    state.turnState.step = "MAIN_1";
+    state.turnState.activePlayerId = "p2";
+    state.turnState.priorityState.playerWithPriority = "p2";
+    state.players[0].priority = false;
+    state.players[1].priority = true;
+
+    addObject(
+      state,
+      createObject(
+        "viewer-island",
+        "p1",
+        { kind: "hand", scope: "player", playerId: "p1" },
+        {
+          cardDefId: "island"
+        }
+      )
+    );
+
+    const view = projectPlayerView(state, "p1");
+
+    expect(view.legalActions.passPriority).toBeNull();
+    expect(view.legalActions.hand).toEqual({});
+    expect(view.legalActions.battlefield).toEqual({});
+    expect(view.legalActions.concede).toEqual({ command: { type: "CONCEDE" } });
   });
 });

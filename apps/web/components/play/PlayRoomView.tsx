@@ -40,6 +40,7 @@ type PlayRoomViewProps = {
     cardId: string,
     targets?: NonNullable<Extract<GameplayCommand, { type: "CAST_SPELL" }>["targets"]>
   ) => void;
+  onActivateAbility?: (sourceId: string, abilityIndex: number) => void;
   onMakeChoice: (payload: Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"]) => void;
   onClearError: () => void;
 };
@@ -66,6 +67,7 @@ export function PlayRoomView({
   onConcede,
   onPlayLand,
   onCastSpell,
+  onActivateAbility = () => {},
   onMakeChoice,
   onClearError
 }: PlayRoomViewProps) {
@@ -99,6 +101,7 @@ export function PlayRoomView({
           onConcede={onConcede}
           onPlayLand={onPlayLand}
           onCastSpell={onCastSpell}
+          onActivateAbility={onActivateAbility}
           onMakeChoice={onMakeChoice}
           onClearError={onClearError}
         />

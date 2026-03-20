@@ -865,6 +865,9 @@ describe("server room routes", () => {
     expect(parsed.viewer.handCount).toBe(7);
     expect(parsed.opponent.handCount).toBe(7);
     expect(parsed.pendingChoice).toBeNull();
+    expect(parsed.legalActions.concede).toEqual({ command: { type: "CONCEDE" } });
+    expect(parsed.legalActions.hand).toBeTruthy();
+    expect(parsed.legalActions.battlefield).toBeTruthy();
     expect(parsed.stack).toEqual([]);
     expect(parsed.zones.length).toBeGreaterThan(0);
     expect(hiddenLibrary).toMatchObject({ count: expect.any(Number) });

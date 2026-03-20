@@ -8,7 +8,9 @@ import type {
   PlayerGameView
 } from "@forgetful-fish/realtime-contract";
 
+import { shouldAutoPass } from "../../lib/auto-pass";
 import { renderBattlefield } from "../../lib/renderer/battlefield-renderer";
+import { BattlefieldActionsPanel } from "./BattlefieldActionsPanel";
 import { CommandPanel } from "./CommandPanel";
 import { EventRail } from "./EventRail";
 import { HandPanel } from "./HandPanel";
@@ -17,6 +19,20 @@ import { StatusRail } from "./StatusRail";
 import { ZonesSummaryPanel } from "./ZonesSummaryPanel";
 import { CanvasHost } from "./renderer/CanvasHost";
 import styles from "./PlayRoom.module.css";
+
+const autoPassPreferenceStorageKey = "ff:autoPassEnabled";
+
+function getInitialAutoPassPreference(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    return window.localStorage.getItem(autoPassPreferenceStorageKey) === "true";
+  } catch {
+    return false;
+  }
+}
 
 type GameplayViewProps = {
   gameView: PlayerGameView | null;
@@ -31,6 +47,7 @@ type GameplayViewProps = {
     cardId: string,
     targets?: NonNullable<Extract<GameplayCommand, { type: "CAST_SPELL" }>["targets"]>
   ) => void;
+  onActivateAbility?: (sourceId: string, abilityIndex: number) => void;
   onMakeChoice: (payload: Extract<GameplayCommand, { type: "MAKE_CHOICE" }>["payload"]) => void;
   onClearError: () => void;
 };
@@ -45,6 +62,7 @@ export function GameplayView({
   onConcede,
   onPlayLand,
   onCastSpell,
+  onActivateAbility = () => {},
   onMakeChoice,
   onClearError
 }: GameplayViewProps) {
@@ -52,6 +70,10 @@ export function GameplayView({
   const rafRef = useRef<number | null>(null);
   const [canvasVersion, setCanvasVersion] = useState(0);
   const [targetingCardId, setTargetingCardId] = useState<string | null>(null);
+  const [autoPassEnabled, setAutoPassEnabled] = useState(getInitialAutoPassPreference);
+  const lastAutoPassedStateVersionRef = useRef<number | null>(null);
+  const lastSeenStateVersionRef = useRef<number | null>(null);
+  const skipNextAutoPassPersistRef = useRef(true);
 
   const handleCanvasResize = useCallback(() => {
     setCanvasVersion((version) => version + 1);
@@ -138,6 +160,52 @@ export function GameplayView({
     ? (gameView?.objectPool[activeTargetingCardId]?.cardDefId ?? activeTargetingCardId)
     : null;
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (skipNextAutoPassPersistRef.current) {
+      skipNextAutoPassPersistRef.current = false;
+      return;
+    }
+
+    try {
+      window.localStorage.setItem(autoPassPreferenceStorageKey, autoPassEnabled ? "true" : "false");
+    } catch {
+      return;
+    }
+  }, [autoPassEnabled]);
+
+  useEffect(() => {
+    if (!gameView) {
+      return;
+    }
+
+    if (
+      lastSeenStateVersionRef.current !== null &&
+      gameView.stateVersion < lastSeenStateVersionRef.current
+    ) {
+      lastAutoPassedStateVersionRef.current = null;
+    }
+    lastSeenStateVersionRef.current = gameView.stateVersion;
+
+    const viewerHasPriority = gameView.turnState.priorityPlayerId === gameView.viewerPlayerId;
+    if (
+      !autoPassEnabled ||
+      !viewerHasPriority ||
+      isSubmittingCommand ||
+      pendingChoice !== null ||
+      lastAutoPassedStateVersionRef.current === gameView.stateVersion ||
+      !shouldAutoPass(gameView)
+    ) {
+      return;
+    }
+
+    lastAutoPassedStateVersionRef.current = gameView.stateVersion;
+    onPassPriority();
+  }, [autoPassEnabled, gameView, isSubmittingCommand, onPassPriority, pendingChoice]);
+
   if (!gameView) {
     return (
       <section className={styles.gameplayView} data-testid="game-active-placeholder">
@@ -163,11 +231,19 @@ export function GameplayView({
         />
         <HandPanel
           hand={gameView.viewer.hand}
+          legalActions={gameView.legalActions.hand}
           viewerHasPriority={viewerHasPriority}
           isSubmitting={isSubmittingCommand}
           onPlayLand={onPlayLand}
           onCastSpell={onCastSpell}
           onBeginTargetedCast={handleBeginTargetedCast}
+        />
+        <BattlefieldActionsPanel
+          legalActions={gameView.legalActions.battlefield}
+          objectPool={gameView.objectPool}
+          viewerHasPriority={viewerHasPriority}
+          isSubmitting={isSubmittingCommand}
+          onActivateAbility={onActivateAbility}
         />
         <StackPanel
           stack={gameView.stack}
@@ -180,10 +256,13 @@ export function GameplayView({
         />
         <CommandPanel
           viewerPlayerId={gameView.viewerPlayerId}
+          gameView={gameView}
           pendingChoice={pendingChoice}
           viewerHasPriority={viewerHasPriority}
           isSubmitting={isSubmittingCommand}
           error={error}
+          autoPassEnabled={autoPassEnabled}
+          onAutoPassEnabledChange={setAutoPassEnabled}
           onPassPriority={onPassPriority}
           onConcede={onConcede}
           onMakeChoice={onMakeChoice}

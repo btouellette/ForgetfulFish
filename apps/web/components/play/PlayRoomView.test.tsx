@@ -79,7 +79,15 @@ describe("PlayRoomView", () => {
           zones: [],
           objectPool: {},
           stack: [],
-          pendingChoice: null
+          pendingChoice: null,
+          legalActions: {
+            passPriority: null,
+            concede: { command: { type: "CONCEDE" } },
+            choice: null,
+            hand: {},
+            battlefield: {},
+            hasOtherBlockingActions: false
+          }
         }}
         recentEvents={[]}
         pendingChoice={null}

@@ -8,6 +8,7 @@ import type {
 } from "./command";
 import type { CardDefinition } from "../cards/cardDefinition";
 import type { GameState } from "../state/gameState";
+import type { ManaPool } from "../state/gameState";
 import { zoneKey } from "../state/zones";
 
 function isMainPhase(state: Readonly<GameState>): boolean {
@@ -104,6 +105,42 @@ export type ValidatedActivateAbility = {
   playerId: string;
 };
 
+export function hasSufficientManaPool(
+  manaPool: Readonly<ManaPool>,
+  cost: CardDefinition["manaCost"]
+): boolean {
+  const requiredWhite = cost.white ?? 0;
+  const requiredBlue = cost.blue ?? 0;
+  const requiredBlack = cost.black ?? 0;
+  const requiredRed = cost.red ?? 0;
+  const requiredGreen = cost.green ?? 0;
+  const requiredColorless = cost.colorless ?? 0;
+  const requiredGeneric = cost.generic ?? 0;
+
+  const hasSpecificMana =
+    manaPool.white >= requiredWhite &&
+    manaPool.blue >= requiredBlue &&
+    manaPool.black >= requiredBlack &&
+    manaPool.red >= requiredRed &&
+    manaPool.green >= requiredGreen &&
+    manaPool.colorless >= requiredColorless;
+
+  if (!hasSpecificMana) {
+    return false;
+  }
+
+  const remainingManaAfterSpecific =
+    manaPool.white -
+    requiredWhite +
+    (manaPool.blue - requiredBlue) +
+    (manaPool.black - requiredBlack) +
+    (manaPool.red - requiredRed) +
+    (manaPool.green - requiredGreen) +
+    (manaPool.colorless - requiredColorless);
+
+  return remainingManaAfterSpecific >= requiredGeneric;
+}
+
 function hasSufficientMana(
   state: Readonly<GameState>,
   playerId: string,
@@ -114,36 +151,7 @@ function hasSufficientMana(
     throw new Error(`unknown player '${playerId}'`);
   }
 
-  const requiredWhite = cost.white ?? 0;
-  const requiredBlue = cost.blue ?? 0;
-  const requiredBlack = cost.black ?? 0;
-  const requiredRed = cost.red ?? 0;
-  const requiredGreen = cost.green ?? 0;
-  const requiredColorless = cost.colorless ?? 0;
-  const requiredGeneric = cost.generic ?? 0;
-
-  const hasSpecificMana =
-    player.manaPool.white >= requiredWhite &&
-    player.manaPool.blue >= requiredBlue &&
-    player.manaPool.black >= requiredBlack &&
-    player.manaPool.red >= requiredRed &&
-    player.manaPool.green >= requiredGreen &&
-    player.manaPool.colorless >= requiredColorless;
-
-  if (!hasSpecificMana) {
-    return false;
-  }
-
-  const remainingManaAfterSpecific =
-    player.manaPool.white -
-    requiredWhite +
-    (player.manaPool.blue - requiredBlue) +
-    (player.manaPool.black - requiredBlack) +
-    (player.manaPool.red - requiredRed) +
-    (player.manaPool.green - requiredGreen) +
-    (player.manaPool.colorless - requiredColorless);
-
-  return remainingManaAfterSpecific >= requiredGeneric;
+  return hasSufficientManaPool(player.manaPool, cost);
 }
 
 export function validateCastSpell(

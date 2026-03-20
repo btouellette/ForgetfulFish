@@ -33,7 +33,15 @@ function createPlayerGameViewPayload() {
     zones: [{ zoneRef: { kind: "library", scope: "shared" }, count: 40 }],
     objectPool: {},
     stack: [],
-    pendingChoice: null
+    pendingChoice: null,
+    legalActions: {
+      passPriority: null,
+      concede: { command: { type: "CONCEDE" } },
+      choice: null,
+      hand: {},
+      battlefield: {},
+      hasOtherBlockingActions: false
+    }
   };
 }
 

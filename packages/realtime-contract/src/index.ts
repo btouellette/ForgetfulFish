@@ -324,6 +324,88 @@ export const stackItemViewSchema = z
   })
   .strict();
 
+const actionModeViewSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string().min(1).optional()
+  })
+  .strict();
+
+const handLegalActionViewSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("PLAY_LAND"),
+      command: z
+        .object({
+          type: z.literal("PLAY_LAND"),
+          cardId: objectIdSchema
+        })
+        .strict()
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("CAST_SPELL"),
+      commandBase: z
+        .object({
+          type: z.literal("CAST_SPELL"),
+          cardId: objectIdSchema
+        })
+        .strict(),
+      requiresTargets: z.boolean(),
+      availableModes: z.array(actionModeViewSchema)
+    })
+    .strict()
+]);
+
+const battlefieldLegalActionViewSchema = z
+  .object({
+    type: z.literal("ACTIVATE_ABILITY"),
+    commandBase: z
+      .object({
+        type: z.literal("ACTIVATE_ABILITY"),
+        sourceId: objectIdSchema,
+        abilityIndex: z.number().int().min(0)
+      })
+      .strict(),
+    requiresTargets: z.boolean(),
+    isManaAbility: z.boolean(),
+    manaProduced: z
+      .object({
+        white: z.number().int().nonnegative().optional(),
+        blue: z.number().int().nonnegative().optional(),
+        black: z.number().int().nonnegative().optional(),
+        red: z.number().int().nonnegative().optional(),
+        green: z.number().int().nonnegative().optional(),
+        colorless: z.number().int().nonnegative().optional(),
+        generic: z.number().int().nonnegative().optional()
+      })
+      .strict()
+      .nullable(),
+    blocksAutoPass: z.boolean()
+  })
+  .strict();
+
+export const legalActionsViewSchema = z
+  .object({
+    passPriority: z
+      .object({
+        command: z.object({ type: z.literal("PASS_PRIORITY") }).strict()
+      })
+      .strict()
+      .nullable(),
+    concede: z
+      .object({
+        command: z.object({ type: z.literal("CONCEDE") }).strict()
+      })
+      .strict(),
+    choice: gameplayPendingChoiceSchema.nullable(),
+    hand: z.record(objectIdSchema, z.array(handLegalActionViewSchema)),
+    battlefield: z.record(objectIdSchema, z.array(battlefieldLegalActionViewSchema)),
+    hasOtherBlockingActions: z.boolean()
+  })
+  .strict();
+
 export const playerTurnStateViewSchema = z
   .object({
     phase: z.enum([
@@ -355,7 +437,8 @@ export const playerGameViewSchema = z
     zones: z.array(zoneViewSchema),
     objectPool: z.record(objectIdSchema, gameObjectViewSchema),
     stack: z.array(stackItemViewSchema),
-    pendingChoice: gameplayPendingChoiceSchema.nullable()
+    pendingChoice: gameplayPendingChoiceSchema.nullable(),
+    legalActions: legalActionsViewSchema
   })
   .strict();
 
@@ -381,4 +464,5 @@ export type GameplayCommand = z.infer<typeof gameplayCommandSchema>;
 export type GameplayCommandSubmission = z.infer<typeof gameplayCommandSubmissionSchema>;
 export type GameplayPendingChoice = z.infer<typeof gameplayPendingChoiceSchema>;
 export type GameplayCommandResponse = z.infer<typeof gameplayCommandResponseSchema>;
+export type LegalActionsView = z.infer<typeof legalActionsViewSchema>;
 export type PlayerGameView = z.infer<typeof playerGameViewSchema>;

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { GameplayPendingChoice } from "@forgetful-fish/realtime-contract";
+import type { GameplayPendingChoice, PlayerGameView } from "@forgetful-fish/realtime-contract";
 
 import { CommandPanel } from "./CommandPanel";
 
@@ -19,6 +19,49 @@ function createPendingChoice(
     prompt: "Resolve the spell?",
     constraints: {},
     ...overrides
+  };
+}
+
+function createGameView(overrides: Partial<PlayerGameView> = {}): PlayerGameView {
+  const baseView: PlayerGameView = {
+    viewerPlayerId: "player-1",
+    stateVersion: 2,
+    turnState: {
+      phase: "MAIN_1",
+      activePlayerId: "player-1",
+      priorityPlayerId: "player-1"
+    },
+    viewer: {
+      id: "player-1",
+      life: 20,
+      manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+      hand: [],
+      handCount: 0
+    },
+    opponent: {
+      id: "player-2",
+      life: 20,
+      manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+      handCount: 0
+    },
+    zones: [],
+    objectPool: {},
+    stack: [],
+    pendingChoice: null,
+    legalActions: {
+      passPriority: { command: { type: "PASS_PRIORITY" } },
+      concede: { command: { type: "CONCEDE" } },
+      choice: null,
+      hand: {},
+      battlefield: {},
+      hasOtherBlockingActions: false
+    }
+  };
+
+  return {
+    ...baseView,
+    ...overrides,
+    legalActions: overrides.legalActions ?? baseView.legalActions
   };
 }
 
@@ -42,10 +85,13 @@ describe("CommandPanel", () => {
 
     const mergedProps: React.ComponentProps<typeof CommandPanel> = {
       viewerPlayerId: "player-1",
+      gameView: createGameView(),
       pendingChoice: null,
       viewerHasPriority: true,
       isSubmitting: false,
       error: null,
+      autoPassEnabled: false,
+      onAutoPassEnabledChange: vi.fn(),
       onPassPriority: vi.fn(),
       onConcede: vi.fn(),
       onMakeChoice: vi.fn(),
@@ -64,10 +110,13 @@ describe("CommandPanel", () => {
     const html = renderToStaticMarkup(
       <CommandPanel
         viewerPlayerId="player-1"
+        gameView={createGameView()}
         pendingChoice={null}
         viewerHasPriority={true}
         isSubmitting={false}
         error={null}
+        autoPassEnabled={false}
+        onAutoPassEnabledChange={vi.fn()}
         onPassPriority={vi.fn()}
         onConcede={vi.fn()}
         onMakeChoice={vi.fn()}
@@ -77,16 +126,20 @@ describe("CommandPanel", () => {
 
     expect(html).toContain("Pass priority");
     expect(html).toContain("Concede game");
+    expect(html).toContain("Auto-pass priority when no apparent actions");
   });
 
   it("renders yes-no pending choice controls without advanced widgets", () => {
     const html = renderToStaticMarkup(
       <CommandPanel
         viewerPlayerId="player-1"
+        gameView={createGameView()}
         pendingChoice={createPendingChoice()}
         viewerHasPriority={true}
         isSubmitting={false}
         error={null}
+        autoPassEnabled={false}
+        onAutoPassEnabledChange={vi.fn()}
         onPassPriority={vi.fn()}
         onConcede={vi.fn()}
         onMakeChoice={vi.fn()}
@@ -104,10 +157,13 @@ describe("CommandPanel", () => {
     const html = renderToStaticMarkup(
       <CommandPanel
         viewerPlayerId="player-1"
+        gameView={createGameView()}
         pendingChoice={createPendingChoice()}
         viewerHasPriority={true}
         isSubmitting={true}
         error="Priority pass failed"
+        autoPassEnabled={false}
+        onAutoPassEnabledChange={vi.fn()}
         onPassPriority={vi.fn()}
         onConcede={vi.fn()}
         onMakeChoice={vi.fn()}
@@ -125,10 +181,13 @@ describe("CommandPanel", () => {
     const html = renderToStaticMarkup(
       <CommandPanel
         viewerPlayerId="player-1"
+        gameView={createGameView()}
         pendingChoice={createPendingChoice({ forPlayer: "player-2" })}
         viewerHasPriority={true}
         isSubmitting={false}
         error={null}
+        autoPassEnabled={false}
+        onAutoPassEnabledChange={vi.fn()}
         onPassPriority={vi.fn()}
         onConcede={vi.fn()}
         onMakeChoice={vi.fn()}
@@ -146,6 +205,7 @@ describe("CommandPanel", () => {
     const html = renderToStaticMarkup(
       <CommandPanel
         viewerPlayerId="player-1"
+        gameView={createGameView()}
         pendingChoice={createPendingChoice({
           type: "ORDER_CARDS",
           constraints: { min: 1, max: 1 }
@@ -153,6 +213,8 @@ describe("CommandPanel", () => {
         viewerHasPriority={true}
         isSubmitting={false}
         error={null}
+        autoPassEnabled={false}
+        onAutoPassEnabledChange={vi.fn()}
         onPassPriority={vi.fn()}
         onConcede={vi.fn()}
         onMakeChoice={vi.fn()}
@@ -284,6 +346,7 @@ describe("CommandPanel", () => {
       root?.render(
         <CommandPanel
           viewerPlayerId="player-1"
+          gameView={createGameView()}
           pendingChoice={createPendingChoice({
             id: "choice-2",
             type: "CHOOSE_CARDS",
@@ -293,6 +356,8 @@ describe("CommandPanel", () => {
           viewerHasPriority={true}
           isSubmitting={false}
           error={null}
+          autoPassEnabled={false}
+          onAutoPassEnabledChange={vi.fn()}
           onPassPriority={vi.fn()}
           onConcede={vi.fn()}
           onMakeChoice={vi.fn()}
@@ -451,5 +516,161 @@ describe("CommandPanel", () => {
       type: "ORDER_CARDS",
       ordered: ["obj-a", "obj-c", "obj-b"]
     });
+  });
+
+  it("renders the auto-pass checkbox as checked when enabled", () => {
+    const html = renderToStaticMarkup(
+      <CommandPanel
+        viewerPlayerId="player-1"
+        gameView={createGameView()}
+        pendingChoice={null}
+        viewerHasPriority={true}
+        isSubmitting={false}
+        error={null}
+        autoPassEnabled={true}
+        onAutoPassEnabledChange={vi.fn()}
+        onPassPriority={vi.fn()}
+        onConcede={vi.fn()}
+        onMakeChoice={vi.fn()}
+        onClearError={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("checked");
+  });
+
+  it("renders a will-auto-pass hint when enabled and no actions are visible", () => {
+    const html = renderToStaticMarkup(
+      <CommandPanel
+        viewerPlayerId="player-1"
+        gameView={createGameView()}
+        pendingChoice={null}
+        viewerHasPriority={true}
+        isSubmitting={false}
+        error={null}
+        autoPassEnabled={true}
+        onAutoPassEnabledChange={vi.fn()}
+        onPassPriority={vi.fn()}
+        onConcede={vi.fn()}
+        onMakeChoice={vi.fn()}
+        onClearError={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("Auto-pass will pass priority automatically on this state.");
+  });
+
+  it("renders an apparent-action hint when enabled and a visible cast exists", () => {
+    const html = renderToStaticMarkup(
+      <CommandPanel
+        viewerPlayerId="player-1"
+        gameView={createGameView({
+          legalActions: {
+            passPriority: { command: { type: "PASS_PRIORITY" } },
+            concede: { command: { type: "CONCEDE" } },
+            choice: null,
+            hand: {
+              "brainstorm-card": [
+                {
+                  type: "CAST_SPELL",
+                  commandBase: { type: "CAST_SPELL", cardId: "brainstorm-card" },
+                  requiresTargets: false,
+                  availableModes: []
+                }
+              ]
+            },
+            battlefield: {},
+            hasOtherBlockingActions: false
+          }
+        })}
+        pendingChoice={null}
+        viewerHasPriority={true}
+        isSubmitting={false}
+        error={null}
+        autoPassEnabled={true}
+        onAutoPassEnabledChange={vi.fn()}
+        onPassPriority={vi.fn()}
+        onConcede={vi.fn()}
+        onMakeChoice={vi.fn()}
+        onClearError={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("Auto-pass is holding because you have an apparent action available.");
+  });
+
+  it("renders an apparent-action hint when enabled and a land play exists", () => {
+    const html = renderToStaticMarkup(
+      <CommandPanel
+        viewerPlayerId="player-1"
+        gameView={createGameView({
+          legalActions: {
+            passPriority: { command: { type: "PASS_PRIORITY" } },
+            concede: { command: { type: "CONCEDE" } },
+            choice: null,
+            hand: {
+              "hand-island": [
+                {
+                  type: "PLAY_LAND",
+                  command: { type: "PLAY_LAND", cardId: "hand-island" }
+                }
+              ]
+            },
+            battlefield: {},
+            hasOtherBlockingActions: false
+          }
+        })}
+        pendingChoice={null}
+        viewerHasPriority={true}
+        isSubmitting={false}
+        error={null}
+        autoPassEnabled={true}
+        onAutoPassEnabledChange={vi.fn()}
+        onPassPriority={vi.fn()}
+        onConcede={vi.fn()}
+        onMakeChoice={vi.fn()}
+        onClearError={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("Auto-pass is holding because you have an apparent action available.");
+  });
+
+  it("renders a will-auto-pass hint when enabled and no projected actions remain", () => {
+    const html = renderToStaticMarkup(
+      <CommandPanel
+        viewerPlayerId="player-1"
+        gameView={createGameView()}
+        pendingChoice={null}
+        viewerHasPriority={true}
+        isSubmitting={false}
+        error={null}
+        autoPassEnabled={true}
+        onAutoPassEnabledChange={vi.fn()}
+        onPassPriority={vi.fn()}
+        onConcede={vi.fn()}
+        onMakeChoice={vi.fn()}
+        onClearError={vi.fn()}
+      />
+    );
+
+    expect(html).toContain("Auto-pass will pass priority automatically on this state.");
+  });
+
+  it("forwards auto-pass checkbox changes", () => {
+    const onAutoPassEnabledChange = vi.fn();
+    const { container } = renderInteractivePanel({ onAutoPassEnabledChange });
+
+    const checkbox = container?.querySelector(
+      '[data-testid="auto-pass-checkbox"]'
+    ) as HTMLInputElement | null;
+
+    expect(checkbox?.checked).toBe(false);
+
+    act(() => {
+      checkbox?.click();
+    });
+
+    expect(onAutoPassEnabledChange).toHaveBeenCalledWith(true);
   });
 });
