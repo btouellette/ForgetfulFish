@@ -115,4 +115,34 @@ describe("StackPanel", () => {
       object: { id: "obj-stack-1", zcc: 0 }
     });
   });
+
+  it("disambiguates duplicate stack spell names without exposing raw ids", () => {
+    const first = createStackItem("obj-stack-1", "brainstorm", "Brainstorm");
+    const second = createStackItem("obj-stack-2", "brainstorm", "Brainstorm");
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <StackPanel
+          stack={[first.stackItem, second.stackItem]}
+          objectPool={{
+            [first.objectView.id]: first.objectView,
+            [second.objectView.id]: second.objectView
+          }}
+          viewerHasPriority={true}
+          isSubmitting={false}
+          targetingCardLabel={null}
+          onSelectStackTarget={vi.fn()}
+          onCancelTargetSelection={vi.fn()}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Brainstorm #1");
+    expect(container.textContent).toContain("Brainstorm #2");
+    expect(container.textContent).not.toContain("obj-stack-1");
+    expect(container.textContent).not.toContain("obj-stack-2");
+  });
 });

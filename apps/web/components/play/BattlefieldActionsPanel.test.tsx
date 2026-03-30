@@ -86,4 +86,51 @@ describe("BattlefieldActionsPanel", () => {
     expect(container.textContent).not.toContain("obj-1");
     expect(container.textContent).not.toContain("obj-2");
   });
+
+  it("disambiguates duplicate battlefield source names without exposing raw ids", () => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <BattlefieldActionsPanel
+          legalActions={{
+            "obj-1": [
+              {
+                type: "ACTIVATE_ABILITY",
+                commandBase: { type: "ACTIVATE_ABILITY", sourceId: "obj-1", abilityIndex: 0 },
+                requiresTargets: false,
+                isManaAbility: false,
+                manaProduced: null,
+                blocksAutoPass: true
+              }
+            ],
+            "obj-2": [
+              {
+                type: "ACTIVATE_ABILITY",
+                commandBase: { type: "ACTIVATE_ABILITY", sourceId: "obj-2", abilityIndex: 0 },
+                requiresTargets: false,
+                isManaAbility: false,
+                manaProduced: null,
+                blocksAutoPass: true
+              }
+            ]
+          }}
+          objectPool={{
+            "obj-1": createObjectView("obj-1", "island", "Island"),
+            "obj-2": createObjectView("obj-2", "island", "Island")
+          }}
+          viewerHasPriority={true}
+          isSubmitting={false}
+          onActivateAbility={vi.fn()}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Island #1");
+    expect(container.textContent).toContain("Island #2");
+    expect(container.textContent).not.toContain("obj-1");
+    expect(container.textContent).not.toContain("obj-2");
+  });
 });
