@@ -661,6 +661,21 @@ describe("createGameStore", () => {
           handCount: 1
         },
         objectPool: {
+          "stack-spell": {
+            id: "stack-spell",
+            zcc: 0,
+            cardDefId: "brainstorm",
+            name: "Brainstorm",
+            rulesText: "",
+            owner: "player-2",
+            controller: "player-2",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "stack", scope: "shared" }
+          },
           islandA: {
             id: "islandA",
             zcc: 0,
@@ -692,6 +707,7 @@ describe("createGameStore", () => {
             zone: { kind: "battlefield", scope: "player", playerId: "player-1" }
           }
         },
+        stack: [{ object: { id: "stack-spell", zcc: 0 }, controller: "player-2" }],
         legalActions: {
           passPriority: { command: { type: "PASS_PRIORITY" } },
           concede: { command: { type: "CONCEDE" } },

@@ -145,9 +145,25 @@ describe("auto-tapper helper", () => {
         handCount: 1
       },
       objectPool: {
+        "stack-spell": {
+          id: "stack-spell",
+          zcc: 0,
+          cardDefId: "brainstorm",
+          name: "Brainstorm",
+          rulesText: "",
+          owner: "player-2",
+          controller: "player-2",
+          counters: {},
+          damage: 0,
+          tapped: false,
+          summoningSick: false,
+          attachments: [],
+          zone: { kind: "stack", scope: "shared" }
+        },
         islandA: createBattlefieldObject("islandA", "island"),
         islandB: createBattlefieldObject("islandB", "island")
       },
+      stack: [{ object: { id: "stack-spell", zcc: 0 }, controller: "player-2" }],
       legalActions: {
         passPriority: { command: { type: "PASS_PRIORITY" } },
         concede: { command: { type: "CONCEDE" } },
@@ -186,6 +202,103 @@ describe("auto-tapper helper", () => {
         { sourceId: "islandB", abilityIndex: 0 }
       ]
     });
+  });
+
+  it("does not advertise auto-tap for targeted spells when no stack target exists", () => {
+    const gameView = createGameView({
+      viewer: {
+        id: "player-1",
+        life: 20,
+        manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+        hand: [createCard("spell-1", "memory-lapse", { manaCost: { blue: 1, generic: 1 } })],
+        handCount: 1
+      },
+      objectPool: {
+        islandA: createBattlefieldObject("islandA", "island"),
+        islandB: createBattlefieldObject("islandB", "island")
+      },
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {},
+        battlefield: {
+          islandA: [
+            {
+              type: "ACTIVATE_ABILITY",
+              commandBase: { type: "ACTIVATE_ABILITY", sourceId: "islandA", abilityIndex: 0 },
+              requiresTargets: false,
+              isManaAbility: true,
+              manaProduced: { blue: 1 },
+              blocksAutoPass: false
+            }
+          ],
+          islandB: [
+            {
+              type: "ACTIVATE_ABILITY",
+              commandBase: { type: "ACTIVATE_ABILITY", sourceId: "islandB", abilityIndex: 0 },
+              requiresTargets: false,
+              isManaAbility: true,
+              manaProduced: { blue: 1 },
+              blocksAutoPass: false
+            }
+          ]
+        },
+        hasOtherBlockingActions: false
+      }
+    });
+
+    expect(getAutoTapHandActions(gameView)).toEqual({});
+    expect(getAutoTapPlan(gameView, "spell-1")).toBeNull();
+  });
+
+  it("caps auto-tap search work for large battlefields", () => {
+    const battlefield: PlayerGameView["legalActions"]["battlefield"] = {};
+    const objectPool: PlayerGameView["objectPool"] = {};
+
+    for (let index = 0; index < 9; index += 1) {
+      const sourceId = `island-${index}`;
+      objectPool[sourceId] = createBattlefieldObject(sourceId, "island");
+      battlefield[sourceId] = [
+        {
+          type: "ACTIVATE_ABILITY",
+          commandBase: { type: "ACTIVATE_ABILITY", sourceId, abilityIndex: 0 },
+          requiresTargets: false,
+          isManaAbility: true,
+          manaProduced: { blue: 1 },
+          blocksAutoPass: false
+        },
+        {
+          type: "ACTIVATE_ABILITY",
+          commandBase: { type: "ACTIVATE_ABILITY", sourceId, abilityIndex: 1 },
+          requiresTargets: false,
+          isManaAbility: true,
+          manaProduced: { colorless: 1 },
+          blocksAutoPass: false
+        }
+      ];
+    }
+
+    const gameView = createGameView({
+      viewer: {
+        id: "player-1",
+        life: 20,
+        manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+        hand: [createCard("spell-1", "predict", { manaCost: { red: 1, generic: 8 } })],
+        handCount: 1
+      },
+      objectPool,
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {},
+        battlefield,
+        hasOtherBlockingActions: false
+      }
+    });
+
+    expect(getAutoTapPlan(gameView, "spell-1")).toBeNull();
   });
 
   it("does not mark a spell as auto-tap castable when required mana sources are tapped", () => {

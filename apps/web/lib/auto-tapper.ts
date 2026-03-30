@@ -13,6 +13,12 @@ type ManaAbilityOption = {
   manaProduced: ManaProduced;
 };
 
+type SearchState = {
+  visitedStates: number;
+};
+
+const maxAutoTapSearchStates = 256;
+
 export type AutoTapPlan = {
   requiresTargets: boolean;
   activations: Array<{ sourceId: string; abilityIndex: number }>;
@@ -74,6 +80,14 @@ function spellRequiresTargets(cardDefId: string): boolean {
   return cardDefinition?.onResolve.some((effect) => effect.id === "COUNTER_SPELL") ?? false;
 }
 
+function hasAvailableTarget(gameView: Readonly<PlayerGameView>, cardDefId: string): boolean {
+  if (!spellRequiresTargets(cardDefId)) {
+    return true;
+  }
+
+  return gameView.stack.length > 0;
+}
+
 function getAvailableManaAbilityGroups(gameView: Readonly<PlayerGameView>): ManaAbilityOption[][] {
   const groups = new Map<string, ManaAbilityOption[]>();
 
@@ -107,8 +121,14 @@ function searchAutoTapPlan(
   manaPool: Readonly<ManaPool>,
   manaCost: Readonly<ManaCost>,
   index: number,
-  activations: Array<{ sourceId: string; abilityIndex: number }>
+  activations: Array<{ sourceId: string; abilityIndex: number }>,
+  searchState: SearchState
 ): Array<{ sourceId: string; abilityIndex: number }> | null {
+  searchState.visitedStates += 1;
+  if (searchState.visitedStates > maxAutoTapSearchStates) {
+    return null;
+  }
+
   if (hasSufficientManaPool(manaPool, manaCost)) {
     return activations;
   }
@@ -124,7 +144,8 @@ function searchAutoTapPlan(
       addManaPool(manaPool, option.manaProduced),
       manaCost,
       index + 1,
-      [...activations, { sourceId: option.sourceId, abilityIndex: option.abilityIndex }]
+      [...activations, { sourceId: option.sourceId, abilityIndex: option.abilityIndex }],
+      searchState
     );
 
     if (resolved) {
@@ -132,7 +153,7 @@ function searchAutoTapPlan(
     }
   }
 
-  return searchAutoTapPlan(groups, manaPool, manaCost, index + 1, activations);
+  return searchAutoTapPlan(groups, manaPool, manaCost, index + 1, activations, searchState);
 }
 
 export function getAutoTapPlan(
@@ -145,6 +166,10 @@ export function getAutoTapPlan(
     return null;
   }
 
+  if (!hasAvailableTarget(gameView, handCard.cardDefId)) {
+    return null;
+  }
+
   if (hasSufficientManaPool(gameView.viewer.manaPool, handCard.manaCost)) {
     return null;
   }
@@ -154,7 +179,8 @@ export function getAutoTapPlan(
     gameView.viewer.manaPool,
     handCard.manaCost,
     0,
-    []
+    [],
+    { visitedStates: 0 }
   );
 
   if (!activations) {

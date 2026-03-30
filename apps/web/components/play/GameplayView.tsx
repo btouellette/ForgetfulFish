@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   GameplayCommand,
   GameplayPendingChoice,
@@ -217,7 +217,13 @@ export function GameplayView({
   }
 
   const viewerHasPriority = gameView.turnState.priorityPlayerId === gameView.viewerPlayerId;
-  const autoTapActions = getAutoTapHandActions(gameView);
+  const autoTapActions = useMemo(() => {
+    if (!viewerHasPriority || isSubmittingCommand) {
+      return {};
+    }
+
+    return getAutoTapHandActions(gameView);
+  }, [gameView, isSubmittingCommand, viewerHasPriority]);
 
   return (
     <section className={styles.gameplayView}>
