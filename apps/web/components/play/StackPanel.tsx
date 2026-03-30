@@ -25,8 +25,8 @@ function formatStackLabel(
   objectPool: PlayerGameView["objectPool"]
 ) {
   const objectView = objectPool[stackItem.object.id];
-  const cardName = objectView?.cardDefId ?? "unknown-spell";
-  return `${cardName} (${stackItem.object.id})`;
+  const cardName = objectView?.name ?? objectView?.cardDefId ?? stackItem.object.id;
+  return cardName;
 }
 
 export function StackPanel({
