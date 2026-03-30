@@ -7,6 +7,7 @@ import type {
 } from "@forgetful-fish/realtime-contract";
 
 import type { GameSessionViewModel } from "../game-session-adapter";
+import { getAutoTapPlan } from "../auto-tapper";
 import { derivePlayLifecycleState, type PlayLifecycleState } from "../play-lifecycle";
 import type { RoomRealtimeStatus } from "../room-realtime";
 import { ServerApiError } from "../server-api";
@@ -395,9 +396,13 @@ export function createGameStore() {
         throw new Error("game store adapter is not attached");
       }
 
-      if (!viewerHasPriority(get().gameView)) {
+      const currentGameView = get().gameView;
+
+      if (!viewerHasPriority(currentGameView)) {
         return;
       }
+
+      const autoTapPlan = currentGameView ? getAutoTapPlan(currentGameView, cardId) : null;
 
       set((state) => ({
         isSubmittingCommand: true,
@@ -411,6 +416,14 @@ export function createGameStore() {
       }));
 
       try {
+        for (const activation of autoTapPlan?.activations ?? []) {
+          await adapter.submitGameplayCommand({
+            type: "ACTIVATE_ABILITY",
+            sourceId: activation.sourceId,
+            abilityIndex: activation.abilityIndex
+          });
+        }
+
         await adapter.submitGameplayCommand({
           type: "CAST_SPELL",
           cardId,

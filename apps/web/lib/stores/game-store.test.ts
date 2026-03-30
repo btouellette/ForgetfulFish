@@ -532,4 +532,208 @@ describe("createGameStore", () => {
 
     expect(store.getState().gameView).toEqual(initialView);
   });
+
+  it("auto-taps mana abilities before casting a spell when untapped lands can pay the cost", async () => {
+    const submitGameplayCommand = vi.fn().mockResolvedValue(undefined);
+    const store = createGameStore();
+
+    store.getState().applyGameView(
+      createGameView({
+        turnState: {
+          phase: "MAIN_1",
+          activePlayerId: "player-1",
+          priorityPlayerId: "player-1"
+        },
+        viewer: {
+          id: "player-1",
+          life: 20,
+          manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+          hand: [
+            {
+              id: "spell-1",
+              zcc: 0,
+              cardDefId: "brainstorm",
+              name: "Brainstorm",
+              manaCost: { blue: 1 },
+              rulesText: "",
+              owner: "player-1",
+              controller: "player-1",
+              counters: {},
+              damage: 0,
+              tapped: false,
+              summoningSick: false,
+              attachments: [],
+              zone: { kind: "hand", scope: "player", playerId: "player-1" }
+            }
+          ],
+          handCount: 1
+        },
+        objectPool: {
+          island: {
+            id: "island",
+            zcc: 0,
+            cardDefId: "island",
+            name: "Island",
+            rulesText: "",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "battlefield", scope: "player", playerId: "player-1" }
+          }
+        },
+        legalActions: {
+          passPriority: { command: { type: "PASS_PRIORITY" } },
+          concede: { command: { type: "CONCEDE" } },
+          choice: null,
+          hand: {},
+          battlefield: {
+            island: [
+              {
+                type: "ACTIVATE_ABILITY",
+                commandBase: { type: "ACTIVATE_ABILITY", sourceId: "island", abilityIndex: 0 },
+                requiresTargets: false,
+                isManaAbility: true,
+                manaProduced: { blue: 1 },
+                blocksAutoPass: false
+              }
+            ]
+          },
+          hasOtherBlockingActions: false
+        }
+      })
+    );
+    store.getState().attachAdapter({
+      fetchGameState: vi.fn().mockResolvedValue(createGameView()),
+      submitGameplayCommand
+    });
+
+    await store.getState().castSpell("spell-1");
+
+    expect(submitGameplayCommand).toHaveBeenNthCalledWith(1, {
+      type: "ACTIVATE_ABILITY",
+      sourceId: "island",
+      abilityIndex: 0
+    });
+    expect(submitGameplayCommand).toHaveBeenNthCalledWith(2, {
+      type: "CAST_SPELL",
+      cardId: "spell-1"
+    });
+  });
+
+  it("preserves cast targets after auto-tapping required lands", async () => {
+    const submitGameplayCommand = vi.fn().mockResolvedValue(undefined);
+    const store = createGameStore();
+    const targets = [{ kind: "object" as const, object: { id: "stack-1", zcc: 0 } }];
+
+    store.getState().applyGameView(
+      createGameView({
+        turnState: {
+          phase: "MAIN_1",
+          activePlayerId: "player-1",
+          priorityPlayerId: "player-1"
+        },
+        viewer: {
+          id: "player-1",
+          life: 20,
+          manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+          hand: [
+            {
+              id: "spell-1",
+              zcc: 0,
+              cardDefId: "memory-lapse",
+              name: "Memory Lapse",
+              manaCost: { blue: 1, generic: 1 },
+              rulesText: "",
+              owner: "player-1",
+              controller: "player-1",
+              counters: {},
+              damage: 0,
+              tapped: false,
+              summoningSick: false,
+              attachments: [],
+              zone: { kind: "hand", scope: "player", playerId: "player-1" }
+            }
+          ],
+          handCount: 1
+        },
+        objectPool: {
+          islandA: {
+            id: "islandA",
+            zcc: 0,
+            cardDefId: "island",
+            name: "Island",
+            rulesText: "",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "battlefield", scope: "player", playerId: "player-1" }
+          },
+          islandB: {
+            id: "islandB",
+            zcc: 0,
+            cardDefId: "island",
+            name: "Island",
+            rulesText: "",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "battlefield", scope: "player", playerId: "player-1" }
+          }
+        },
+        legalActions: {
+          passPriority: { command: { type: "PASS_PRIORITY" } },
+          concede: { command: { type: "CONCEDE" } },
+          choice: null,
+          hand: {},
+          battlefield: {
+            islandA: [
+              {
+                type: "ACTIVATE_ABILITY",
+                commandBase: { type: "ACTIVATE_ABILITY", sourceId: "islandA", abilityIndex: 0 },
+                requiresTargets: false,
+                isManaAbility: true,
+                manaProduced: { blue: 1 },
+                blocksAutoPass: false
+              }
+            ],
+            islandB: [
+              {
+                type: "ACTIVATE_ABILITY",
+                commandBase: { type: "ACTIVATE_ABILITY", sourceId: "islandB", abilityIndex: 0 },
+                requiresTargets: false,
+                isManaAbility: true,
+                manaProduced: { blue: 1 },
+                blocksAutoPass: false
+              }
+            ]
+          },
+          hasOtherBlockingActions: false
+        }
+      })
+    );
+    store.getState().attachAdapter({
+      fetchGameState: vi.fn().mockResolvedValue(createGameView()),
+      submitGameplayCommand
+    });
+
+    await store.getState().castSpell("spell-1", targets);
+
+    expect(submitGameplayCommand).toHaveBeenNthCalledWith(3, {
+      type: "CAST_SPELL",
+      cardId: "spell-1",
+      targets
+    });
+  });
 });

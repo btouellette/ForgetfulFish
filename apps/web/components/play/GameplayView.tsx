@@ -9,6 +9,7 @@ import type {
 } from "@forgetful-fish/realtime-contract";
 
 import { shouldAutoPass } from "../../lib/auto-pass";
+import { getAutoTapHandActions } from "../../lib/auto-tapper";
 import { renderBattlefield } from "../../lib/renderer/battlefield-renderer";
 import { BattlefieldActionsPanel } from "./BattlefieldActionsPanel";
 import { CommandPanel } from "./CommandPanel";
@@ -216,6 +217,7 @@ export function GameplayView({
   }
 
   const viewerHasPriority = gameView.turnState.priorityPlayerId === gameView.viewerPlayerId;
+  const autoTapActions = getAutoTapHandActions(gameView);
 
   return (
     <section className={styles.gameplayView}>
@@ -234,6 +236,7 @@ export function GameplayView({
           legalActions={gameView.legalActions.hand}
           viewerHasPriority={viewerHasPriority}
           isSubmitting={isSubmittingCommand}
+          autoTapActions={autoTapActions}
           onPlayLand={onPlayLand}
           onCastSpell={onCastSpell}
           onBeginTargetedCast={handleBeginTargetedCast}
