@@ -258,6 +258,18 @@ const manaPoolSchema = z
   })
   .strict();
 
+const manaCostSchema = z
+  .object({
+    white: z.number().int().min(0).optional(),
+    blue: z.number().int().min(0).optional(),
+    black: z.number().int().min(0).optional(),
+    red: z.number().int().min(0).optional(),
+    green: z.number().int().min(0).optional(),
+    colorless: z.number().int().min(0).optional(),
+    generic: z.number().int().min(0).optional()
+  })
+  .strict();
+
 const zoneRefSchema = z.discriminatedUnion("scope", [
   z
     .object({
@@ -279,6 +291,9 @@ export const gameObjectViewSchema = z
     id: objectIdSchema,
     zcc: z.number().int().min(0),
     cardDefId: z.string().min(1),
+    name: z.string().min(1).optional(),
+    manaCost: manaCostSchema.optional(),
+    rulesText: z.string().optional(),
     owner: playerIdSchema,
     controller: playerIdSchema,
     counters: z.record(z.string(), z.number().int()),
