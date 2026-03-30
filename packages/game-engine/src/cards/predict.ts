@@ -4,6 +4,8 @@ export const predictCardDefinition: CardDefinition = {
   id: "predict",
   name: "Predict",
   manaCost: { blue: 1, generic: 1 },
+  rulesText:
+    "Name a card, then put the top two cards of your library into your graveyard. If that card was named this way, draw two cards. Otherwise, draw a card.",
   typeLine: ["Instant"],
   subtypes: [],
   color: ["blue"],
