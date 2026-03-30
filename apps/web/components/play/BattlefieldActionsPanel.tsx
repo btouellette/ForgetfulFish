@@ -26,13 +26,12 @@ export function BattlefieldActionsPanel({
       {sourceEntries.length === 0 ? <p>No battlefield actions available.</p> : null}
       {sourceEntries.map(([sourceId, actions]) => {
         const objectView = objectPool[sourceId];
-        const label = objectView?.cardDefId ?? sourceId;
+        const label = objectView?.name ?? objectView?.cardDefId ?? sourceId;
 
         return (
           <div key={sourceId} className={styles.sourceRow}>
             <div className={styles.sourceMeta}>
               <strong>{label}</strong>
-              <span>{sourceId}</span>
             </div>
             <div className={styles.actionList}>
               {actions.map((action) => (
