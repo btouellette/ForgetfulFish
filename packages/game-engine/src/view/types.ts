@@ -1,3 +1,4 @@
+import type { ManaCost } from "../cards/cardDefinition";
 import type { PendingChoice } from "../choices/pendingChoice";
 import type { GameObject } from "../state/gameObject";
 import type { ManaPool, TurnPhase } from "../state/gameState";
@@ -45,6 +46,9 @@ export type LegalActionsView = {
 };
 
 export type GameObjectView = Omit<GameObject, "abilities" | "counters"> & {
+  name?: string;
+  manaCost?: ManaCost;
+  rulesText?: string;
   counters: Record<string, number>;
 };
 
