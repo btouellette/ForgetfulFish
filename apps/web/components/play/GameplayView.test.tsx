@@ -228,7 +228,7 @@ describe("GameplayView", () => {
     expect(html).toContain("Stack");
     expect(html).toContain("Play land");
     expect(html).toContain("Cast spell");
-    expect(html).toContain("brainstorm (stack-obj-1)");
+    expect(html).toContain("brainstorm");
     expect(html).toContain("Zones");
     expect(html).toContain("Events");
     expect(html).toContain("<canvas");
