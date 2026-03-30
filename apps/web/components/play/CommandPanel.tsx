@@ -7,6 +7,7 @@ import type {
 
 import { shouldAutoPass } from "../../lib/auto-pass";
 import { parsePendingChoice } from "../../lib/pending-choice";
+import { buildDisambiguatedObjectLabels } from "./cardLabels";
 
 import styles from "./CommandPanel.module.css";
 
@@ -71,6 +72,22 @@ export function CommandPanel({
     selectedCardIds.length <= chooseCardsConstraints.max;
   const trimmedNamedCard = namedCard.trim();
   const canSubmitNameCard = trimmedNamedCard.length > 0;
+  const chooseCardLabels = React.useMemo(
+    () =>
+      buildDisambiguatedObjectLabels(
+        chooseCardsConstraints?.candidates ?? [],
+        gameView?.objectPool ?? {}
+      ),
+    [chooseCardsConstraints?.candidates, gameView?.objectPool]
+  );
+  const orderedCardLabels = React.useMemo(
+    () =>
+      buildDisambiguatedObjectLabels(
+        orderCardsConstraints?.cards ?? orderedCardIds,
+        gameView?.objectPool ?? {}
+      ),
+    [gameView?.objectPool, orderCardsConstraints?.cards, orderedCardIds]
+  );
 
   function toggleSelectedCard(cardId: string) {
     if (chooseCardsConstraints === null) {
@@ -193,8 +210,7 @@ export function CommandPanel({
                   const isMaxedOut =
                     chooseCardsConstraints !== null &&
                     selectedCardIds.length >= chooseCardsConstraints.max;
-                  const objectView = gameView?.objectPool[candidateId];
-                  const label = objectView?.name ?? objectView?.cardDefId ?? candidateId;
+                  const label = chooseCardLabels[candidateId] ?? candidateId;
 
                   return (
                     <label key={candidateId} className={styles.choiceOption}>
@@ -257,8 +273,7 @@ export function CommandPanel({
               <div className={styles.choiceList}>
                 {orderedCardIds.map((cardId, index) => {
                   const lastIndex = orderedCardIds.length - 1;
-                  const objectView = gameView?.objectPool[cardId];
-                  const label = objectView?.name ?? objectView?.cardDefId ?? cardId;
+                  const label = orderedCardLabels[cardId] ?? cardId;
                   return (
                     <div key={cardId} className={styles.orderRow}>
                       <span data-testid={`order-label-${cardId}`}>{label}</span>

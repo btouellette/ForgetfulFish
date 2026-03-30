@@ -291,6 +291,53 @@ describe("CommandPanel", () => {
     expect(optionA?.checked).toBe(false);
   });
 
+  it("disambiguates duplicate CHOOSE_CARDS labels without exposing raw ids", () => {
+    const { container } = renderInteractivePanel({
+      gameView: createGameView({
+        objectPool: {
+          "obj-a": {
+            id: "obj-a",
+            zcc: 0,
+            cardDefId: "island",
+            name: "Island",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          },
+          "obj-b": {
+            id: "obj-b",
+            zcc: 0,
+            cardDefId: "island",
+            name: "Island",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          }
+        }
+      }),
+      pendingChoice: createPendingChoice({
+        type: "CHOOSE_CARDS",
+        prompt: "Choose a copy",
+        constraints: { candidates: ["obj-a", "obj-b"], min: 1, max: 1 }
+      })
+    });
+
+    expect(container?.textContent).toContain("Island #1");
+    expect(container?.textContent).toContain("Island #2");
+    expect(container?.textContent).not.toContain("obj-a");
+    expect(container?.textContent).not.toContain("obj-b");
+  });
+
   it("enforces CHOOSE_CARDS min/max before enabling submit", () => {
     const { container } = renderInteractivePanel({
       pendingChoice: createPendingChoice({
@@ -542,6 +589,115 @@ describe("CommandPanel", () => {
 
     expect(moveUpButton).toBeTruthy();
     expect(moveDownButton).toBeTruthy();
+  });
+
+  it("disambiguates duplicate ORDER_CARDS labels without exposing raw ids", () => {
+    const { container } = renderInteractivePanel({
+      gameView: createGameView({
+        objectPool: {
+          "obj-a": {
+            id: "obj-a",
+            zcc: 0,
+            cardDefId: "island",
+            name: "Island",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          },
+          "obj-b": {
+            id: "obj-b",
+            zcc: 0,
+            cardDefId: "island",
+            name: "Island",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          }
+        }
+      }),
+      pendingChoice: createPendingChoice({
+        type: "ORDER_CARDS",
+        prompt: "Order cards",
+        constraints: { cards: ["obj-a", "obj-b"] }
+      })
+    });
+
+    const orderedLabels = Array.from(
+      container?.querySelectorAll('[data-testid^="order-label-"]') ?? []
+    ).map((element) => element.textContent);
+    expect(orderedLabels).toEqual(["Island #1", "Island #2"]);
+    expect(container?.textContent).not.toContain("obj-a");
+    expect(container?.textContent).not.toContain("obj-b");
+  });
+
+  it("preserves duplicate ORDER_CARDS label identity after reordering", () => {
+    const { container } = renderInteractivePanel({
+      gameView: createGameView({
+        objectPool: {
+          "obj-a": {
+            id: "obj-a",
+            zcc: 0,
+            cardDefId: "island",
+            name: "Island",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          },
+          "obj-b": {
+            id: "obj-b",
+            zcc: 0,
+            cardDefId: "island",
+            name: "Island",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          }
+        }
+      }),
+      pendingChoice: createPendingChoice({
+        type: "ORDER_CARDS",
+        prompt: "Order cards",
+        constraints: { cards: ["obj-a", "obj-b"] }
+      })
+    });
+
+    const moveUpButton = container?.querySelector(
+      '[data-testid="order-up-obj-b"]'
+    ) as HTMLButtonElement | null;
+
+    const initialLabels = Array.from(
+      container?.querySelectorAll('[data-testid^="order-label-"]') ?? []
+    ).map((element) => element.textContent);
+    expect(initialLabels).toEqual(["Island #1", "Island #2"]);
+
+    act(() => {
+      moveUpButton?.click();
+    });
+
+    const reorderedLabels = Array.from(
+      container?.querySelectorAll('[data-testid^="order-label-"]') ?? []
+    ).map((element) => element.textContent);
+    expect(reorderedLabels).toEqual(["Island #2", "Island #1"]);
   });
 
   it("reorders ORDER_CARDS entries deterministically via up/down controls", () => {
