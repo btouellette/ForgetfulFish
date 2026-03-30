@@ -1,6 +1,7 @@
 import React from "react";
 import type { GameplayCommand, PlayerGameView } from "@forgetful-fish/realtime-contract";
 
+import { buildDisambiguatedObjectLabels } from "./cardLabels";
 import styles from "./StackPanel.module.css";
 
 export type ObjectTarget =
@@ -20,15 +21,6 @@ type StackPanelProps = {
   onCancelTargetSelection: () => void;
 };
 
-function formatStackLabel(
-  stackItem: PlayerGameView["stack"][number],
-  objectPool: PlayerGameView["objectPool"]
-) {
-  const objectView = objectPool[stackItem.object.id];
-  const cardName = objectView?.cardDefId ?? "unknown-spell";
-  return `${cardName} (${stackItem.object.id})`;
-}
-
 export function StackPanel({
   stack,
   objectPool,
@@ -40,6 +32,14 @@ export function StackPanel({
 }: StackPanelProps) {
   const isTargeting = targetingCardLabel !== null;
   const areTargetActionsDisabled = isSubmitting || !viewerHasPriority;
+  const stackLabels = React.useMemo(
+    () =>
+      buildDisambiguatedObjectLabels(
+        stack.map((stackItem) => stackItem.object.id),
+        objectPool
+      ),
+    [objectPool, stack]
+  );
 
   return (
     <section className={styles.stackPanel}>
@@ -63,7 +63,7 @@ export function StackPanel({
           <div key={`${stackItem.object.id}:${stackItem.object.zcc}`} className={styles.stackRow}>
             <div className={styles.stackMeta}>
               <strong data-testid={`stack-label-${stackItem.object.id}`}>
-                {formatStackLabel(stackItem, objectPool)}
+                {stackLabels[stackItem.object.id] ?? stackItem.object.id}
               </strong>
               <span>{`Controller: ${stackItem.controller}`}</span>
             </div>

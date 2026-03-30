@@ -11,6 +11,7 @@ import { StackPanel } from "./StackPanel";
 function createStackItem(
   objectId: string,
   cardDefId: string,
+  name = cardDefId,
   controller = "player-2"
 ): {
   stackItem: PlayerGameView["stack"][number];
@@ -25,6 +26,7 @@ function createStackItem(
       id: objectId,
       zcc: 0,
       cardDefId,
+      name,
       owner: controller,
       controller,
       counters: {},
@@ -49,8 +51,8 @@ describe("StackPanel", () => {
   });
 
   it("renders stack items with stable labels resolved from objectPool", () => {
-    const first = createStackItem("obj-stack-1", "brainstorm");
-    const second = createStackItem("obj-stack-2", "memory-lapse");
+    const first = createStackItem("obj-stack-1", "brainstorm", "Brainstorm");
+    const second = createStackItem("obj-stack-2", "memory-lapse", "Memory Lapse");
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -72,8 +74,10 @@ describe("StackPanel", () => {
       );
     });
 
-    expect(container.textContent).toContain("brainstorm (obj-stack-1)");
-    expect(container.textContent).toContain("memory-lapse (obj-stack-2)");
+    expect(container.textContent).toContain("Brainstorm");
+    expect(container.textContent).toContain("Memory Lapse");
+    expect(container.textContent).not.toContain("obj-stack-1");
+    expect(container.textContent).not.toContain("obj-stack-2");
   });
 
   it("submits selected stack object while target mode is active", () => {
@@ -110,5 +114,35 @@ describe("StackPanel", () => {
       kind: "object",
       object: { id: "obj-stack-1", zcc: 0 }
     });
+  });
+
+  it("disambiguates duplicate stack spell names without exposing raw ids", () => {
+    const first = createStackItem("obj-stack-1", "brainstorm", "Brainstorm");
+    const second = createStackItem("obj-stack-2", "brainstorm", "Brainstorm");
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <StackPanel
+          stack={[first.stackItem, second.stackItem]}
+          objectPool={{
+            [first.objectView.id]: first.objectView,
+            [second.objectView.id]: second.objectView
+          }}
+          viewerHasPriority={true}
+          isSubmitting={false}
+          targetingCardLabel={null}
+          onSelectStackTarget={vi.fn()}
+          onCancelTargetSelection={vi.fn()}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Brainstorm #1");
+    expect(container.textContent).toContain("Brainstorm #2");
+    expect(container.textContent).not.toContain("obj-stack-1");
+    expect(container.textContent).not.toContain("obj-stack-2");
   });
 });

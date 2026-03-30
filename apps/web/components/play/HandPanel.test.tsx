@@ -81,6 +81,8 @@ describe("HandPanel", () => {
 
     expect(container.textContent).toContain("island");
     expect(container.textContent).toContain("brainstorm");
+    expect(container.textContent).not.toContain("obj-1");
+    expect(container.textContent).not.toContain("obj-2");
   });
 
   it("renders card name, mana cost, and rules text when provided", () => {

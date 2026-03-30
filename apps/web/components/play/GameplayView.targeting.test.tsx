@@ -30,6 +30,7 @@ function createGameView(): PlayerGameView {
           id: "obj-ml",
           zcc: 0,
           cardDefId: "memory-lapse",
+          name: "Memory Lapse",
           owner: "player-1",
           controller: "player-1",
           counters: {},
@@ -67,6 +68,7 @@ function createGameView(): PlayerGameView {
         id: "obj-ml",
         zcc: 0,
         cardDefId: "memory-lapse",
+        name: "Memory Lapse",
         owner: "player-1",
         controller: "player-1",
         counters: {},
@@ -162,7 +164,7 @@ describe("GameplayView targeted casts", () => {
       beginTargetButton?.click();
     });
 
-    expect(container.textContent).toContain("Select a stack spell for memory-lapse.");
+    expect(container.textContent).toContain("Select a stack spell for Memory Lapse.");
   });
 
   it("submits CAST_SPELL with selected stack-object target", () => {
@@ -257,7 +259,7 @@ describe("GameplayView targeted casts", () => {
     });
 
     expect(onCastSpell).not.toHaveBeenCalled();
-    expect(container.textContent).not.toContain("Select a stack spell for memory-lapse.");
+    expect(container.textContent).not.toContain("Select a stack spell for Memory Lapse.");
   });
 
   it("exits target mode when the targeting card leaves hand before selection", () => {
@@ -329,7 +331,7 @@ describe("GameplayView targeted casts", () => {
     });
 
     expect(onCastSpell).not.toHaveBeenCalled();
-    expect(container.textContent).not.toContain("Select a stack spell for memory-lapse.");
+    expect(container.textContent).not.toContain("Select a stack spell for Memory Lapse.");
     expect(container.querySelector('[data-testid="stack-target-obj-stack"]')).toBeNull();
   });
 
@@ -374,7 +376,7 @@ describe("GameplayView targeted casts", () => {
       beginTargetButton?.click();
     });
 
-    expect(container.textContent).not.toContain("Select a stack spell for memory-lapse.");
+    expect(container.textContent).not.toContain("Select a stack spell for Memory Lapse.");
   });
 
   it("does not submit a target after priority changes to the opponent", () => {
@@ -447,6 +449,6 @@ describe("GameplayView targeted casts", () => {
     });
 
     expect(onCastSpell).not.toHaveBeenCalled();
-    expect(container.textContent).toContain("Select a stack spell for memory-lapse.");
+    expect(container.textContent).toContain("Select a stack spell for Memory Lapse.");
   });
 });

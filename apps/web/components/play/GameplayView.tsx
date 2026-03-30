@@ -158,7 +158,9 @@ export function GameplayView({
   }, []);
 
   const targetingCardLabel = activeTargetingCardId
-    ? (gameView?.objectPool[activeTargetingCardId]?.cardDefId ?? activeTargetingCardId)
+    ? (gameView?.objectPool[activeTargetingCardId]?.name ??
+      gameView?.objectPool[activeTargetingCardId]?.cardDefId ??
+      activeTargetingCardId)
     : null;
 
   useEffect(() => {
