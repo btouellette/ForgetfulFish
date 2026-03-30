@@ -207,6 +207,15 @@ export function GameplayView({
     onPassPriority();
   }, [autoPassEnabled, gameView, isSubmittingCommand, onPassPriority, pendingChoice]);
 
+  const viewerHasPriority = gameView?.turnState.priorityPlayerId === gameView?.viewerPlayerId;
+  const autoTapActions = useMemo(() => {
+    if (!gameView || !viewerHasPriority || isSubmittingCommand) {
+      return {};
+    }
+
+    return getAutoTapHandActions(gameView);
+  }, [gameView, isSubmittingCommand, viewerHasPriority]);
+
   if (!gameView) {
     return (
       <section className={styles.gameplayView} data-testid="game-active-placeholder">
@@ -215,15 +224,6 @@ export function GameplayView({
       </section>
     );
   }
-
-  const viewerHasPriority = gameView.turnState.priorityPlayerId === gameView.viewerPlayerId;
-  const autoTapActions = useMemo(() => {
-    if (!viewerHasPriority || isSubmittingCommand) {
-      return {};
-    }
-
-    return getAutoTapHandActions(gameView);
-  }, [gameView, isSubmittingCommand, viewerHasPriority]);
 
   return (
     <section className={styles.gameplayView}>
