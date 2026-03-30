@@ -8,11 +8,18 @@ import type { PlayerGameView } from "@forgetful-fish/realtime-contract";
 
 import { HandPanel } from "./HandPanel";
 
-function createHandCard(id: string, cardDefId: string): PlayerGameView["viewer"]["hand"][number] {
+function createHandCard(
+  id: string,
+  cardDefId: string,
+  extra?: Partial<Pick<PlayerGameView["viewer"]["hand"][number], "name" | "manaCost" | "rulesText">>
+): PlayerGameView["viewer"]["hand"][number] {
   return {
     id,
     zcc: 0,
     cardDefId,
+    name: cardDefId,
+    manaCost: {},
+    rulesText: "",
     owner: "player-1",
     controller: "player-1",
     counters: {},
@@ -20,7 +27,8 @@ function createHandCard(id: string, cardDefId: string): PlayerGameView["viewer"]
     tapped: false,
     summoningSick: false,
     attachments: [],
-    zone: { kind: "hand", scope: "player", playerId: "player-1" }
+    zone: { kind: "hand", scope: "player", playerId: "player-1" },
+    ...extra
   };
 }
 
@@ -72,6 +80,46 @@ describe("HandPanel", () => {
 
     expect(container.textContent).toContain("island");
     expect(container.textContent).toContain("brainstorm");
+  });
+
+  it("renders card name, mana cost, and rules text when provided", () => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <HandPanel
+          hand={[
+            createHandCard("obj-1", "island", {
+              name: "Island",
+              manaCost: {},
+              rulesText: "Basic Land - Island"
+            }),
+            createHandCard("obj-2", "brainstorm", {
+              name: "Brainstorm",
+              manaCost: { blue: 1 },
+              rulesText:
+                "Draw three cards, then put two cards from your hand on top of your library in any order."
+            })
+          ]}
+          legalActions={createLegalActions()}
+          viewerHasPriority={true}
+          isSubmitting={false}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onBeginTargetedCast={vi.fn()}
+        />
+      );
+    });
+
+    expect(container.textContent).toContain("Island");
+    expect(container.textContent).toContain("Basic Land - Island");
+    expect(container.textContent).toContain("Brainstorm");
+    expect(container.textContent).toContain("{U}");
+    expect(container.textContent).toContain(
+      "Draw three cards, then put two cards from your hand on top of your library in any order."
+    );
   });
 
   it("submits PLAY_LAND intent when land action is clicked", () => {
