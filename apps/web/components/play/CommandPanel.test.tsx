@@ -227,12 +227,47 @@ describe("CommandPanel", () => {
 
   it("renders CHOOSE_CARDS candidates with selectable toggles", () => {
     const { container } = renderInteractivePanel({
+      gameView: createGameView({
+        objectPool: {
+          "obj-a": {
+            id: "obj-a",
+            zcc: 0,
+            cardDefId: "island",
+            name: "Island",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          },
+          "obj-b": {
+            id: "obj-b",
+            zcc: 0,
+            cardDefId: "brainstorm",
+            name: "Brainstorm",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          }
+        }
+      }),
       pendingChoice: createPendingChoice({
         type: "CHOOSE_CARDS",
         prompt: "Choose cards",
         constraints: { candidates: ["obj-a", "obj-b"], min: 1, max: 2 }
       })
     });
+
+    expect(container?.textContent).toContain("Island");
+    expect(container?.textContent).toContain("Brainstorm");
 
     const optionA = container?.querySelector(
       '[data-testid="choose-card-obj-a"]'
@@ -445,6 +480,52 @@ describe("CommandPanel", () => {
 
   it("renders ORDER_CARDS entries with reorder controls", () => {
     const { container } = renderInteractivePanel({
+      gameView: createGameView({
+        objectPool: {
+          "obj-a": {
+            id: "obj-a",
+            zcc: 0,
+            cardDefId: "island",
+            name: "Island",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          },
+          "obj-b": {
+            id: "obj-b",
+            zcc: 0,
+            cardDefId: "brainstorm",
+            name: "Brainstorm",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          },
+          "obj-c": {
+            id: "obj-c",
+            zcc: 0,
+            cardDefId: "mountain",
+            name: "Mountain",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          }
+        }
+      }),
       pendingChoice: createPendingChoice({
         type: "ORDER_CARDS",
         prompt: "Put cards back on top",
@@ -452,9 +533,9 @@ describe("CommandPanel", () => {
       })
     });
 
-    expect(container?.textContent).toContain("obj-a");
-    expect(container?.textContent).toContain("obj-b");
-    expect(container?.textContent).toContain("obj-c");
+    expect(container?.textContent).toContain("Island");
+    expect(container?.textContent).toContain("Brainstorm");
+    expect(container?.textContent).toContain("Mountain");
 
     const moveUpButton = container?.querySelector('[data-testid="order-up-obj-b"]');
     const moveDownButton = container?.querySelector('[data-testid="order-down-obj-b"]');
@@ -465,6 +546,52 @@ describe("CommandPanel", () => {
 
   it("reorders ORDER_CARDS entries deterministically via up/down controls", () => {
     const { container } = renderInteractivePanel({
+      gameView: createGameView({
+        objectPool: {
+          "obj-a": {
+            id: "obj-a",
+            zcc: 0,
+            cardDefId: "island",
+            name: "Island",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          },
+          "obj-b": {
+            id: "obj-b",
+            zcc: 0,
+            cardDefId: "brainstorm",
+            name: "Brainstorm",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          },
+          "obj-c": {
+            id: "obj-c",
+            zcc: 0,
+            cardDefId: "mountain",
+            name: "Mountain",
+            owner: "player-1",
+            controller: "player-1",
+            counters: {},
+            damage: 0,
+            tapped: false,
+            summoningSick: false,
+            attachments: [],
+            zone: { kind: "hand", scope: "player", playerId: "player-1" }
+          }
+        }
+      }),
       pendingChoice: createPendingChoice({
         type: "ORDER_CARDS",
         prompt: "Order cards",
@@ -483,7 +610,7 @@ describe("CommandPanel", () => {
     const orderedLabels = Array.from(
       container?.querySelectorAll('[data-testid^="order-label-"]') ?? []
     ).map((element) => element.textContent);
-    expect(orderedLabels).toEqual(["obj-a", "obj-c", "obj-b"]);
+    expect(orderedLabels).toEqual(["Island", "Mountain", "Brainstorm"]);
   });
 
   it("submits ORDER_CARDS MAKE_CHOICE payload", () => {

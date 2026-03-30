@@ -193,6 +193,8 @@ export function CommandPanel({
                   const isMaxedOut =
                     chooseCardsConstraints !== null &&
                     selectedCardIds.length >= chooseCardsConstraints.max;
+                  const objectView = gameView?.objectPool[candidateId];
+                  const label = objectView?.name ?? objectView?.cardDefId ?? candidateId;
 
                   return (
                     <label key={candidateId} className={styles.choiceOption}>
@@ -203,7 +205,7 @@ export function CommandPanel({
                         onChange={() => toggleSelectedCard(candidateId)}
                         disabled={isSubmitting || (!isSelected && isMaxedOut)}
                       />
-                      <span>{candidateId}</span>
+                      <span>{label}</span>
                     </label>
                   );
                 })}
@@ -255,9 +257,11 @@ export function CommandPanel({
               <div className={styles.choiceList}>
                 {orderedCardIds.map((cardId, index) => {
                   const lastIndex = orderedCardIds.length - 1;
+                  const objectView = gameView?.objectPool[cardId];
+                  const label = objectView?.name ?? objectView?.cardDefId ?? cardId;
                   return (
                     <div key={cardId} className={styles.orderRow}>
-                      <span data-testid={`order-label-${cardId}`}>{cardId}</span>
+                      <span data-testid={`order-label-${cardId}`}>{label}</span>
                       <div className={styles.actionRow}>
                         <button
                           type="button"
