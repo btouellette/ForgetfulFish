@@ -15,6 +15,48 @@ function isMainPhase(state: Readonly<GameState>): boolean {
   return state.turnState.phase === "MAIN_1" || state.turnState.phase === "MAIN_2";
 }
 
+function canObjectAttack(
+  state: Readonly<GameState>,
+  objectId: string,
+  playerId: string,
+  definitionFor: (cardDefId: string) => CardDefinition | undefined
+): boolean {
+  const object = state.objectPool.get(objectId);
+  if (object === undefined || object.controller !== playerId) {
+    return false;
+  }
+
+  const definition = definitionFor(object.cardDefId);
+  if (definition === undefined || !definition.typeLine.includes("Creature")) {
+    return false;
+  }
+
+  return !object.tapped && !object.summoningSick;
+}
+
+function canObjectBlock(
+  state: Readonly<GameState>,
+  objectId: string,
+  playerId: string,
+  definitionFor: (cardDefId: string) => CardDefinition | undefined
+): boolean {
+  const object = state.objectPool.get(objectId);
+  if (object === undefined || object.controller !== playerId) {
+    return false;
+  }
+
+  const definition = definitionFor(object.cardDefId);
+  if (definition === undefined || !definition.typeLine.includes("Creature")) {
+    return false;
+  }
+
+  return !object.tapped;
+}
+
+function hasAttackersDeclared(state: Readonly<GameState>): boolean {
+  return state.turnState.attackers.length > 0;
+}
+
 function playerHandContains(state: Readonly<GameState>, playerId: string, cardId: string): boolean {
   const handZone = state.mode.resolveZone(state, "hand", playerId);
   const hand = state.zones.get(zoneKey(handZone)) ?? [];
@@ -381,6 +423,15 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
     return definition;
   };
 
+  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
+  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
+
+  const controlsLegalAttacker = () =>
+    battlefield.some((objectId) => canObjectAttack(state, objectId, playerId, definitionFor));
+
+  const controlsLegalBlocker = () =>
+    battlefield.some((objectId) => canObjectBlock(state, objectId, playerId, definitionFor));
+
   for (const cardId of hand) {
     const cardObject = state.objectPool.get(cardId);
     const cardDefinition =
@@ -400,8 +451,6 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
     }
   }
 
-  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
-  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
   for (const sourceId of battlefield) {
     const sourceObject = state.objectPool.get(sourceId);
     if (sourceObject === undefined || sourceObject.controller !== playerId) {
@@ -430,11 +479,20 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
     }
   }
 
-  if (state.turnState.step === "DECLARE_ATTACKERS" && state.turnState.activePlayerId === playerId) {
+  if (
+    state.turnState.step === "DECLARE_ATTACKERS" &&
+    state.turnState.activePlayerId === playerId &&
+    controlsLegalAttacker()
+  ) {
     commands.push({ type: "DECLARE_ATTACKERS", attackers: [] });
   }
 
-  if (state.turnState.step === "DECLARE_BLOCKERS" && state.turnState.activePlayerId !== playerId) {
+  if (
+    state.turnState.step === "DECLARE_BLOCKERS" &&
+    state.turnState.activePlayerId !== playerId &&
+    hasAttackersDeclared(state) &&
+    controlsLegalBlocker()
+  ) {
     commands.push({ type: "DECLARE_BLOCKERS", assignments: [] });
   }
 
