@@ -423,6 +423,9 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
     return definition;
   };
 
+  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
+  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
+
   const controlsLegalAttacker = () =>
     battlefield.some((objectId) => canObjectAttack(state, objectId, playerId, definitionFor));
 
@@ -448,8 +451,6 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
     }
   }
 
-  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
-  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
   for (const sourceId of battlefield) {
     const sourceObject = state.objectPool.get(sourceId);
     if (sourceObject === undefined || sourceObject.controller !== playerId) {
