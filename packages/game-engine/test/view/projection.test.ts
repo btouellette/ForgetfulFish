@@ -85,6 +85,25 @@ function withTemporaryCardDefinitions(definitions: CardDefinition[], callback: (
   }
 }
 
+const combatTestCreatureDefinition: CardDefinition = {
+  id: "projection-combat-test-creature",
+  name: "Projection Combat Test Creature",
+  manaCost: { blue: 1 },
+  typeLine: ["Creature"],
+  subtypes: [{ kind: "creature_type", value: "Fish" }],
+  color: ["blue"],
+  supertypes: [],
+  power: 1,
+  toughness: 1,
+  keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [],
+  onResolve: [],
+  continuousEffects: [],
+  replacementEffects: []
+};
+
 const blueRedSpellDefinition: CardDefinition = {
   id: "projection-blue-red-spell",
   name: "Projection Blue Red Spell",
@@ -565,7 +584,7 @@ describe("view/projection", () => {
     });
   });
 
-  it("flags combat declaration windows as other blocking actions", () => {
+  it("does not flag empty declare attackers windows as other blocking actions", () => {
     const state = createInitialGameState("p1", "p2", {
       id: "projection-combat-blocking",
       rngSeed: "projection-combat-blocking-seed"
@@ -580,7 +599,123 @@ describe("view/projection", () => {
 
     const view = projectPlayerView(state, "p1");
 
-    expect(view.legalActions.hasOtherBlockingActions).toBe(true);
+    expect(view.legalActions.hasOtherBlockingActions).toBe(false);
+  });
+
+  it("flags declare attackers windows when the active player has a legal attacker", () => {
+    withTemporaryCardDefinitions([combatTestCreatureDefinition], () => {
+      const state = createInitialGameState("p1", "p2", {
+        id: "projection-combat-attacker-available",
+        rngSeed: "projection-combat-attacker-available-seed"
+      });
+
+      state.turnState.phase = "DECLARE_ATTACKERS";
+      state.turnState.step = "DECLARE_ATTACKERS";
+      state.turnState.activePlayerId = "p1";
+      state.turnState.priorityState.playerWithPriority = "p1";
+      state.players[0].priority = true;
+      state.players[1].priority = false;
+
+      addObject(
+        state,
+        createObject(
+          "combat-attacker",
+          "p1",
+          { kind: "battlefield", scope: "shared" },
+          {
+            cardDefId: combatTestCreatureDefinition.id
+          }
+        )
+      );
+
+      const view = projectPlayerView(state, "p1");
+
+      expect(view.legalActions.hasOtherBlockingActions).toBe(true);
+    });
+  });
+
+  it("does not flag empty declare blockers windows as other blocking actions", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "projection-combat-no-blockers",
+      rngSeed: "projection-combat-no-blockers-seed"
+    });
+
+    state.turnState.phase = "DECLARE_BLOCKERS";
+    state.turnState.step = "DECLARE_BLOCKERS";
+    state.turnState.activePlayerId = "p1";
+    state.turnState.priorityState.playerWithPriority = "p2";
+    state.players[0].priority = false;
+    state.players[1].priority = true;
+
+    const view = projectPlayerView(state, "p2");
+
+    expect(view.legalActions.hasOtherBlockingActions).toBe(false);
+  });
+
+  it("flags declare blockers windows when the defending player has a legal blocker", () => {
+    withTemporaryCardDefinitions([combatTestCreatureDefinition], () => {
+      const state = createInitialGameState("p1", "p2", {
+        id: "projection-combat-blocker-available",
+        rngSeed: "projection-combat-blocker-available-seed"
+      });
+
+      state.turnState.phase = "DECLARE_BLOCKERS";
+      state.turnState.step = "DECLARE_BLOCKERS";
+      state.turnState.activePlayerId = "p1";
+      state.turnState.attackers = ["declared-attacker"];
+      state.turnState.priorityState.playerWithPriority = "p2";
+      state.players[0].priority = false;
+      state.players[1].priority = true;
+
+      addObject(
+        state,
+        createObject(
+          "combat-blocker",
+          "p2",
+          { kind: "battlefield", scope: "shared" },
+          {
+            cardDefId: combatTestCreatureDefinition.id
+          }
+        )
+      );
+
+      const view = projectPlayerView(state, "p2");
+
+      expect(view.legalActions.hasOtherBlockingActions).toBe(true);
+    });
+  });
+
+  it("does not flag declare blockers windows when there are no attackers to block", () => {
+    withTemporaryCardDefinitions([combatTestCreatureDefinition], () => {
+      const state = createInitialGameState("p1", "p2", {
+        id: "projection-combat-no-attackers",
+        rngSeed: "projection-combat-no-attackers-seed"
+      });
+
+      state.turnState.phase = "DECLARE_BLOCKERS";
+      state.turnState.step = "DECLARE_BLOCKERS";
+      state.turnState.activePlayerId = "p1";
+      state.turnState.attackers = [];
+      state.turnState.priorityState.playerWithPriority = "p2";
+      state.players[0].priority = false;
+      state.players[1].priority = true;
+
+      addObject(
+        state,
+        createObject(
+          "idle-blocker",
+          "p2",
+          { kind: "battlefield", scope: "shared" },
+          {
+            cardDefId: combatTestCreatureDefinition.id
+          }
+        )
+      );
+
+      const view = projectPlayerView(state, "p2");
+
+      expect(view.legalActions.hasOtherBlockingActions).toBe(false);
+    });
   });
 
   it("keeps mana abilities blocking when total mana across multiple lands unlocks a spell", () => {

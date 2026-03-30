@@ -32,6 +32,25 @@ const testInstantDefinition: CardDefinition = {
   replacementEffects: []
 };
 
+const testCreatureDefinition: CardDefinition = {
+  id: "legal-test-creature",
+  name: "Legal Test Creature",
+  manaCost: { blue: 1 },
+  typeLine: ["Creature"],
+  subtypes: [{ kind: "creature_type", value: "Fish" }],
+  color: ["blue"],
+  supertypes: [],
+  power: 1,
+  toughness: 1,
+  keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [],
+  onResolve: [],
+  continuousEffects: [],
+  replacementEffects: []
+};
+
 function setPriority(state: GameState, playerId: "p1" | "p2"): void {
   state.turnState.priorityState = createInitialPriorityState(playerId);
   state.players[0].priority = state.players[0].id === playerId;
@@ -180,7 +199,7 @@ describe("commands/legal", () => {
     expect(playLandCommands).toEqual([]);
   });
 
-  it("includes DECLARE_ATTACKERS/DECLARE_BLOCKERS on corresponding steps", () => {
+  it("does not include DECLARE_ATTACKERS when the active player has no legal attackers", () => {
     const attackersState = createInitialGameState("p1", "p2", {
       id: "legal-5a",
       rngSeed: "seed-legal-5a"
@@ -191,8 +210,30 @@ describe("commands/legal", () => {
     setPriority(attackersState, "p1");
 
     const attackersCommands = getLegalCommands(attackersState);
-    expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(true);
+    expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(false);
+  });
 
+  it("includes DECLARE_ATTACKERS when the active player controls an untapped non-summoning-sick creature", () => {
+    cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
+
+    const attackersState = createInitialGameState("p1", "p2", {
+      id: "legal-5a-creature",
+      rngSeed: "seed-legal-5a-creature"
+    });
+    attackersState.turnState.phase = "DECLARE_ATTACKERS";
+    attackersState.turnState.step = "DECLARE_ATTACKERS";
+    attackersState.turnState.activePlayerId = "p1";
+    setPriority(attackersState, "p1");
+    putOnBattlefield(attackersState, "p1", {
+      id: "obj-legal-attacker",
+      cardDefId: testCreatureDefinition.id
+    });
+
+    const attackersCommands = getLegalCommands(attackersState);
+    expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(true);
+  });
+
+  it("does not include DECLARE_BLOCKERS when the defending player has no legal blockers", () => {
     const blockersState = createInitialGameState("p1", "p2", {
       id: "legal-5b",
       rngSeed: "seed-legal-5b"
@@ -203,7 +244,49 @@ describe("commands/legal", () => {
     setPriority(blockersState, "p2");
 
     const blockersCommands = getLegalCommands(blockersState);
+    expect(blockersCommands.some((command) => command.type === "DECLARE_BLOCKERS")).toBe(false);
+  });
+
+  it("includes DECLARE_BLOCKERS when the defending player controls an untapped creature", () => {
+    cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
+
+    const blockersState = createInitialGameState("p1", "p2", {
+      id: "legal-5b-creature",
+      rngSeed: "seed-legal-5b-creature"
+    });
+    blockersState.turnState.phase = "DECLARE_BLOCKERS";
+    blockersState.turnState.step = "DECLARE_BLOCKERS";
+    blockersState.turnState.activePlayerId = "p1";
+    blockersState.turnState.attackers = ["obj-declared-attacker"];
+    setPriority(blockersState, "p2");
+    putOnBattlefield(blockersState, "p2", {
+      id: "obj-legal-blocker",
+      cardDefId: testCreatureDefinition.id
+    });
+
+    const blockersCommands = getLegalCommands(blockersState);
     expect(blockersCommands.some((command) => command.type === "DECLARE_BLOCKERS")).toBe(true);
+  });
+
+  it("does not include DECLARE_BLOCKERS when there are no attackers to block", () => {
+    cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
+
+    const blockersState = createInitialGameState("p1", "p2", {
+      id: "legal-5b-no-attackers",
+      rngSeed: "seed-legal-5b-no-attackers"
+    });
+    blockersState.turnState.phase = "DECLARE_BLOCKERS";
+    blockersState.turnState.step = "DECLARE_BLOCKERS";
+    blockersState.turnState.activePlayerId = "p1";
+    blockersState.turnState.attackers = [];
+    setPriority(blockersState, "p2");
+    putOnBattlefield(blockersState, "p2", {
+      id: "obj-idle-blocker",
+      cardDefId: testCreatureDefinition.id
+    });
+
+    const blockersCommands = getLegalCommands(blockersState);
+    expect(blockersCommands.some((command) => command.type === "DECLARE_BLOCKERS")).toBe(false);
   });
 
   it("includes CAST_SPELL when cast is legal and invariants remain valid", () => {
