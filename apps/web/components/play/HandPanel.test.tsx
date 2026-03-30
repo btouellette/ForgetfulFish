@@ -71,6 +71,7 @@ describe("HandPanel", () => {
           })}
           viewerHasPriority={true}
           isSubmitting={false}
+          autoTapActions={{}}
           onPlayLand={vi.fn()}
           onCastSpell={vi.fn()}
           onBeginTargetedCast={vi.fn()}
@@ -106,6 +107,7 @@ describe("HandPanel", () => {
           legalActions={createLegalActions()}
           viewerHasPriority={true}
           isSubmitting={false}
+          autoTapActions={{}}
           onPlayLand={vi.fn()}
           onCastSpell={vi.fn()}
           onBeginTargetedCast={vi.fn()}
@@ -137,6 +139,7 @@ describe("HandPanel", () => {
           })}
           viewerHasPriority={true}
           isSubmitting={false}
+          autoTapActions={{}}
           onPlayLand={onPlayLand}
           onCastSpell={vi.fn()}
           onBeginTargetedCast={vi.fn()}
@@ -178,6 +181,7 @@ describe("HandPanel", () => {
           })}
           viewerHasPriority={true}
           isSubmitting={false}
+          autoTapActions={{}}
           onPlayLand={vi.fn()}
           onCastSpell={onCastSpell}
           onBeginTargetedCast={vi.fn()}
@@ -219,6 +223,7 @@ describe("HandPanel", () => {
           })}
           viewerHasPriority={true}
           isSubmitting={false}
+          autoTapActions={{}}
           onPlayLand={vi.fn()}
           onCastSpell={vi.fn()}
           onBeginTargetedCast={onBeginTargetedCast}
@@ -261,6 +266,7 @@ describe("HandPanel", () => {
           })}
           viewerHasPriority={true}
           isSubmitting={true}
+          autoTapActions={{}}
           onPlayLand={vi.fn()}
           onCastSpell={vi.fn()}
           onBeginTargetedCast={vi.fn()}
@@ -277,5 +283,71 @@ describe("HandPanel", () => {
 
     expect(playButton?.disabled).toBe(true);
     expect(castButton?.disabled).toBe(true);
+  });
+
+  it("renders a cast button when auto-tap makes a spell payable", () => {
+    const onCastSpell = vi.fn();
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <HandPanel
+          hand={[createHandCard("obj-4", "brainstorm", { manaCost: { blue: 1 } })]}
+          legalActions={createLegalActions()}
+          viewerHasPriority={true}
+          isSubmitting={false}
+          autoTapActions={{ "obj-4": { requiresTargets: false } }}
+          onPlayLand={vi.fn()}
+          onCastSpell={onCastSpell}
+          onBeginTargetedCast={vi.fn()}
+        />
+      );
+    });
+
+    const castButton = container.querySelector(
+      '[data-testid="cast-spell-obj-4"]'
+    ) as HTMLButtonElement | null;
+    expect(castButton).toBeTruthy();
+
+    act(() => {
+      castButton?.click();
+    });
+
+    expect(onCastSpell).toHaveBeenCalledWith("obj-4");
+  });
+
+  it("renders targeted-cast affordance when auto-tap makes a targeted spell payable", () => {
+    const onBeginTargetedCast = vi.fn();
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <HandPanel
+          hand={[createHandCard("obj-5", "memory-lapse", { manaCost: { blue: 1, generic: 1 } })]}
+          legalActions={createLegalActions()}
+          viewerHasPriority={true}
+          isSubmitting={false}
+          autoTapActions={{ "obj-5": { requiresTargets: true } }}
+          onPlayLand={vi.fn()}
+          onCastSpell={vi.fn()}
+          onBeginTargetedCast={onBeginTargetedCast}
+        />
+      );
+    });
+
+    const targetedCastButton = container.querySelector(
+      '[data-testid="cast-spell-targeted-obj-5"]'
+    ) as HTMLButtonElement | null;
+    expect(targetedCastButton).toBeTruthy();
+
+    act(() => {
+      targetedCastButton?.click();
+    });
+
+    expect(onBeginTargetedCast).toHaveBeenCalledWith("obj-5");
   });
 });

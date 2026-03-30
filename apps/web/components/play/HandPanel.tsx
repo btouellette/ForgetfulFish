@@ -1,6 +1,8 @@
 import React from "react";
 import type { PlayerGameView } from "@forgetful-fish/realtime-contract";
 
+import type { AutoTapHandAction } from "../../lib/auto-tapper";
+
 import styles from "./HandPanel.module.css";
 
 type HandCard = PlayerGameView["viewer"]["hand"][number];
@@ -42,6 +44,7 @@ type HandPanelProps = {
   legalActions: PlayerGameView["legalActions"]["hand"];
   viewerHasPriority: boolean;
   isSubmitting: boolean;
+  autoTapActions?: Record<string, AutoTapHandAction>;
   onPlayLand: (cardId: string) => void;
   onCastSpell: (cardId: string) => void;
   onBeginTargetedCast: (cardId: string) => void;
@@ -52,6 +55,7 @@ export function HandPanel({
   legalActions,
   viewerHasPriority,
   isSubmitting,
+  autoTapActions = {},
   onPlayLand,
   onCastSpell,
   onBeginTargetedCast
@@ -66,6 +70,8 @@ export function HandPanel({
         const cardActions = legalActions[card.id] ?? [];
         const playLandAction = cardActions.find((action) => action.type === "PLAY_LAND");
         const castSpellAction = cardActions.find((action) => action.type === "CAST_SPELL");
+        const autoTapAction = autoTapActions[card.id];
+        const requiresTargets = castSpellAction?.requiresTargets ?? autoTapAction?.requiresTargets;
         const manaCostLabel = formatManaCost(card.manaCost);
 
         return (
@@ -94,7 +100,7 @@ export function HandPanel({
                 >
                   Play land
                 </button>
-              ) : castSpellAction && !castSpellAction.requiresTargets ? (
+              ) : requiresTargets === false ? (
                 <button
                   type="button"
                   data-testid={`cast-spell-${card.id}`}
@@ -109,7 +115,7 @@ export function HandPanel({
                 >
                   Cast spell
                 </button>
-              ) : castSpellAction ? (
+              ) : requiresTargets === true ? (
                 <button
                   type="button"
                   data-testid={`cast-spell-targeted-${card.id}`}

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   GameplayCommand,
   GameplayPendingChoice,
@@ -9,6 +9,7 @@ import type {
 } from "@forgetful-fish/realtime-contract";
 
 import { shouldAutoPass } from "../../lib/auto-pass";
+import { getAutoTapHandActions } from "../../lib/auto-tapper";
 import { renderBattlefield } from "../../lib/renderer/battlefield-renderer";
 import { BattlefieldActionsPanel } from "./BattlefieldActionsPanel";
 import { CommandPanel } from "./CommandPanel";
@@ -206,6 +207,15 @@ export function GameplayView({
     onPassPriority();
   }, [autoPassEnabled, gameView, isSubmittingCommand, onPassPriority, pendingChoice]);
 
+  const viewerHasPriority = gameView?.turnState.priorityPlayerId === gameView?.viewerPlayerId;
+  const autoTapActions = useMemo(() => {
+    if (!gameView || !viewerHasPriority || isSubmittingCommand) {
+      return {};
+    }
+
+    return getAutoTapHandActions(gameView);
+  }, [gameView, isSubmittingCommand, viewerHasPriority]);
+
   if (!gameView) {
     return (
       <section className={styles.gameplayView} data-testid="game-active-placeholder">
@@ -214,8 +224,6 @@ export function GameplayView({
       </section>
     );
   }
-
-  const viewerHasPriority = gameView.turnState.priorityPlayerId === gameView.viewerPlayerId;
 
   return (
     <section className={styles.gameplayView}>
@@ -234,6 +242,7 @@ export function GameplayView({
           legalActions={gameView.legalActions.hand}
           viewerHasPriority={viewerHasPriority}
           isSubmitting={isSubmittingCommand}
+          autoTapActions={autoTapActions}
           onPlayLand={onPlayLand}
           onCastSpell={onCastSpell}
           onBeginTargetedCast={handleBeginTargetedCast}
