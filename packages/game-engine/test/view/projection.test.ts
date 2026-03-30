@@ -89,6 +89,7 @@ const blueRedSpellDefinition: CardDefinition = {
   id: "projection-blue-red-spell",
   name: "Projection Blue Red Spell",
   manaCost: { blue: 2, red: 1 },
+  rulesText: "Draw two cards.",
   typeLine: ["Instant"],
   subtypes: [],
   color: ["blue", "red"],
@@ -108,6 +109,7 @@ const dualManaLandDefinition: CardDefinition = {
   id: "projection-dual-land",
   name: "Projection Dual Land",
   manaCost: {},
+  rulesText: "{T}: Add {U} or {R}.",
   typeLine: ["Land"],
   subtypes: [],
   color: [],
@@ -144,20 +146,70 @@ function createStateWithVisibleAndHiddenObjects(): GameState {
 
   addObject(
     state,
-    createObject("viewer-hand", "p1", { kind: "hand", scope: "player", playerId: "p1" })
+    createObject(
+      "viewer-hand",
+      "p1",
+      { kind: "hand", scope: "player", playerId: "p1" },
+      {
+        cardDefId: "brainstorm"
+      }
+    )
   );
   addObject(
     state,
-    createObject("opponent-hand", "p2", { kind: "hand", scope: "player", playerId: "p2" })
+    createObject(
+      "opponent-hand",
+      "p2",
+      { kind: "hand", scope: "player", playerId: "p2" },
+      {
+        cardDefId: "memory-lapse"
+      }
+    )
   );
-  addObject(state, createObject("library-card", "p1", { kind: "library", scope: "shared" }));
   addObject(
     state,
-    createObject("battlefield-card", "p1", { kind: "battlefield", scope: "shared" })
+    createObject(
+      "library-card",
+      "p1",
+      { kind: "library", scope: "shared" },
+      { cardDefId: "predict" }
+    )
   );
-  addObject(state, createObject("graveyard-card", "p2", { kind: "graveyard", scope: "shared" }));
-  addObject(state, createObject("exile-card", "p1", { kind: "exile", scope: "shared" }));
-  addObject(state, createObject("stack-card", "p1", { kind: "stack", scope: "shared" }));
+  addObject(
+    state,
+    createObject(
+      "battlefield-card",
+      "p1",
+      { kind: "battlefield", scope: "shared" },
+      {
+        cardDefId: "island"
+      }
+    )
+  );
+  addObject(
+    state,
+    createObject(
+      "graveyard-card",
+      "p2",
+      { kind: "graveyard", scope: "shared" },
+      {
+        cardDefId: "accumulated-knowledge"
+      }
+    )
+  );
+  addObject(
+    state,
+    createObject(
+      "exile-card",
+      "p1",
+      { kind: "exile", scope: "shared" },
+      { cardDefId: "mystical-tutor" }
+    )
+  );
+  addObject(
+    state,
+    createObject("stack-card", "p1", { kind: "stack", scope: "shared" }, { cardDefId: "predict" })
+  );
 
   state.stack.push({
     id: "stack-item-1",
@@ -203,7 +255,12 @@ describe("view/projection", () => {
 
     expect(view.viewer.hand).toHaveLength(1);
     expect(view.viewer.hand[0]?.id).toBe("viewer-hand");
-    expect(view.objectPool["viewer-hand"]?.cardDefId).toBe("viewer-hand-card");
+    expect(view.viewer.hand[0]?.name).toBe("Brainstorm");
+    expect(view.viewer.hand[0]?.manaCost).toEqual({ blue: 1 });
+    expect(view.viewer.hand[0]?.rulesText).toBe(
+      "Draw three cards, then put two cards from your hand on top of your library in any order."
+    );
+    expect(view.objectPool["viewer-hand"]?.cardDefId).toBe("brainstorm");
   });
 
   it("hides opponent hand identities and only exposes the count", () => {

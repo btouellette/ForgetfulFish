@@ -3,6 +3,40 @@ import type { PlayerGameView } from "@forgetful-fish/realtime-contract";
 
 import styles from "./HandPanel.module.css";
 
+type HandCard = PlayerGameView["viewer"]["hand"][number];
+type HandCardManaCost = NonNullable<HandCard["manaCost"]>;
+
+function formatManaCost(manaCost: HandCard["manaCost"] | undefined): string {
+  if (!manaCost) {
+    return "";
+  }
+
+  const manaSymbols: Array<[keyof HandCardManaCost, string]> = [
+    ["generic", "generic"],
+    ["white", "W"],
+    ["blue", "U"],
+    ["black", "B"],
+    ["red", "R"],
+    ["green", "G"],
+    ["colorless", "C"]
+  ];
+
+  return manaSymbols
+    .flatMap(([color, symbol]) => {
+      const amount = manaCost[color] ?? 0;
+      if (amount <= 0) {
+        return [];
+      }
+
+      if (symbol === "generic") {
+        return [`{${amount}}`];
+      }
+
+      return Array.from({ length: amount }, () => `{${symbol}}`);
+    })
+    .join("");
+}
+
 type HandPanelProps = {
   hand: PlayerGameView["viewer"]["hand"];
   legalActions: PlayerGameView["legalActions"]["hand"];
@@ -32,12 +66,17 @@ export function HandPanel({
         const cardActions = legalActions[card.id] ?? [];
         const playLandAction = cardActions.find((action) => action.type === "PLAY_LAND");
         const castSpellAction = cardActions.find((action) => action.type === "CAST_SPELL");
+        const manaCostLabel = formatManaCost(card.manaCost);
 
         return (
           <div key={card.id} className={styles.cardRow}>
             <div className={styles.cardMeta}>
-              <strong>{card.cardDefId}</strong>
-              <span>{card.id}</span>
+              <div className={styles.cardHeader}>
+                <strong>{card.name ?? card.cardDefId}</strong>
+                {manaCostLabel ? <span className={styles.manaCost}>{manaCostLabel}</span> : null}
+              </div>
+              {card.rulesText ? <div className={styles.rulesText}>{card.rulesText}</div> : null}
+              <span className={styles.cardId}>{card.id}</span>
             </div>
             <div className={styles.actions}>
               {playLandAction ? (

@@ -4,6 +4,7 @@ export const islandCardDefinition: CardDefinition = {
   id: "island",
   name: "Island",
   manaCost: {},
+  rulesText: "{T}: Add {U}.",
   typeLine: ["Land"],
   subtypes: [{ kind: "basic_land_type", value: "Island" }],
   color: [],

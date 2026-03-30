@@ -4,6 +4,8 @@ export const mysticalTutorCardDefinition: CardDefinition = {
   id: "mystical-tutor",
   name: "Mystical Tutor",
   manaCost: { blue: 1 },
+  rulesText:
+    "Search your library for an instant or sorcery card, reveal it, then shuffle and put that card on top.",
   typeLine: ["Instant"],
   subtypes: [],
   color: ["blue"],

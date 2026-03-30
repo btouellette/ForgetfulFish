@@ -4,6 +4,8 @@ export const brainstormCardDefinition: CardDefinition = {
   id: "brainstorm",
   name: "Brainstorm",
   manaCost: { blue: 1 },
+  rulesText:
+    "Draw three cards, then put two cards from your hand on top of your library in any order.",
   typeLine: ["Instant"],
   subtypes: [],
   color: ["blue"],

@@ -4,6 +4,8 @@ export const memoryLapseCardDefinition: CardDefinition = {
   id: "memory-lapse",
   name: "Memory Lapse",
   manaCost: { blue: 1, generic: 1 },
+  rulesText:
+    "Counter target spell. If that spell is countered this way, put it on top of its owner's library instead of into that player's graveyard.",
   typeLine: ["Instant"],
   subtypes: [],
   color: ["blue"],

@@ -33,9 +33,13 @@ function countersToRecord(counters: ReadonlyMap<string, number>): Record<string,
 
 function toGameObjectView(object: Readonly<GameObject>): GameObjectView {
   const { abilities: _abilities, counters, ...rest } = object;
+  const cardDefinition = cardRegistry.get(object.cardDefId);
 
   return {
     ...rest,
+    name: cardDefinition?.name ?? object.cardDefId,
+    manaCost: { ...(cardDefinition?.manaCost ?? {}) },
+    rulesText: cardDefinition?.rulesText ?? "",
     counters: countersToRecord(counters)
   };
 }
