@@ -82,7 +82,6 @@ export function HandPanel({
                 {manaCostLabel ? <span className={styles.manaCost}>{manaCostLabel}</span> : null}
               </div>
               {card.rulesText ? <div className={styles.rulesText}>{card.rulesText}</div> : null}
-              <span className={styles.cardId}>{card.id}</span>
             </div>
             <div className={styles.actions}>
               {playLandAction ? (
