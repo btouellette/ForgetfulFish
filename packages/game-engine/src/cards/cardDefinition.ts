@@ -22,6 +22,7 @@ export type CardDefinition = {
   id: string;
   name: string;
   manaCost: ManaCost;
+  rulesText?: string;
   typeLine: string[];
   subtypes: SubtypeAtom[];
   color: Color[];
