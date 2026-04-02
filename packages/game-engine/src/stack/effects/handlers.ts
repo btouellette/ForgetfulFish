@@ -10,7 +10,6 @@ import type {
   ActionType,
   GameActionBase
 } from "../../actions/action";
-import { LAYERS } from "../../effects/continuous/layers";
 import type {
   AddContinuousEffectToTargetSpec,
   ChooseCardsSpec,
@@ -33,12 +32,7 @@ import type {
 import type { ChoicePayload } from "../../commands/command";
 import type { GameState } from "../../state/gameState";
 import { zoneKey } from "../../state/zones";
-import {
-  getStepIndex,
-  pauseWithChoiceAndScratch,
-  requireChoicePayload,
-  requireUniqueIds
-} from "./primitives";
+import { pauseWithChoiceAndScratch, requireChoicePayload, requireUniqueIds } from "./primitives";
 import type { ResolveEffectHandlerContext, ResolveEffectResult } from "./types";
 
 function isChooseCardsPayload(
@@ -212,7 +206,6 @@ function resolveChooseCards(
   context: ResolveEffectHandlerContext
 ): ResolveEffectResult {
   const { stackItem, mutable } = context;
-  const stepIndex = getStepIndex(stackItem);
   const zone = resolveZone(context, spec.zone, stackItem.controller);
   const zoneCards = mutable.nextZones.get(zoneKey(zone)) ?? [];
   const candidates =
