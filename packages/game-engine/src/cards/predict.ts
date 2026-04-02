@@ -17,7 +17,24 @@ export const predictCardDefinition: CardDefinition = {
   triggeredAbilities: [],
   activatedAbilities: [],
   onResolve: [
-    { id: "NAME_MILL_DRAW_ON_HIT", millAmount: 2, drawOnHitAmount: 2, missDrawAmount: 1 }
+    {
+      kind: "name_card",
+      prompt: "Name a card",
+      storeKey: "predict:named-card"
+    },
+    {
+      kind: "mill_cards",
+      count: 2,
+      player: "target_player_or_controller",
+      storeKey: "predict:milled"
+    },
+    {
+      kind: "draw_by_named_hit",
+      namedCardKey: "predict:named-card",
+      milledCardsKey: "predict:milled",
+      hitCount: 2,
+      missCount: 1
+    }
   ],
   continuousEffects: [],
   replacementEffects: []
