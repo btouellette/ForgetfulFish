@@ -58,7 +58,24 @@ const replacementResumeCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: [{ id: "SEARCH_LIBRARY_SHUFFLE_TOP", typeFilter: ["Instant"], min: 0, max: 1 }],
+  onResolve: [
+    {
+      kind: "choose_cards",
+      zone: "library",
+      player: "controller",
+      min: 0,
+      max: 1,
+      prompt: "Choose up to one Instant card",
+      storeKey: "replacement-resume:selected",
+      typeFilter: ["Instant"]
+    },
+    {
+      kind: "shuffle_zone",
+      zone: "library",
+      player: "controller",
+      topCardFromKey: "replacement-resume:selected"
+    }
+  ],
   continuousEffects: [],
   replacementEffects: []
 };
@@ -78,8 +95,38 @@ const controlThenReplacementResumeCardDefinition: CardDefinition = {
   triggeredAbilities: [],
   activatedAbilities: [],
   onResolve: [
-    { id: "GAIN_CONTROL_UNTAP_MUST_ATTACK" },
-    { id: "SEARCH_LIBRARY_SHUFFLE_TOP", typeFilter: ["Instant"], min: 0, max: 1 }
+    { kind: "set_control_of_target", target: "first_object_target", duration: "until_end_of_turn" },
+    { kind: "untap_target", target: "first_object_target" },
+    {
+      kind: "add_continuous_effect_to_target",
+      target: "first_object_target",
+      layer: 6,
+      duration: "until_end_of_turn",
+      effect: { kind: "grant_keyword", payload: { keyword: "haste" } }
+    },
+    {
+      kind: "add_continuous_effect_to_target",
+      target: "first_object_target",
+      layer: 6,
+      duration: "until_end_of_turn",
+      effect: { kind: "must_attack" }
+    },
+    {
+      kind: "choose_cards",
+      zone: "library",
+      player: "controller",
+      min: 0,
+      max: 1,
+      prompt: "Choose up to one Instant card",
+      storeKey: "control-then-replacement:selected",
+      typeFilter: ["Instant"]
+    },
+    {
+      kind: "shuffle_zone",
+      zone: "library",
+      player: "controller",
+      topCardFromKey: "control-then-replacement:selected"
+    }
   ],
   continuousEffects: [],
   replacementEffects: []
@@ -486,7 +533,8 @@ describe("stack/resolve pipeline choice integration", () => {
         (effect) =>
           effect.appliesTo.kind === "object" &&
           effect.appliesTo.object.id === "obj-target" &&
-          effect.effect.kind === "grant_haste"
+          effect.effect.kind === "grant_keyword" &&
+          effect.effect.payload?.keyword === "haste"
       )
     ).toBe(true);
     expect(computeGameObject("obj-target", firstResolve.state).controller).toBe("p1");

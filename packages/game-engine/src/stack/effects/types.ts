@@ -30,6 +30,7 @@ export type ResolveEffectHandlerContext = {
   rng: Rng;
   mutable: ResolveMutableState;
   effects: OnResolveRegistry;
+  writeScratch: (entries: Record<string, unknown>) => void;
   enqueueAction: (action: GameAction) => void;
   emit: (payload: GameEventPayload) => void;
   pauseWithChoice: (
