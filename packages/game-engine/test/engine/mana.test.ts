@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { addContinuousEffect, LAYERS } from "../../src/effects/continuous/layers";
 import { payManaCost, tapForMana } from "../../src/engine/kernel";
 import type { GameObject } from "../../src/state/gameObject";
 import { createInitialGameState } from "../../src/state/gameState";
@@ -44,6 +45,29 @@ describe("engine/mana", () => {
 
     expect(result.state.objectPool.get("obj-island")?.tapped).toBe(true);
     expect(result.state.players[0].manaPool.blue).toBe(1);
+  });
+
+  it("tapForMana credits mana to the computed controller", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "mana-derived-controller",
+      rngSeed: "seed-mana-derived-controller"
+    });
+    putOnBattlefield(state, createPermanent("obj-stolen-island", "island", "p2"));
+
+    const withControlEffect = addContinuousEffect(state, {
+      id: "effect-stolen-island",
+      source: { id: "source-island", zcc: 0 },
+      layer: LAYERS.CONTROL,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", objectId: "obj-stolen-island" },
+      effect: { kind: "set_controller", payload: { playerId: "p1" } }
+    });
+
+    const result = tapForMana(withControlEffect, "obj-stolen-island");
+
+    expect(result.state.players[0].manaPool.blue).toBe(1);
+    expect(result.state.players[1].manaPool.blue).toBe(0);
   });
 
   it("payManaCost deducts one blue mana", () => {

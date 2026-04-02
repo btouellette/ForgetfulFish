@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { addContinuousEffect, LAYERS } from "../../src/effects/continuous/layers";
 import { advanceStep, advanceTurn, handlePassPriority } from "../../src/engine/kernel";
 import { createInitialGameState, type GameState } from "../../src/state/gameState";
 import { createInitialPriorityState } from "../../src/state/priorityState";
@@ -78,6 +79,35 @@ describe("engine/kernel", () => {
     state.zones.get(zoneKey({ kind: "battlefield", scope: "shared" }))?.push(permanent.id);
 
     const next = advanceStep(state);
+    const nextPermanent = next.objectPool.get(permanent.id);
+
+    expect(next.turnState.step).toBe("UPKEEP");
+    expect(nextPermanent?.tapped).toBe(false);
+  });
+
+  it("untaps permanents whose control changes continuously to the active player", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "kernel-derived-untap",
+      rngSeed: "seed-kernel-derived-untap"
+    });
+    const permanent: GameObject = {
+      ...createIsland("obj-stolen-untap", "p2", true),
+      zone: { kind: "battlefield", scope: "shared" }
+    };
+    state.objectPool.set(permanent.id, permanent);
+    state.zones.get(zoneKey({ kind: "battlefield", scope: "shared" }))?.push(permanent.id);
+
+    const withControlEffect = addContinuousEffect(state, {
+      id: "effect-stolen-untap",
+      source: { id: "source-untap", zcc: 0 },
+      layer: LAYERS.CONTROL,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", objectId: permanent.id },
+      effect: { kind: "set_controller", payload: { playerId: "p1" } }
+    });
+
+    const next = advanceStep(withControlEffect);
     const nextPermanent = next.objectPool.get(permanent.id);
 
     expect(next.turnState.step).toBe("UPKEEP");
@@ -169,8 +199,24 @@ describe("engine/kernel", () => {
     const state: GameState = {
       ...withStep(base, "CLEANUP"),
       continuousEffects: [
-        { id: "effect-kept" },
-        { id: "effect-expired", duration: "until_end_of_turn" }
+        {
+          id: "effect-kept",
+          source: { id: "source-kept", zcc: 0 },
+          layer: LAYERS.CONTROL,
+          timestamp: 1,
+          duration: "permanent",
+          appliesTo: { kind: "object", objectId: "obj-kept" },
+          effect: { kind: "set_controller", payload: { playerId: "p1" } }
+        },
+        {
+          id: "effect-expired",
+          source: { id: "source-expired", zcc: 0 },
+          layer: LAYERS.CONTROL,
+          timestamp: 2,
+          duration: "until_end_of_turn",
+          appliesTo: { kind: "object", objectId: "obj-expired" },
+          effect: { kind: "set_controller", payload: { playerId: "p2" } }
+        }
       ]
     };
 
@@ -178,7 +224,17 @@ describe("engine/kernel", () => {
 
     expect(next.turnState.step).toBe("UNTAP");
     expect(next.turnState.activePlayerId).toBe("p2");
-    expect(next.continuousEffects).toEqual([{ id: "effect-kept" }]);
+    expect(next.continuousEffects).toEqual([
+      {
+        id: "effect-kept",
+        source: { id: "source-kept", zcc: 0 },
+        layer: LAYERS.CONTROL,
+        timestamp: 1,
+        duration: "permanent",
+        appliesTo: { kind: "object", objectId: "obj-kept" },
+        effect: { kind: "set_controller", payload: { playerId: "p1" } }
+      }
+    ]);
   });
 
   it("resets pass flags when entering a new priority step", () => {

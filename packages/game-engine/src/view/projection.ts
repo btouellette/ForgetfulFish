@@ -1,6 +1,7 @@
 import { cardRegistry } from "../cards";
 import type { ActivatedAbilityAst, ManaAmount } from "../cards/abilityAst";
 import { getLegalCommands } from "../commands/validate";
+import { computeGameObject } from "../effects/continuous/layers";
 import type { GameObject } from "../state/gameObject";
 import type { GameState, ManaPool, PlayerInfo } from "../state/gameState";
 import type { ObjectId, PlayerId } from "../state/objectRef";
@@ -102,6 +103,11 @@ function requireObject(state: Readonly<GameState>, objectId: ObjectId): GameObje
   return object;
 }
 
+function requireComputedObject(state: Readonly<GameState>, objectId: ObjectId): GameObject {
+  requireObject(state, objectId);
+  return computeGameObject(objectId, state);
+}
+
 function spellRequiresTargets(cardDefId: string): boolean {
   const cardDefinition = cardRegistry.get(cardDefId);
   return cardDefinition?.onResolve.some((effect) => effect.id === "COUNTER_SPELL") ?? false;
@@ -120,10 +126,11 @@ function getActivatedAbility(
   sourceId: ObjectId,
   abilityIndex: number
 ): ActivatedAbilityAst | undefined {
-  const sourceObject = state.objectPool.get(sourceId);
-  if (sourceObject === undefined) {
+  if (!state.objectPool.has(sourceId)) {
     return undefined;
   }
+
+  const sourceObject = computeGameObject(sourceId, state);
 
   const cardDefinition = cardRegistry.get(sourceObject.cardDefId);
   return cardDefinition?.activatedAbilities[abilityIndex];
@@ -403,7 +410,7 @@ export function projectPlayerView(
 
   for (const [objectId, object] of state.objectPool.entries()) {
     if (isVisibleZone(object.zone, viewerPlayerId)) {
-      objectPool[objectId] = toGameObjectView(object);
+      objectPool[objectId] = toGameObjectView(computeGameObject(objectId, state));
     }
   }
 
@@ -419,7 +426,7 @@ export function projectPlayerView(
       id: viewer.id,
       life: viewer.life,
       manaPool: { ...viewer.manaPool },
-      hand: viewer.hand.map((objectId) => toGameObjectView(requireObject(state, objectId))),
+      hand: viewer.hand.map((objectId) => toGameObjectView(requireComputedObject(state, objectId))),
       handCount: viewer.hand.length
     },
     opponent: {

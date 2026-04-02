@@ -2,6 +2,8 @@
 
 Status: in progress
 
+- TODO: Split monolithic `ResolveEffectSpec` variants into smaller composable spec primitives with a clear assembly/composition model so future card growth does not force one bespoke resolve-spec shape per card.
+
 ### [x] P3.1 — ContinuousEffect type and registry
 
 **Files**: `effects/continuous/layers.ts`

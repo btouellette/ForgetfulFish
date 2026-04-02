@@ -1,4 +1,5 @@
 import { cardRegistry } from "../cards";
+import { computeGameObject } from "../effects/continuous/layers";
 import { createEvent, type GameEvent } from "../events/event";
 import { Rng } from "../rng/rng";
 import { captureSnapshot, lkiKey } from "../state/lki";
@@ -325,8 +326,9 @@ export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): Ste
   if (state.turnState.step === "UNTAP") {
     const nextObjectPool = new Map(state.objectPool);
     for (const [objectId, object] of state.objectPool) {
+      const effectiveObject = computeGameObject(objectId, state);
       if (
-        object.controller !== state.turnState.activePlayerId ||
+        effectiveObject.controller !== state.turnState.activePlayerId ||
         object.zone.kind !== "battlefield"
       ) {
         continue;
@@ -450,15 +452,17 @@ export function tapForMana(
     throw new Error(`Cannot tap missing object '${objectId}'`);
   }
 
-  if (object.tapped) {
+  const effectiveObject = computeGameObject(objectId, state);
+
+  if (effectiveObject.tapped) {
     throw new Error("permanent is already tapped");
   }
 
-  if (object.zone.kind !== "battlefield") {
+  if (effectiveObject.zone.kind !== "battlefield") {
     throw new Error("only permanents on the battlefield can be tapped for mana");
   }
 
-  const definition = cardRegistry.get(object.cardDefId);
+  const definition = cardRegistry.get(effectiveObject.cardDefId);
   const isLand = definition?.typeLine.includes("Land") ?? false;
   if (!isLand) {
     throw new Error("only lands can be tapped for mana");
@@ -493,7 +497,7 @@ export function tapForMana(
     tapped: true
   });
 
-  const playerIndex = findPlayerIndex(state, object.controller);
+  const playerIndex = findPlayerIndex(state, effectiveObject.controller);
   const manaDelta = manaEffect.mana;
   const player = state.players[playerIndex];
   const nextPlayer = {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ACTION_TYPES,
   type ActionType,
+  type AddContinuousEffectAction,
   type AddManaAction,
   type CounterAction,
   type CreateTokenAction,
@@ -66,7 +67,8 @@ function sampleActions(): GameAction[] {
     id: "action-control",
     type: "SET_CONTROL",
     objectId: "obj-4",
-    to: "p2"
+    to: "p2",
+    duration: "until_end_of_turn"
   };
 
   const destroyAction: DestroyAction = {
@@ -114,6 +116,24 @@ function sampleActions(): GameAction[] {
     amount: 2
   };
 
+  const addContinuousEffectAction: AddContinuousEffectAction = {
+    ...createBaseActionFields(),
+    id: "action-add-continuous-effect",
+    type: "ADD_CONTINUOUS_EFFECT",
+    effect: {
+      id: "effect-1",
+      source: { id: "source-1", zcc: 0 },
+      layer: 2,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", objectId: "obj-4" },
+      effect: {
+        kind: "set_controller",
+        payload: { playerId: "p2" }
+      }
+    }
+  };
+
   const createTokenAction: CreateTokenAction = {
     ...createBaseActionFields(),
     id: "action-create-token",
@@ -142,6 +162,7 @@ function sampleActions(): GameAction[] {
     addManaAction,
     loseLifeAction,
     gainLifeAction,
+    addContinuousEffectAction,
     createTokenAction,
     shuffleAction
   ];
@@ -160,6 +181,7 @@ function assertExhaustive(action: GameAction): ActionType {
     case "ADD_MANA":
     case "LOSE_LIFE":
     case "GAIN_LIFE":
+    case "ADD_CONTINUOUS_EFFECT":
     case "CREATE_TOKEN":
     case "SHUFFLE":
       return action.type;
@@ -171,16 +193,16 @@ function assertExhaustive(action: GameAction): ActionType {
 }
 
 describe("actions/action", () => {
-  it("exports ACTION_TYPES with all 13 variants", () => {
-    expect(ACTION_TYPES).toHaveLength(13);
+  it("exports ACTION_TYPES with all 14 variants", () => {
+    expect(ACTION_TYPES).toHaveLength(14);
     expect(ACTION_TYPES).toContain("MOVE_ZONE");
   });
 
-  it("constructs one action for each of the 13 action types", () => {
+  it("constructs one action for each of the 14 action types", () => {
     const actions = sampleActions();
 
-    expect(actions).toHaveLength(13);
-    expect(new Set(actions.map((action) => action.type)).size).toBe(13);
+    expect(actions).toHaveLength(14);
+    expect(new Set(actions.map((action) => action.type)).size).toBe(14);
   });
 
   it("ensures all action variants include base fields", () => {

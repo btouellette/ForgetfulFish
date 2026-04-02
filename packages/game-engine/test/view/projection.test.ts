@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { cardRegistry } from "../../src/cards";
 import type { CardDefinition } from "../../src/cards/cardDefinition";
+import { addContinuousEffect, LAYERS } from "../../src/effects/continuous/layers";
 import {
   createInitialGameState,
   projectPlayerView,
@@ -387,6 +388,58 @@ describe("view/projection", () => {
       }
     ]);
     expect(view.legalActions.hasOtherBlockingActions).toBe(false);
+  });
+
+  it("projects computed controller and legal actions for continuously stolen permanents", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "projection-derived-controller",
+      rngSeed: "projection-derived-controller-seed"
+    });
+
+    state.turnState.phase = "MAIN_1";
+    state.turnState.step = "MAIN_1";
+    state.turnState.activePlayerId = "p1";
+    state.turnState.priorityState.playerWithPriority = "p1";
+    state.players[0].priority = true;
+    state.players[1].priority = false;
+
+    addObject(
+      state,
+      createObject(
+        "stolen-island",
+        "p2",
+        { kind: "battlefield", scope: "shared" },
+        { cardDefId: "island" }
+      )
+    );
+
+    const withControlEffect = addContinuousEffect(state, {
+      id: "effect-projection-stolen-island",
+      source: { id: "source-projection-island", zcc: 0 },
+      layer: LAYERS.CONTROL,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", objectId: "stolen-island" },
+      effect: { kind: "set_controller", payload: { playerId: "p1" } }
+    });
+
+    const view = projectPlayerView(withControlEffect, "p1");
+
+    expect(view.objectPool["stolen-island"]?.controller).toBe("p1");
+    expect(view.legalActions.battlefield["stolen-island"]).toEqual([
+      {
+        type: "ACTIVATE_ABILITY",
+        commandBase: {
+          type: "ACTIVATE_ABILITY",
+          sourceId: "stolen-island",
+          abilityIndex: 0
+        },
+        requiresTargets: false,
+        isManaAbility: true,
+        manaProduced: { blue: 1 },
+        blocksAutoPass: false
+      }
+    ]);
   });
 
   it("marks mana-only activations as non-blocking when total mana cannot unlock a real action", () => {

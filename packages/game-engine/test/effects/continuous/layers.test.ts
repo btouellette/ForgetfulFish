@@ -5,6 +5,7 @@ import { createInitialGameState, type GameState } from "../../../src/state/gameS
 import {
   LAYERS,
   addContinuousEffect,
+  computeGameObject,
   matchesEffectTarget,
   removeContinuousEffect,
   type ContinuousEffect
@@ -108,6 +109,47 @@ describe("effects/continuous/layers", () => {
     expect(state.continuousEffects).toHaveLength(0);
     expect(nextState.continuousEffects).toHaveLength(1);
     expect(nextState).not.toBe(state);
+  });
+
+  it("returns a derived view identical to the base object when no effects apply", () => {
+    const state = createStateWithObjects();
+
+    expect(computeGameObject("obj-a", state)).toEqual(state.objectPool.get("obj-a"));
+  });
+
+  it("applies layer 2 control effects to the derived view", () => {
+    const state = addContinuousEffect(createStateWithObjects(), createEffect("effect-control"));
+
+    const computed = computeGameObject("obj-a", state);
+
+    expect(computed.controller).toBe("p2");
+    expect(state.objectPool.get("obj-a")?.controller).toBe("p1");
+  });
+
+  it("applies same-layer control effects in timestamp order", () => {
+    const firstState = addContinuousEffect(
+      createStateWithObjects(),
+      createEffect("effect-early", 1)
+    );
+    const finalState = addContinuousEffect(firstState, {
+      ...createEffect("effect-late", 2),
+      effect: {
+        kind: "set_controller",
+        payload: { playerId: "p1" }
+      }
+    });
+
+    const computed = computeGameObject("obj-a", finalState);
+
+    expect(computed.controller).toBe("p1");
+  });
+
+  it("throws when computing a missing object", () => {
+    const state = createStateWithObjects();
+
+    expect(() => computeGameObject("missing-object", state)).toThrow(
+      "object 'missing-object' is missing from state 'layers-test'"
+    );
   });
 
   it("rejects duplicate effect ids on add", () => {

@@ -1,17 +1,21 @@
 import { cardRegistry } from "../../cards";
 import type {
+  AddContinuousEffectAction,
   CounterAction,
   DrawAction,
   MoveZoneAction,
+  SetControlAction,
   ShuffleAction,
   ActionId,
   ActionType,
   GameActionBase
 } from "../../actions/action";
+import { LAYERS } from "../../effects/continuous/layers";
 import type {
   CounterSpellSpec,
   DrawByGraveyardCopyCountSpec,
   DrawChooseReturnSpec,
+  GainControlUntapMustAttackSpec,
   NameMillDrawOnHitSpec,
   ResolveEffectSpec,
   SearchLibraryShuffleTopSpec
@@ -490,6 +494,51 @@ function resolveDrawByGraveyardCopyCount(
   return { kind: "continue" };
 }
 
+function resolveGainControlUntapMustAttack(
+  _spec: GainControlUntapMustAttackSpec,
+  context: ResolveEffectHandlerContext
+): ResolveEffectResult {
+  const target = context.stackItem.targets.find((candidate) => candidate.kind === "object");
+  if (target === undefined) {
+    return { kind: "continue" };
+  }
+
+  const setControlAction: SetControlAction = {
+    ...baseActionFields(context),
+    id: actionId(context, "SET_CONTROL", "gain-control"),
+    type: "SET_CONTROL",
+    objectId: target.object.id,
+    to: context.stackItem.controller,
+    duration: "until_end_of_turn"
+  };
+  context.enqueueAction(setControlAction);
+
+  context.enqueueAction({
+    ...baseActionFields(context),
+    id: actionId(context, "UNTAP", "gain-control"),
+    type: "UNTAP",
+    objectId: target.object.id
+  });
+
+  const mustAttackEffectAction: AddContinuousEffectAction = {
+    ...baseActionFields(context),
+    id: actionId(context, "ADD_CONTINUOUS_EFFECT", "must-attack"),
+    type: "ADD_CONTINUOUS_EFFECT",
+    effect: {
+      id: actionId(context, "ADD_CONTINUOUS_EFFECT", "must-attack"),
+      source: context.stackItem.effectContext.source,
+      layer: LAYERS.ABILITY,
+      timestamp: context.state.version,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", objectId: target.object.id },
+      effect: { kind: "must_attack" }
+    }
+  };
+  context.enqueueAction(mustAttackEffectAction);
+
+  return { kind: "continue" };
+}
+
 export function resolveOnResolveEffect(
   spec: ResolveEffectSpec,
   context: ResolveEffectHandlerContext
@@ -505,6 +554,8 @@ export function resolveOnResolveEffect(
       return resolveCounterSpell(spec, context);
     case "DRAW_BY_GRAVEYARD_COPY_COUNT":
       return resolveDrawByGraveyardCopyCount(spec, context);
+    case "GAIN_CONTROL_UNTAP_MUST_ATTACK":
+      return resolveGainControlUntapMustAttack(spec, context);
     default: {
       const exhaustive: never = spec;
       return exhaustive;

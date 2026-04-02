@@ -1,4 +1,5 @@
 import { cardRegistry } from "../cards";
+import { computeGameObject } from "../effects/continuous/layers";
 import type {
   ActivateAbilityCommand,
   CastSpellCommand,
@@ -15,13 +16,21 @@ function isMainPhase(state: Readonly<GameState>): boolean {
   return state.turnState.phase === "MAIN_1" || state.turnState.phase === "MAIN_2";
 }
 
+function getEffectiveObject(state: Readonly<GameState>, objectId: string) {
+  if (!state.objectPool.has(objectId)) {
+    return undefined;
+  }
+
+  return computeGameObject(objectId, state);
+}
+
 function canObjectAttack(
   state: Readonly<GameState>,
   objectId: string,
   playerId: string,
   definitionFor: (cardDefId: string) => CardDefinition | undefined
 ): boolean {
-  const object = state.objectPool.get(objectId);
+  const object = getEffectiveObject(state, objectId);
   if (object === undefined || object.controller !== playerId) {
     return false;
   }
@@ -40,7 +49,7 @@ function canObjectBlock(
   playerId: string,
   definitionFor: (cardDefId: string) => CardDefinition | undefined
 ): boolean {
-  const object = state.objectPool.get(objectId);
+  const object = getEffectiveObject(state, objectId);
   if (object === undefined || object.controller !== playerId) {
     return false;
   }
@@ -236,7 +245,7 @@ export function validateActivateAbility(
 ): ValidatedActivateAbility {
   const playerId = state.turnState.priorityState.playerWithPriority;
 
-  const sourceObject = state.objectPool.get(command.sourceId);
+  const sourceObject = getEffectiveObject(state, command.sourceId);
   if (sourceObject === undefined) {
     throw new Error("ability source must exist in the game state");
   }
@@ -452,7 +461,7 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
   }
 
   for (const sourceId of battlefield) {
-    const sourceObject = state.objectPool.get(sourceId);
+    const sourceObject = getEffectiveObject(state, sourceId);
     if (sourceObject === undefined || sourceObject.controller !== playerId) {
       continue;
     }

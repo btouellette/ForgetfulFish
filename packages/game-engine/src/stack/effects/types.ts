@@ -18,6 +18,7 @@ export type ResolveMutableState = {
   nextActions: GameAction[];
   nextZones: GameState["zones"];
   nextObjectPool: GameState["objectPool"];
+  nextContinuousEffects: GameState["continuousEffects"];
   nextLkiStore: GameState["lkiStore"];
   nextPlayers: GameState["players"];
 };

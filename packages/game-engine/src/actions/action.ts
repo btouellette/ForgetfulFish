@@ -1,6 +1,8 @@
 import type { ManaPool } from "../state/gameState";
 import type { ObjectId, ObjectRef, PlayerId } from "../state/objectRef";
 import type { ZoneRef } from "../state/zones";
+import type { Duration } from "../cards/abilityAst";
+import type { ContinuousEffect } from "../effects/continuous/layers";
 
 export type ActionId = string;
 export type ReplacementId = string;
@@ -17,6 +19,7 @@ export const ACTION_TYPES = [
   "ADD_MANA",
   "LOSE_LIFE",
   "GAIN_LIFE",
+  "ADD_CONTINUOUS_EFFECT",
   "CREATE_TOKEN",
   "SHUFFLE"
 ] as const;
@@ -66,6 +69,7 @@ export interface SetControlAction extends GameActionBase {
   type: "SET_CONTROL";
   objectId: ObjectId;
   to: PlayerId;
+  duration: Duration;
 }
 
 export interface DestroyAction extends GameActionBase {
@@ -103,6 +107,11 @@ export interface GainLifeAction extends GameActionBase {
   amount: number;
 }
 
+export interface AddContinuousEffectAction extends GameActionBase {
+  type: "ADD_CONTINUOUS_EFFECT";
+  effect: ContinuousEffect;
+}
+
 export interface CreateTokenAction extends GameActionBase {
   type: "CREATE_TOKEN";
   tokenDefId: string;
@@ -127,5 +136,6 @@ export type GameAction =
   | AddManaAction
   | LoseLifeAction
   | GainLifeAction
+  | AddContinuousEffectAction
   | CreateTokenAction
   | ShuffleAction;

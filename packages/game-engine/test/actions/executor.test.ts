@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { applyActions } from "../../src/actions/executor";
 import type { GameAction } from "../../src/actions/action";
+import { computeGameObject, LAYERS } from "../../src/effects/continuous/layers";
 import { Rng } from "../../src/rng/rng";
 import { createInitialGameState } from "../../src/state/gameState";
 import { zoneKey } from "../../src/state/zones";
@@ -401,5 +402,55 @@ describe("actions/executor", () => {
 
     expect(next.stack).toHaveLength(0);
     expect(next.zones.get(stackKey)).toEqual([]);
+  });
+
+  it("creates a control-changing continuous effect for SET_CONTROL", () => {
+    const state = createInitialGameState("p1", "p2", { id: "exec-set-control", rngSeed: "seed" });
+    state.objectPool.set("obj-creature", {
+      id: "obj-creature",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "battlefield", scope: "shared" }
+    });
+
+    const next = applyActions(
+      state,
+      [
+        {
+          ...baseAction(),
+          id: "control-1",
+          source: { id: "spell-1", zcc: 0 },
+          type: "SET_CONTROL",
+          objectId: "obj-creature",
+          to: "p2",
+          duration: "until_end_of_turn"
+        }
+      ],
+      new Rng(state.rngSeed)
+    );
+
+    expect(next.objectPool.get("obj-creature")?.controller).toBe("p1");
+    expect(next.continuousEffects).toHaveLength(1);
+    expect(next.continuousEffects[0]).toMatchObject({
+      id: "control-1",
+      source: { id: "spell-1", zcc: 0 },
+      layer: LAYERS.CONTROL,
+      timestamp: state.version,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", objectId: "obj-creature" },
+      effect: {
+        kind: "set_controller",
+        payload: { playerId: "p2" }
+      }
+    });
+    expect(computeGameObject("obj-creature", next).controller).toBe("p2");
   });
 });
