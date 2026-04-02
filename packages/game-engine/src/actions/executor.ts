@@ -2,6 +2,7 @@ import type { GameAction } from "./action";
 import { addContinuousEffect, LAYERS } from "../effects/continuous/layers";
 import type { GameEventPayload } from "../events/event";
 import type { Rng } from "../rng/rng";
+import { cardRegistry } from "../cards";
 import type { GameState } from "../state/gameState";
 import type { GameObject } from "../state/gameObject";
 import { captureSnapshot, lkiKey } from "../state/lki";
@@ -21,6 +22,15 @@ function getPlayerIndex(state: Readonly<GameState>, playerId: string): 0 | 1 {
 
 function removeFromArray(values: readonly string[], value: string): string[] {
   return values.filter((candidate) => candidate !== value);
+}
+
+function entersBattlefieldSummoningSick(object: Readonly<GameObject>, to: ZoneRef): boolean {
+  if (object.zone.kind === "battlefield" || to.kind !== "battlefield") {
+    return object.summoningSick;
+  }
+
+  const definition = cardRegistry.get(object.cardDefId);
+  return definition?.typeLine.includes("Creature") ?? false;
 }
 
 function setObjectZoneAndMove(
@@ -74,11 +84,13 @@ function setObjectZoneAndMove(
     fromKey === toKey
       ? {
           ...object,
-          zone: to
+          zone: to,
+          summoningSick: entersBattlefieldSummoningSick(object, to)
         }
       : bumpZcc({
           ...object,
-          zone: to
+          zone: to,
+          summoningSick: entersBattlefieldSummoningSick(object, to)
         });
   state.objectPool.set(objectId, moved);
 
@@ -371,6 +383,7 @@ export function applyActions(
         if (!next.objectPool.has(tokenId)) {
           const targetZone = action.zone;
           const targetKey = zoneKey(targetZone);
+          const tokenDefinition = cardRegistry.get(action.tokenDefId);
           next.objectPool.set(tokenId, {
             id: tokenId,
             zcc: 0,
@@ -380,7 +393,7 @@ export function applyActions(
             counters: new Map(),
             damage: 0,
             tapped: false,
-            summoningSick: true,
+            summoningSick: tokenDefinition?.typeLine.includes("Creature") ?? false,
             attachments: [],
             abilities: [],
             zone: targetZone

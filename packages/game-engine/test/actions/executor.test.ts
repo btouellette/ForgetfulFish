@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { applyActions } from "../../src/actions/executor";
 import type { GameAction } from "../../src/actions/action";
+import { cardRegistry } from "../../src/cards";
+import type { CardDefinition } from "../../src/cards/cardDefinition";
 import { computeGameObject, LAYERS } from "../../src/effects/continuous/layers";
 import { Rng } from "../../src/rng/rng";
 import { createInitialGameState } from "../../src/state/gameState";
@@ -14,6 +16,25 @@ function baseAction() {
     appliedReplacements: []
   };
 }
+
+const executorCreatureDefinition: CardDefinition = {
+  id: "executor-creature",
+  name: "Executor Creature",
+  manaCost: { blue: 1 },
+  typeLine: ["Creature"],
+  subtypes: [{ kind: "creature_type", value: "Fish" }],
+  color: ["blue"],
+  supertypes: [],
+  power: 1,
+  toughness: 1,
+  keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [],
+  onResolve: [],
+  continuousEffects: [],
+  replacementEffects: []
+};
 
 describe("actions/executor", () => {
   it("applies DEAL_DAMAGE to player life totals", () => {
@@ -504,5 +525,48 @@ describe("actions/executor", () => {
       state.version + 2
     ]);
     expect(computeGameObject("obj-creature", next).controller).toBe("p1");
+  });
+
+  it("marks creatures as summoning sick when MOVE_ZONE brings them onto the battlefield", () => {
+    cardRegistry.set(executorCreatureDefinition.id, executorCreatureDefinition);
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "exec-battlefield-entry-sickness",
+      rngSeed: "seed"
+    });
+    const graveyardZone = state.mode.resolveZone(state, "graveyard", "p1");
+    const battlefieldZone = state.mode.resolveZone(state, "battlefield", "p1");
+    state.objectPool.set("obj-creature", {
+      id: "obj-creature",
+      zcc: 0,
+      cardDefId: executorCreatureDefinition.id,
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: graveyardZone
+    });
+    state.zones.set(zoneKey(graveyardZone), ["obj-creature"]);
+
+    const next = applyActions(
+      state,
+      [
+        {
+          ...baseAction(),
+          id: "move-creature",
+          type: "MOVE_ZONE",
+          objectId: "obj-creature",
+          from: graveyardZone,
+          to: battlefieldZone
+        }
+      ],
+      new Rng(state.rngSeed)
+    );
+
+    expect(next.objectPool.get("obj-creature")?.summoningSick).toBe(true);
   });
 });
