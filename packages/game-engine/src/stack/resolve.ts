@@ -77,6 +77,11 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     stackItem.targets.length > 0 &&
     validatedTargets.legalTargets.length === 0 &&
     validatedTargets.illegalTargets.length > 0;
+  const resumeOnResolveIndexRaw = stackItem.effectContext.whiteboard.scratch.onResolveEffectIndex;
+  const resumeOnResolveIndex =
+    typeof resumeOnResolveIndexRaw === "number" && resumeOnResolveIndexRaw >= 0
+      ? resumeOnResolveIndexRaw
+      : 0;
 
   const stackZone = state.mode.resolveZone(state, "stack", stackItem.controller);
   const destinationZone = allTargetsIllegal
@@ -94,6 +99,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     nextActions: [],
     nextZones: new Map(state.zones),
     nextObjectPool: new Map(state.objectPool),
+    nextContinuousEffects: [...state.continuousEffects],
     nextLkiStore: new Map(state.lkiStore),
     nextPlayers: [
       {
@@ -143,6 +149,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
         stack: mutable.nextStack,
         zones: mutable.nextZones,
         objectPool: mutable.nextObjectPool,
+        continuousEffects: mutable.nextContinuousEffects,
         lkiStore: mutable.nextLkiStore,
         pendingChoice: null
       };
@@ -150,6 +157,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
       mutable.nextPlayers = postActionState.players;
       mutable.nextZones = postActionState.zones;
       mutable.nextObjectPool = postActionState.objectPool;
+      mutable.nextContinuousEffects = postActionState.continuousEffects;
       mutable.nextLkiStore = postActionState.lkiStore;
       mutable.nextStack = postActionState.stack;
       mutable.nextActions = [];
@@ -167,6 +175,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
       stack: pausedStack,
       zones: mutable.nextZones,
       objectPool: mutable.nextObjectPool,
+      continuousEffects: mutable.nextContinuousEffects,
       lkiStore: mutable.nextLkiStore,
       pendingChoice: choice
     };
@@ -184,7 +193,16 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
       stackItem.effectContext.whiteboard.scratch[`pipelineChoice:${stackItem.id}`] === true;
 
     if (!isResumingPipelineChoice) {
-      for (const effectSpec of cardDefinition.onResolve) {
+      for (
+        let effectIndex = resumeOnResolveIndex;
+        effectIndex < cardDefinition.onResolve.length;
+        effectIndex += 1
+      ) {
+        const effectSpec = cardDefinition.onResolve[effectIndex];
+        if (effectSpec === undefined) {
+          continue;
+        }
+
         const effectResult = resolveOnResolveEffect(effectSpec, {
           state,
           stackItem,
@@ -198,7 +216,34 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
         });
 
         if (effectResult.kind === "pause") {
-          return effectResult.result;
+          const pausedTopIndex = effectResult.result.state.stack.length - 1;
+          const pausedTopItem = effectResult.result.state.stack[pausedTopIndex];
+          if (pausedTopItem === undefined) {
+            return effectResult.result;
+          }
+
+          const nextStack = effectResult.result.state.stack.slice();
+          nextStack[pausedTopIndex] = {
+            ...pausedTopItem,
+            effectContext: {
+              ...pausedTopItem.effectContext,
+              whiteboard: {
+                ...pausedTopItem.effectContext.whiteboard,
+                scratch: {
+                  ...pausedTopItem.effectContext.whiteboard.scratch,
+                  onResolveEffectIndex: effectIndex
+                }
+              }
+            }
+          };
+
+          return {
+            ...effectResult.result,
+            state: {
+              ...effectResult.result.state,
+              stack: nextStack
+            }
+          };
         }
       }
     }
@@ -211,6 +256,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     stack: mutable.nextStack,
     zones: mutable.nextZones,
     objectPool: mutable.nextObjectPool,
+    continuousEffects: mutable.nextContinuousEffects,
     lkiStore: mutable.nextLkiStore,
     pendingChoice: null
   };
@@ -252,6 +298,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
   mutable.nextPlayers = postActionState.players;
   mutable.nextZones = postActionState.zones;
   mutable.nextObjectPool = postActionState.objectPool;
+  mutable.nextContinuousEffects = postActionState.continuousEffects;
   mutable.nextLkiStore = postActionState.lkiStore;
   mutable.nextStack = postActionState.stack;
 
@@ -279,6 +326,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     stack: mutable.nextStack,
     zones: mutable.nextZones,
     objectPool: mutable.nextObjectPool,
+    continuousEffects: mutable.nextContinuousEffects,
     lkiStore: mutable.nextLkiStore,
     pendingChoice: null
   };

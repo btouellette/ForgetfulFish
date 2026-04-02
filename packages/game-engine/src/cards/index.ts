@@ -5,6 +5,7 @@ import { islandCardDefinition } from "./island";
 import { memoryLapseCardDefinition } from "./memory-lapse";
 import { mysticalTutorCardDefinition } from "./mystical-tutor";
 import { predictCardDefinition } from "./predict";
+import { rayOfCommandCardDefinition } from "./ray-of-command";
 
 export const cardRegistry: Map<string, CardDefinition> = new Map([
   [accumulatedKnowledgeCardDefinition.id, accumulatedKnowledgeCardDefinition],
@@ -12,7 +13,8 @@ export const cardRegistry: Map<string, CardDefinition> = new Map([
   [islandCardDefinition.id, islandCardDefinition],
   [memoryLapseCardDefinition.id, memoryLapseCardDefinition],
   [mysticalTutorCardDefinition.id, mysticalTutorCardDefinition],
-  [predictCardDefinition.id, predictCardDefinition]
+  [predictCardDefinition.id, predictCardDefinition],
+  [rayOfCommandCardDefinition.id, rayOfCommandCardDefinition]
 ]);
 
 export { accumulatedKnowledgeCardDefinition };
@@ -21,5 +23,6 @@ export { islandCardDefinition };
 export { memoryLapseCardDefinition };
 export { mysticalTutorCardDefinition };
 export { predictCardDefinition };
+export { rayOfCommandCardDefinition };
 export type { CardDefinition } from "./cardDefinition";
 export type { ResolveEffectId, ResolveEffectSpec } from "./resolveEffect";

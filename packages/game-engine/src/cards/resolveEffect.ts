@@ -72,11 +72,16 @@ export type DrawByGraveyardCopyCountSpec = {
   bonus: number;
 };
 
+export type GainControlUntapMustAttackSpec = {
+  id: "GAIN_CONTROL_UNTAP_MUST_ATTACK";
+};
+
 export type ResolveEffectSpec =
   | DrawChooseReturnSpec
   | SearchLibraryShuffleTopSpec
   | NameMillDrawOnHitSpec
   | CounterSpellSpec
-  | DrawByGraveyardCopyCountSpec;
+  | DrawByGraveyardCopyCountSpec
+  | GainControlUntapMustAttackSpec;
 
 export type ResolveEffectId = ResolveEffectSpec["id"];

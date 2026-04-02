@@ -1,8 +1,10 @@
 import { cardRegistry } from "../cards";
+import { computeGameObject, getApplicableContinuousEffects } from "../effects/continuous/layers";
 import type {
   ActivateAbilityCommand,
   CastSpellCommand,
   Command,
+  DeclareAttackersCommand,
   PlayLandCommand,
   Target
 } from "./command";
@@ -15,13 +17,65 @@ function isMainPhase(state: Readonly<GameState>): boolean {
   return state.turnState.phase === "MAIN_1" || state.turnState.phase === "MAIN_2";
 }
 
+const effectiveObjectCache = new WeakMap<
+  Readonly<GameState>,
+  Map<string, ReturnType<typeof computeGameObject>>
+>();
+
+function getEffectiveObject(state: Readonly<GameState>, objectId: string) {
+  if (!state.objectPool.has(objectId)) {
+    return undefined;
+  }
+
+  let cacheForState = effectiveObjectCache.get(state);
+  if (cacheForState === undefined) {
+    cacheForState = new Map<string, ReturnType<typeof computeGameObject>>();
+    effectiveObjectCache.set(state, cacheForState);
+  }
+
+  if (cacheForState.has(objectId)) {
+    return cacheForState.get(objectId);
+  }
+
+  const computed = computeGameObject(objectId, state);
+  cacheForState.set(objectId, computed);
+  return computed;
+}
+
+function objectMustAttackIfAble(state: Readonly<GameState>, objectId: string): boolean {
+  return getApplicableContinuousEffects(objectId, state).some(
+    (effect) => effect.effect.kind === "must_attack"
+  );
+}
+
+export function getRequiredAttackerIds(state: Readonly<GameState>, playerId: string): string[] {
+  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
+  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
+  const cardDefinitionCache = new Map<string, CardDefinition | undefined>();
+  const definitionFor = (cardDefId: string): CardDefinition | undefined => {
+    if (cardDefinitionCache.has(cardDefId)) {
+      return cardDefinitionCache.get(cardDefId);
+    }
+
+    const definition = cardRegistry.get(cardDefId);
+    cardDefinitionCache.set(cardDefId, definition);
+    return definition;
+  };
+
+  return battlefield.filter(
+    (objectId) =>
+      canObjectAttack(state, objectId, playerId, definitionFor) &&
+      objectMustAttackIfAble(state, objectId)
+  );
+}
+
 function canObjectAttack(
   state: Readonly<GameState>,
   objectId: string,
   playerId: string,
   definitionFor: (cardDefId: string) => CardDefinition | undefined
 ): boolean {
-  const object = state.objectPool.get(objectId);
+  const object = getEffectiveObject(state, objectId);
   if (object === undefined || object.controller !== playerId) {
     return false;
   }
@@ -40,7 +94,7 @@ function canObjectBlock(
   playerId: string,
   definitionFor: (cardDefId: string) => CardDefinition | undefined
 ): boolean {
-  const object = state.objectPool.get(objectId);
+  const object = getEffectiveObject(state, objectId);
   if (object === undefined || object.controller !== playerId) {
     return false;
   }
@@ -236,7 +290,7 @@ export function validateActivateAbility(
 ): ValidatedActivateAbility {
   const playerId = state.turnState.priorityState.playerWithPriority;
 
-  const sourceObject = state.objectPool.get(command.sourceId);
+  const sourceObject = getEffectiveObject(state, command.sourceId);
   if (sourceObject === undefined) {
     throw new Error("ability source must exist in the game state");
   }
@@ -279,6 +333,56 @@ export function validateActivateAbility(
   return {
     playerId
   };
+}
+
+export function validateDeclareAttackers(
+  state: Readonly<GameState>,
+  command: DeclareAttackersCommand
+): void {
+  const playerId = state.turnState.priorityState.playerWithPriority;
+  if (state.turnState.step !== "DECLARE_ATTACKERS") {
+    throw new Error("can only declare attackers during the declare attackers step");
+  }
+
+  if (state.turnState.activePlayerId !== playerId) {
+    throw new Error("only the active player can declare attackers");
+  }
+
+  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
+  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
+  const cardDefinitionCache = new Map<string, CardDefinition | undefined>();
+  const definitionFor = (cardDefId: string): CardDefinition | undefined => {
+    if (cardDefinitionCache.has(cardDefId)) {
+      return cardDefinitionCache.get(cardDefId);
+    }
+
+    const definition = cardRegistry.get(cardDefId);
+    cardDefinitionCache.set(cardDefId, definition);
+    return definition;
+  };
+
+  const seenAttackers = new Set<string>();
+  for (const attackerId of command.attackers) {
+    if (seenAttackers.has(attackerId)) {
+      throw new Error("declared attackers must be unique");
+    }
+    seenAttackers.add(attackerId);
+
+    if (!battlefield.includes(attackerId)) {
+      throw new Error("declared attackers must be permanents on the battlefield");
+    }
+
+    if (!canObjectAttack(state, attackerId, playerId, definitionFor)) {
+      throw new Error("declared attackers must be legal attackers");
+    }
+  }
+
+  const missingRequiredAttackers = getRequiredAttackerIds(state, playerId).filter(
+    (objectId) => !seenAttackers.has(objectId)
+  );
+  if (missingRequiredAttackers.length > 0) {
+    throw new Error("must-attack creatures that are able to attack must be declared as attackers");
+  }
 }
 
 function canPlayLand(state: Readonly<GameState>, command: PlayLandCommand): boolean {
@@ -452,7 +556,7 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
   }
 
   for (const sourceId of battlefield) {
-    const sourceObject = state.objectPool.get(sourceId);
+    const sourceObject = getEffectiveObject(state, sourceId);
     if (sourceObject === undefined || sourceObject.controller !== playerId) {
       continue;
     }
@@ -484,7 +588,10 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
     state.turnState.activePlayerId === playerId &&
     controlsLegalAttacker()
   ) {
-    commands.push({ type: "DECLARE_ATTACKERS", attackers: [] });
+    commands.push({
+      type: "DECLARE_ATTACKERS",
+      attackers: getRequiredAttackerIds(state, playerId)
+    });
   }
 
   if (

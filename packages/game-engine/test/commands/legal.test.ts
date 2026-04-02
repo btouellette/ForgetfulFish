@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { cardRegistry } from "../../src/cards";
 import type { CardDefinition } from "../../src/cards/cardDefinition";
 import { getLegalCommands } from "../../src/commands/validate";
+import { addContinuousEffect, LAYERS } from "../../src/effects/continuous/layers";
 import type { GameObject } from "../../src/state/gameObject";
 import {
   createInitialGameState,
@@ -233,6 +234,83 @@ describe("commands/legal", () => {
     expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(true);
   });
 
+  it("includes DECLARE_ATTACKERS when control of an opposing creature changes continuously", () => {
+    cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
+
+    const attackersState = createInitialGameState("p1", "p2", {
+      id: "legal-derived-attacker",
+      rngSeed: "seed-legal-derived-attacker"
+    });
+    attackersState.turnState.phase = "DECLARE_ATTACKERS";
+    attackersState.turnState.step = "DECLARE_ATTACKERS";
+    attackersState.turnState.activePlayerId = "p1";
+    setPriority(attackersState, "p1");
+    putOnBattlefield(attackersState, "p2", {
+      id: "obj-stolen-attacker",
+      cardDefId: testCreatureDefinition.id
+    });
+
+    const withControlEffect = addContinuousEffect(attackersState, {
+      id: "effect-stolen-attacker",
+      source: { id: "source-attacker", zcc: 0 },
+      layer: LAYERS.CONTROL,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", object: { id: "obj-stolen-attacker", zcc: 0 } },
+      effect: { kind: "set_controller", payload: { playerId: "p1" } }
+    });
+
+    const attackersCommands = getLegalCommands(withControlEffect);
+    expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(true);
+  });
+
+  it("includes required attackers in DECLARE_ATTACKERS when a creature must attack", () => {
+    cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
+
+    const attackersState = createInitialGameState("p1", "p2", {
+      id: "legal-required-attacker",
+      rngSeed: "seed-legal-required-attacker"
+    });
+    attackersState.turnState.phase = "DECLARE_ATTACKERS";
+    attackersState.turnState.step = "DECLARE_ATTACKERS";
+    attackersState.turnState.activePlayerId = "p1";
+    setPriority(attackersState, "p1");
+    putOnBattlefield(attackersState, "p2", {
+      id: "obj-required-attacker",
+      cardDefId: testCreatureDefinition.id
+    });
+
+    const withControlEffect = addContinuousEffect(
+      addContinuousEffect(attackersState, {
+        id: "effect-required-control",
+        source: { id: "source-required-control", zcc: 0 },
+        layer: LAYERS.CONTROL,
+        timestamp: 1,
+        duration: "until_end_of_turn",
+        appliesTo: { kind: "object", object: { id: "obj-required-attacker", zcc: 0 } },
+        effect: { kind: "set_controller", payload: { playerId: "p1" } }
+      }),
+      {
+        id: "effect-required-must-attack",
+        source: { id: "source-required-must-attack", zcc: 0 },
+        layer: LAYERS.ABILITY,
+        timestamp: 2,
+        duration: "until_end_of_turn",
+        appliesTo: { kind: "object", object: { id: "obj-required-attacker", zcc: 0 } },
+        effect: { kind: "must_attack" }
+      }
+    );
+
+    const declareAttackersCommand = withControlEffect
+      ? getLegalCommands(withControlEffect).find((command) => command.type === "DECLARE_ATTACKERS")
+      : undefined;
+
+    expect(declareAttackersCommand).toEqual({
+      type: "DECLARE_ATTACKERS",
+      attackers: ["obj-required-attacker"]
+    });
+  });
+
   it("does not include DECLARE_BLOCKERS when the defending player has no legal blockers", () => {
     const blockersState = createInitialGameState("p1", "p2", {
       id: "legal-5b",
@@ -265,6 +343,37 @@ describe("commands/legal", () => {
     });
 
     const blockersCommands = getLegalCommands(blockersState);
+    expect(blockersCommands.some((command) => command.type === "DECLARE_BLOCKERS")).toBe(true);
+  });
+
+  it("includes DECLARE_BLOCKERS when control of an opposing creature changes continuously", () => {
+    cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
+
+    const blockersState = createInitialGameState("p1", "p2", {
+      id: "legal-derived-blocker",
+      rngSeed: "seed-legal-derived-blocker"
+    });
+    blockersState.turnState.phase = "DECLARE_BLOCKERS";
+    blockersState.turnState.step = "DECLARE_BLOCKERS";
+    blockersState.turnState.activePlayerId = "p1";
+    blockersState.turnState.attackers = ["obj-declared-attacker"];
+    setPriority(blockersState, "p2");
+    putOnBattlefield(blockersState, "p1", {
+      id: "obj-stolen-blocker",
+      cardDefId: testCreatureDefinition.id
+    });
+
+    const withControlEffect = addContinuousEffect(blockersState, {
+      id: "effect-stolen-blocker",
+      source: { id: "source-blocker", zcc: 0 },
+      layer: LAYERS.CONTROL,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", object: { id: "obj-stolen-blocker", zcc: 0 } },
+      effect: { kind: "set_controller", payload: { playerId: "p2" } }
+    });
+
+    const blockersCommands = getLegalCommands(withControlEffect);
     expect(blockersCommands.some((command) => command.type === "DECLARE_BLOCKERS")).toBe(true);
   });
 
@@ -321,6 +430,39 @@ describe("commands/legal", () => {
         (command) =>
           command.type === "ACTIVATE_ABILITY" &&
           command.sourceId === "obj-activate-island" &&
+          command.abilityIndex === 0
+      )
+    ).toBe(true);
+  });
+
+  it("includes ACTIVATE_ABILITY for a land controlled via a continuous effect", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "legal-derived-activate",
+      rngSeed: "seed-legal-derived-activate"
+    });
+    state.turnState.phase = "MAIN_1";
+    state.turnState.step = "MAIN_1";
+    state.turnState.activePlayerId = "p1";
+    setPriority(state, "p1");
+    putOnBattlefield(state, "p2", { id: "obj-stolen-island", cardDefId: "island" });
+
+    const withControlEffect = addContinuousEffect(state, {
+      id: "effect-stolen-island",
+      source: { id: "source-island", zcc: 0 },
+      layer: LAYERS.CONTROL,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", object: { id: "obj-stolen-island", zcc: 0 } },
+      effect: { kind: "set_controller", payload: { playerId: "p1" } }
+    });
+
+    const commands = getLegalCommands(withControlEffect);
+
+    expect(
+      commands.some(
+        (command) =>
+          command.type === "ACTIVATE_ABILITY" &&
+          command.sourceId === "obj-stolen-island" &&
           command.abilityIndex === 0
       )
     ).toBe(true);

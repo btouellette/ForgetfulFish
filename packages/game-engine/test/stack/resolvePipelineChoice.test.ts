@@ -7,6 +7,7 @@ import {
 import type { CardDefinition } from "../../src/cards/cardDefinition";
 import { cardRegistry, islandCardDefinition } from "../../src/cards";
 import { processCommand } from "../../src/engine/processCommand";
+import { computeGameObject } from "../../src/effects/continuous/layers";
 import { resolveTopOfStack } from "../../src/stack/resolve";
 import { type StackItem } from "../../src/stack/stackItem";
 import type { GameObject } from "../../src/state/gameObject";
@@ -58,6 +59,28 @@ const replacementResumeCardDefinition: CardDefinition = {
   triggeredAbilities: [],
   activatedAbilities: [],
   onResolve: [{ id: "SEARCH_LIBRARY_SHUFFLE_TOP", typeFilter: ["Instant"], min: 0, max: 1 }],
+  continuousEffects: [],
+  replacementEffects: []
+};
+
+const controlThenReplacementResumeCardDefinition: CardDefinition = {
+  id: "control-then-replacement-resume-card",
+  name: "Control Then Replacement Resume Card",
+  manaCost: { blue: 1 },
+  typeLine: ["Instant"],
+  subtypes: [],
+  color: ["blue"],
+  supertypes: [],
+  power: null,
+  toughness: null,
+  keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [],
+  onResolve: [
+    { id: "GAIN_CONTROL_UNTAP_MUST_ATTACK" },
+    { id: "SEARCH_LIBRARY_SHUFFLE_TOP", typeFilter: ["Instant"], min: 0, max: 1 }
+  ],
   continuousEffects: [],
   replacementEffects: []
 };
@@ -345,6 +368,159 @@ describe("stack/resolve pipeline choice integration", () => {
     expect(shuffledEvents).toHaveLength(1);
     expect(chooseReplacement.pendingChoice).toBeNull();
     expect(chooseReplacement.nextState.stack).toHaveLength(0);
+  });
+
+  it("preserves continuous effects across pause and replacement-choice resume", () => {
+    registerPipelineReplacementEffect("SHUFFLE", {
+      id: "replace-a",
+      appliesTo: (action) => action.type === "SHUFFLE",
+      rewrite: (action) => action,
+      priority: 1
+    });
+    registerPipelineReplacementEffect("SHUFFLE", {
+      id: "replace-b",
+      appliesTo: (action) => action.type === "SHUFFLE",
+      rewrite: (action) => action,
+      priority: 1
+    });
+
+    cardRegistry.set(
+      controlThenReplacementResumeCardDefinition.id,
+      controlThenReplacementResumeCardDefinition
+    );
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "resolve-pipeline-continuous-effects",
+      rngSeed: "resolve-pipeline-continuous-effects-seed"
+    });
+
+    const libraryZone = state.mode.resolveZone(state, "library", "p1");
+    const libraryKey = zoneKey(libraryZone);
+    state.objectPool.set("obj-lib-island", {
+      id: "obj-lib-island",
+      zcc: 0,
+      cardDefId: islandCardDefinition.id,
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: libraryZone
+    });
+    state.zones.set(libraryKey, ["obj-lib-island"]);
+
+    state.objectPool.set("obj-target", {
+      id: "obj-target",
+      zcc: 0,
+      cardDefId: islandCardDefinition.id,
+      owner: "p2",
+      controller: "p2",
+      counters: new Map(),
+      damage: 0,
+      tapped: true,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "battlefield", scope: "shared" }
+    });
+    state.zones.set(zoneKey({ kind: "battlefield", scope: "shared" }), ["obj-target"]);
+
+    const stackZone = state.mode.resolveZone(state, "stack", "p1");
+    const stackKey = zoneKey(stackZone);
+    const object: GameObject = {
+      id: "obj-control-resume",
+      zcc: 0,
+      cardDefId: controlThenReplacementResumeCardDefinition.id,
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "stack", scope: "shared" }
+    };
+    state.objectPool.set(object.id, object);
+    state.zones.set(stackKey, [object.id]);
+
+    const stackItem: StackItem = {
+      id: "stack-item-control-resume",
+      object: { id: object.id, zcc: object.zcc },
+      controller: "p1",
+      targets: [{ kind: "object", object: { id: "obj-target", zcc: 0 } }],
+      effectContext: {
+        stackItemId: "stack-item-control-resume",
+        source: { id: object.id, zcc: object.zcc },
+        controller: "p1",
+        targets: [{ kind: "object", object: { id: "obj-target", zcc: 0 } }],
+        cursor: { kind: "start" },
+        whiteboard: {
+          actions: [],
+          scratch: {}
+        }
+      }
+    };
+    state.stack = [stackItem];
+
+    const firstResolve = resolveTopOfStack(state, new Rng(state.rngSeed));
+    expect(firstResolve.pendingChoice?.type).toBe("CHOOSE_CARDS");
+    if (firstResolve.pendingChoice?.type !== "CHOOSE_CARDS") {
+      throw new Error("expected CHOOSE_CARDS pending choice");
+    }
+
+    expect(firstResolve.state.continuousEffects).toHaveLength(3);
+    expect(
+      firstResolve.state.continuousEffects.some(
+        (effect) =>
+          effect.appliesTo.kind === "object" &&
+          effect.appliesTo.object.id === "obj-target" &&
+          effect.effect.kind === "must_attack"
+      )
+    ).toBe(true);
+    expect(
+      firstResolve.state.continuousEffects.some(
+        (effect) =>
+          effect.appliesTo.kind === "object" &&
+          effect.appliesTo.object.id === "obj-target" &&
+          effect.effect.kind === "grant_haste"
+      )
+    ).toBe(true);
+    expect(computeGameObject("obj-target", firstResolve.state).controller).toBe("p1");
+
+    const chooseCards = processCommand(
+      firstResolve.state,
+      {
+        type: "MAKE_CHOICE",
+        payload: { type: "CHOOSE_CARDS", selected: [], min: 0, max: 1 }
+      },
+      new Rng(firstResolve.state.rngSeed)
+    );
+
+    expect(chooseCards.pendingChoice?.type).toBe("CHOOSE_REPLACEMENT");
+    if (chooseCards.pendingChoice?.type !== "CHOOSE_REPLACEMENT") {
+      throw new Error("expected CHOOSE_REPLACEMENT pending choice");
+    }
+    expect(chooseCards.nextState.continuousEffects).toHaveLength(3);
+    expect(computeGameObject("obj-target", chooseCards.nextState).controller).toBe("p1");
+
+    const chooseReplacement = processCommand(
+      chooseCards.nextState,
+      {
+        type: "MAKE_CHOICE",
+        payload: { type: "CHOOSE_REPLACEMENT", replacementId: "replace-a" }
+      },
+      new Rng(chooseCards.nextState.rngSeed)
+    );
+
+    expect(chooseReplacement.pendingChoice).toBeNull();
+    expect(chooseReplacement.nextState.pendingChoice).toBeNull();
+    expect(chooseReplacement.nextState.stack).toHaveLength(0);
+    expect(chooseReplacement.nextState.continuousEffects).toHaveLength(3);
+    expect(computeGameObject("obj-target", chooseReplacement.nextState).controller).toBe("p1");
   });
 
   it("propagates stack mutations from pipeline actions", () => {

@@ -21,7 +21,7 @@ export type Sublayer = Extract<Layer, "7a" | "7b" | "7c">;
 
 export type EffectTarget =
   | { kind: "all" }
-  | { kind: "object"; objectId: string }
+  | { kind: "object"; object: ObjectRef }
   | { kind: "controller"; playerId: string };
 
 export type ContinuousEffectPayload = {
@@ -46,6 +46,131 @@ export type ContinuousEffect = {
   condition?: ConditionAst;
 };
 
+function cloneDerivedView(view: Readonly<DerivedGameObjectView>): DerivedGameObjectView {
+  return {
+    ...view,
+    counters: new Map(view.counters),
+    attachments: [...view.attachments],
+    abilities: [...view.abilities]
+  };
+}
+
+function layerSortKey(layer: Readonly<Layer>): number {
+  switch (layer) {
+    case LAYERS.COPY:
+      return 1;
+    case LAYERS.CONTROL:
+      return 2;
+    case LAYERS.TEXT:
+      return 3;
+    case LAYERS.TYPE:
+      return 4;
+    case LAYERS.COLOR:
+      return 5;
+    case LAYERS.ABILITY:
+      return 6;
+    case LAYERS.PT_SET:
+      return 7.1;
+    case LAYERS.PT_ADJUST:
+      return 7.2;
+    case LAYERS.PT_SWITCH:
+      return 7.3;
+    default: {
+      const neverLayer: never = layer;
+      return neverLayer;
+    }
+  }
+}
+
+function sortEffectsForApplication(
+  left: Readonly<ContinuousEffect>,
+  right: Readonly<ContinuousEffect>
+): number {
+  const layerDelta = layerSortKey(left.layer) - layerSortKey(right.layer);
+  if (layerDelta !== 0) {
+    return layerDelta;
+  }
+
+  if (left.timestamp !== right.timestamp) {
+    return left.timestamp - right.timestamp;
+  }
+
+  return 0;
+}
+
+function applyEffectToView(
+  view: Readonly<DerivedGameObjectView>,
+  effect: Readonly<ContinuousEffect>
+): DerivedGameObjectView {
+  if (effect.layer === LAYERS.CONTROL && effect.effect.kind === "set_controller") {
+    const playerId = effect.effect.payload?.playerId;
+    if (typeof playerId === "string") {
+      return {
+        ...view,
+        controller: playerId
+      };
+    }
+  }
+
+  if (effect.layer === LAYERS.ABILITY && effect.effect.kind === "grant_haste") {
+    return {
+      ...view,
+      summoningSick: false
+    };
+  }
+
+  return view;
+}
+
+function requireBaseObject(objectId: string, state: Readonly<GameState>): DerivedGameObjectView {
+  const baseObject = state.objectPool.get(objectId);
+  if (baseObject === undefined) {
+    throw new Error(`object '${objectId}' is missing from state '${state.id}'`);
+  }
+
+  return baseObject;
+}
+
+function resolveContinuousEffects(
+  objectId: string,
+  state: Readonly<GameState>
+): {
+  view: DerivedGameObjectView;
+  appliedEffects: ContinuousEffect[];
+} {
+  const sortedEffects = [...state.continuousEffects].sort(sortEffectsForApplication);
+  const appliedEffects: ContinuousEffect[] = [];
+
+  let view = cloneDerivedView(requireBaseObject(objectId, state));
+  for (const effect of sortedEffects) {
+    if (!matchesEffectTarget(effect.appliesTo, view, state)) {
+      continue;
+    }
+
+    appliedEffects.push(effect);
+    view = applyEffectToView(view, effect);
+  }
+
+  return {
+    view,
+    appliedEffects
+  };
+}
+
+export function computeGameObject(
+  objectId: string,
+  state: Readonly<GameState>
+): DerivedGameObjectView {
+  return resolveContinuousEffects(objectId, state).view;
+}
+
+export function getApplicableContinuousEffects(
+  objectId: string,
+  state: Readonly<GameState>
+): readonly ContinuousEffect[] {
+  return resolveContinuousEffects(objectId, state).appliedEffects;
+}
+
 export function matchesEffectTarget(
   target: Readonly<EffectTarget>,
   view: Readonly<DerivedGameObjectView>,
@@ -55,7 +180,7 @@ export function matchesEffectTarget(
     case "all":
       return true;
     case "object":
-      return view.id === target.objectId;
+      return view.id === target.object.id && view.zcc === target.object.zcc;
     case "controller":
       return view.controller === target.playerId;
     default: {

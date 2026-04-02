@@ -1,4 +1,5 @@
 import type { GameAction } from "./action";
+import { addContinuousEffect, LAYERS } from "../effects/continuous/layers";
 import type { GameEventPayload } from "../events/event";
 import type { Rng } from "../rng/rng";
 import type { GameState } from "../state/gameState";
@@ -185,6 +186,8 @@ export function applyActions(
     lkiStore: new Map(state.lkiStore)
   };
 
+  let nextContinuousEffectTimestamp = next.version;
+
   for (const action of actions) {
     switch (action.type) {
       case "DRAW": {
@@ -254,10 +257,22 @@ export function applyActions(
       case "SET_CONTROL": {
         const object = next.objectPool.get(action.objectId);
         if (object !== undefined) {
-          next.objectPool.set(action.objectId, {
-            ...object,
-            controller: action.to
+          const source = action.source ?? { id: object.id, zcc: object.zcc };
+          nextContinuousEffectTimestamp += 1;
+          const stateWithEffect = addContinuousEffect(next, {
+            id: action.id,
+            source,
+            layer: LAYERS.CONTROL,
+            timestamp: nextContinuousEffectTimestamp,
+            duration: action.duration,
+            appliesTo: { kind: "object", object: { id: object.id, zcc: object.zcc } },
+            effect: {
+              kind: "set_controller",
+              payload: { playerId: action.to }
+            }
           });
+
+          next.continuousEffects = stateWithEffect.continuousEffects;
         }
         break;
       }
@@ -340,6 +355,15 @@ export function applyActions(
           playerIndex === 0
             ? [{ ...player, life: player.life + action.amount }, next.players[1]]
             : [next.players[0], { ...player, life: player.life + action.amount }];
+        break;
+      }
+      case "ADD_CONTINUOUS_EFFECT": {
+        nextContinuousEffectTimestamp += 1;
+        const stateWithEffect = addContinuousEffect(next, {
+          ...action.effect,
+          timestamp: action.effect.timestamp ?? nextContinuousEffectTimestamp
+        });
+        next.continuousEffects = stateWithEffect.continuousEffects;
         break;
       }
       case "CREATE_TOKEN": {
