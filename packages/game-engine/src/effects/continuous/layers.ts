@@ -95,7 +95,7 @@ function sortEffectsForApplication(
     return left.timestamp - right.timestamp;
   }
 
-  return left.id.localeCompare(right.id);
+  return 0;
 }
 
 function applyEffectToView(
@@ -112,26 +112,63 @@ function applyEffectToView(
     }
   }
 
+  if (effect.layer === LAYERS.ABILITY && effect.effect.kind === "grant_haste") {
+    return {
+      ...view,
+      summoningSick: false
+    };
+  }
+
   return view;
+}
+
+function requireBaseObject(objectId: string, state: Readonly<GameState>): DerivedGameObjectView {
+  const baseObject = state.objectPool.get(objectId);
+  if (baseObject === undefined) {
+    throw new Error(`object '${objectId}' is missing from state '${state.id}'`);
+  }
+
+  return baseObject;
+}
+
+function resolveContinuousEffects(
+  objectId: string,
+  state: Readonly<GameState>
+): {
+  view: DerivedGameObjectView;
+  appliedEffects: ContinuousEffect[];
+} {
+  const sortedEffects = [...state.continuousEffects].sort(sortEffectsForApplication);
+  const appliedEffects: ContinuousEffect[] = [];
+
+  let view = cloneDerivedView(requireBaseObject(objectId, state));
+  for (const effect of sortedEffects) {
+    if (!matchesEffectTarget(effect.appliesTo, view, state)) {
+      continue;
+    }
+
+    appliedEffects.push(effect);
+    view = applyEffectToView(view, effect);
+  }
+
+  return {
+    view,
+    appliedEffects
+  };
 }
 
 export function computeGameObject(
   objectId: string,
   state: Readonly<GameState>
 ): DerivedGameObjectView {
-  const baseObject = state.objectPool.get(objectId);
-  if (baseObject === undefined) {
-    throw new Error(`object '${objectId}' is missing from state '${state.id}'`);
-  }
+  return resolveContinuousEffects(objectId, state).view;
+}
 
-  const matchingEffects = state.continuousEffects
-    .filter((effect) => matchesEffectTarget(effect.appliesTo, baseObject, state))
-    .sort(sortEffectsForApplication);
-
-  return matchingEffects.reduce(
-    (view, effect) => applyEffectToView(view, effect),
-    cloneDerivedView(baseObject)
-  );
+export function getApplicableContinuousEffects(
+  objectId: string,
+  state: Readonly<GameState>
+): readonly ContinuousEffect[] {
+  return resolveContinuousEffects(objectId, state).appliedEffects;
 }
 
 export function matchesEffectTarget(

@@ -520,6 +520,22 @@ function resolveGainControlUntapMustAttack(
     objectId: target.object.id
   });
 
+  const hasteEffectAction: AddContinuousEffectAction = {
+    ...baseActionFields(context),
+    id: actionId(context, "ADD_CONTINUOUS_EFFECT", "grant-haste"),
+    type: "ADD_CONTINUOUS_EFFECT",
+    effect: {
+      id: actionId(context, "ADD_CONTINUOUS_EFFECT", "grant-haste"),
+      source: context.stackItem.effectContext.source,
+      layer: LAYERS.ABILITY,
+      timestamp: context.state.version,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", objectId: target.object.id },
+      effect: { kind: "grant_haste" }
+    }
+  };
+  context.enqueueAction(hasteEffectAction);
+
   const mustAttackEffectAction: AddContinuousEffectAction = {
     ...baseActionFields(context),
     id: actionId(context, "ADD_CONTINUOUS_EFFECT", "must-attack"),

@@ -472,13 +472,21 @@ describe("stack/resolve pipeline choice integration", () => {
       throw new Error("expected CHOOSE_CARDS pending choice");
     }
 
-    expect(firstResolve.state.continuousEffects).toHaveLength(2);
+    expect(firstResolve.state.continuousEffects).toHaveLength(3);
     expect(
       firstResolve.state.continuousEffects.some(
         (effect) =>
           effect.appliesTo.kind === "object" &&
           effect.appliesTo.objectId === "obj-target" &&
           effect.effect.kind === "must_attack"
+      )
+    ).toBe(true);
+    expect(
+      firstResolve.state.continuousEffects.some(
+        (effect) =>
+          effect.appliesTo.kind === "object" &&
+          effect.appliesTo.objectId === "obj-target" &&
+          effect.effect.kind === "grant_haste"
       )
     ).toBe(true);
     expect(computeGameObject("obj-target", firstResolve.state).controller).toBe("p1");
@@ -496,7 +504,7 @@ describe("stack/resolve pipeline choice integration", () => {
     if (chooseCards.pendingChoice?.type !== "CHOOSE_REPLACEMENT") {
       throw new Error("expected CHOOSE_REPLACEMENT pending choice");
     }
-    expect(chooseCards.nextState.continuousEffects).toHaveLength(2);
+    expect(chooseCards.nextState.continuousEffects).toHaveLength(3);
     expect(computeGameObject("obj-target", chooseCards.nextState).controller).toBe("p1");
 
     const chooseReplacement = processCommand(
@@ -511,7 +519,7 @@ describe("stack/resolve pipeline choice integration", () => {
     expect(chooseReplacement.pendingChoice).toBeNull();
     expect(chooseReplacement.nextState.pendingChoice).toBeNull();
     expect(chooseReplacement.nextState.stack).toHaveLength(0);
-    expect(chooseReplacement.nextState.continuousEffects).toHaveLength(2);
+    expect(chooseReplacement.nextState.continuousEffects).toHaveLength(3);
     expect(computeGameObject("obj-target", chooseReplacement.nextState).controller).toBe("p1");
   });
 

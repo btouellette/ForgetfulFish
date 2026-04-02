@@ -334,7 +334,26 @@ describe("engine/processCommand", () => {
                     choiceState.pendingChoice = pendingChoice;
                     return processCommand(choiceState, command, new Rng(choiceState.rngSeed));
                   })()
-                : processCommand(state, command, rng)
+                : command.type === "DECLARE_ATTACKERS"
+                  ? (() => {
+                      const declareAttackersState = createInitialGameState("p1", "p2", {
+                        id: "game-6f",
+                        rngSeed: "seed-6f"
+                      });
+                      declareAttackersState.turnState.phase = "DECLARE_ATTACKERS";
+                      declareAttackersState.turnState.step = "DECLARE_ATTACKERS";
+                      declareAttackersState.turnState.activePlayerId = "p1";
+                      declareAttackersState.turnState.priorityState =
+                        createInitialPriorityState("p1");
+                      declareAttackersState.players[0].priority = true;
+                      declareAttackersState.players[1].priority = false;
+                      return processCommand(
+                        declareAttackersState,
+                        command,
+                        new Rng(declareAttackersState.rngSeed)
+                      );
+                    })()
+                  : processCommand(state, command, rng)
     );
 
     expect(outputs).toHaveLength(8);

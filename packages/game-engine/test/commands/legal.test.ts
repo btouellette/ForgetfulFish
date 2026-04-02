@@ -264,6 +264,53 @@ describe("commands/legal", () => {
     expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(true);
   });
 
+  it("includes required attackers in DECLARE_ATTACKERS when a creature must attack", () => {
+    cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
+
+    const attackersState = createInitialGameState("p1", "p2", {
+      id: "legal-required-attacker",
+      rngSeed: "seed-legal-required-attacker"
+    });
+    attackersState.turnState.phase = "DECLARE_ATTACKERS";
+    attackersState.turnState.step = "DECLARE_ATTACKERS";
+    attackersState.turnState.activePlayerId = "p1";
+    setPriority(attackersState, "p1");
+    putOnBattlefield(attackersState, "p2", {
+      id: "obj-required-attacker",
+      cardDefId: testCreatureDefinition.id
+    });
+
+    const withControlEffect = addContinuousEffect(
+      addContinuousEffect(attackersState, {
+        id: "effect-required-control",
+        source: { id: "source-required-control", zcc: 0 },
+        layer: LAYERS.CONTROL,
+        timestamp: 1,
+        duration: "until_end_of_turn",
+        appliesTo: { kind: "object", objectId: "obj-required-attacker" },
+        effect: { kind: "set_controller", payload: { playerId: "p1" } }
+      }),
+      {
+        id: "effect-required-must-attack",
+        source: { id: "source-required-must-attack", zcc: 0 },
+        layer: LAYERS.ABILITY,
+        timestamp: 2,
+        duration: "until_end_of_turn",
+        appliesTo: { kind: "object", objectId: "obj-required-attacker" },
+        effect: { kind: "must_attack" }
+      }
+    );
+
+    const declareAttackersCommand = withControlEffect
+      ? getLegalCommands(withControlEffect).find((command) => command.type === "DECLARE_ATTACKERS")
+      : undefined;
+
+    expect(declareAttackersCommand).toEqual({
+      type: "DECLARE_ATTACKERS",
+      attackers: ["obj-required-attacker"]
+    });
+  });
+
   it("does not include DECLARE_BLOCKERS when the defending player has no legal blockers", () => {
     const blockersState = createInitialGameState("p1", "p2", {
       id: "legal-5b",

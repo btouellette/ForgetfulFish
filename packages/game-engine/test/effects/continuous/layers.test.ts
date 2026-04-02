@@ -144,6 +144,58 @@ describe("effects/continuous/layers", () => {
     expect(computed.controller).toBe("p1");
   });
 
+  it("preserves insertion order for same-layer same-timestamp effects", () => {
+    const firstState = addContinuousEffect(createStateWithObjects(), {
+      ...createEffect("z-early", 1),
+      effect: {
+        kind: "set_controller",
+        payload: { playerId: "p2" }
+      }
+    });
+    const finalState = addContinuousEffect(firstState, {
+      ...createEffect("a-late", 1),
+      effect: {
+        kind: "set_controller",
+        payload: { playerId: "p1" }
+      }
+    });
+
+    expect(computeGameObject("obj-a", finalState).controller).toBe("p1");
+  });
+
+  it("re-evaluates controller-targeted effects against the evolving derived view", () => {
+    const baseState = createStateWithObjects();
+    const withSummoningSickObject: GameState = {
+      ...baseState,
+      objectPool: new Map(baseState.objectPool)
+    };
+    withSummoningSickObject.objectPool.set("obj-a", {
+      ...withSummoningSickObject.objectPool.get("obj-a")!,
+      summoningSick: true
+    });
+
+    const withControlEffect = addContinuousEffect(withSummoningSickObject, {
+      ...createEffect("effect-change-controller", 1),
+      effect: {
+        kind: "set_controller",
+        payload: { playerId: "p2" }
+      }
+    });
+    const finalState = addContinuousEffect(withControlEffect, {
+      ...createEffect("effect-grant-haste", 2),
+      layer: LAYERS.ABILITY,
+      appliesTo: { kind: "controller", playerId: "p2" },
+      effect: {
+        kind: "grant_haste"
+      }
+    });
+
+    const computed = computeGameObject("obj-a", finalState);
+
+    expect(computed.controller).toBe("p2");
+    expect(computed.summoningSick).toBe(false);
+  });
+
   it("throws when computing a missing object", () => {
     const state = createStateWithObjects();
 

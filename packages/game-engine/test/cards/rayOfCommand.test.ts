@@ -171,6 +171,84 @@ describe("cards/ray-of-command", () => {
     ).toBe(true);
   });
 
+  it("grants haste so a summoning-sick target can attack this turn", () => {
+    const { resolved } = castAndResolveRayOfCommandScenario({ summoningSick: true });
+    const declareAttackersState: GameState = {
+      ...resolved.nextState,
+      turnState: {
+        ...resolved.nextState.turnState,
+        phase: "DECLARE_ATTACKERS",
+        step: "DECLARE_ATTACKERS",
+        activePlayerId: "p1",
+        priorityState: createInitialPriorityState("p1")
+      },
+      players: [
+        { ...resolved.nextState.players[0], priority: true },
+        { ...resolved.nextState.players[1], priority: false }
+      ] as GameState["players"]
+    };
+
+    const declared = processCommand(
+      declareAttackersState,
+      { type: "DECLARE_ATTACKERS", attackers: ["obj-target"] },
+      new Rng(declareAttackersState.rngSeed)
+    );
+
+    expect(declared.nextState.turnState.attackers).toEqual(["obj-target"]);
+  });
+
+  it("requires the affected creature to attack if able", () => {
+    const { resolved } = castAndResolveRayOfCommandScenario();
+    const declareAttackersState: GameState = {
+      ...resolved.nextState,
+      turnState: {
+        ...resolved.nextState.turnState,
+        phase: "DECLARE_ATTACKERS",
+        step: "DECLARE_ATTACKERS",
+        activePlayerId: "p1",
+        priorityState: createInitialPriorityState("p1")
+      },
+      players: [
+        { ...resolved.nextState.players[0], priority: true },
+        { ...resolved.nextState.players[1], priority: false }
+      ] as GameState["players"]
+    };
+
+    expect(() =>
+      processCommand(
+        declareAttackersState,
+        { type: "DECLARE_ATTACKERS", attackers: [] },
+        new Rng(declareAttackersState.rngSeed)
+      )
+    ).toThrow("must-attack creatures that are able to attack must be declared as attackers");
+  });
+
+  it("does not allow priority passing to skip a required attack", () => {
+    const { resolved } = castAndResolveRayOfCommandScenario();
+    const declareAttackersState: GameState = {
+      ...resolved.nextState,
+      turnState: {
+        ...resolved.nextState.turnState,
+        phase: "DECLARE_ATTACKERS",
+        step: "DECLARE_ATTACKERS",
+        activePlayerId: "p1",
+        priorityState: createInitialPriorityState("p1")
+      },
+      players: [
+        { ...resolved.nextState.players[0], priority: true },
+        { ...resolved.nextState.players[1], priority: false }
+      ] as GameState["players"]
+    };
+
+    expect(() =>
+      processCommand(
+        declareAttackersState,
+        { type: "PASS_PRIORITY" },
+        new Rng(declareAttackersState.rngSeed)
+      )
+    ).toThrow("must-attack creatures must be declared before passing priority");
+  });
+
   it("works for permanents owned by the shared deck but controlled by another player", () => {
     const { resolved } = castAndResolveRayOfCommandScenario({ owner: "p1", controller: "p2" });
 

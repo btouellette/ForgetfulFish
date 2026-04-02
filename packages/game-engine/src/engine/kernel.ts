@@ -326,11 +326,12 @@ export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): Ste
   if (state.turnState.step === "UNTAP") {
     const nextObjectPool = new Map(state.objectPool);
     for (const [objectId, object] of state.objectPool) {
+      if (object.zone.kind !== "battlefield") {
+        continue;
+      }
+
       const effectiveObject = computeGameObject(objectId, state);
-      if (
-        effectiveObject.controller !== state.turnState.activePlayerId ||
-        object.zone.kind !== "battlefield"
-      ) {
+      if (effectiveObject.controller !== state.turnState.activePlayerId) {
         continue;
       }
 

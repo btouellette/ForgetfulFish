@@ -186,6 +186,8 @@ export function applyActions(
     lkiStore: new Map(state.lkiStore)
   };
 
+  let nextContinuousEffectTimestamp = next.version;
+
   for (const action of actions) {
     switch (action.type) {
       case "DRAW": {
@@ -256,12 +258,12 @@ export function applyActions(
         const object = next.objectPool.get(action.objectId);
         if (object !== undefined) {
           const source = action.source ?? { id: object.id, zcc: object.zcc };
-          const timestamp = next.version;
+          nextContinuousEffectTimestamp += 1;
           const stateWithEffect = addContinuousEffect(next, {
             id: action.id,
             source,
             layer: LAYERS.CONTROL,
-            timestamp,
+            timestamp: nextContinuousEffectTimestamp,
             duration: action.duration,
             appliesTo: { kind: "object", objectId: action.objectId },
             effect: {
@@ -356,7 +358,11 @@ export function applyActions(
         break;
       }
       case "ADD_CONTINUOUS_EFFECT": {
-        const stateWithEffect = addContinuousEffect(next, action.effect);
+        nextContinuousEffectTimestamp += 1;
+        const stateWithEffect = addContinuousEffect(next, {
+          ...action.effect,
+          timestamp: nextContinuousEffectTimestamp
+        });
         next.continuousEffects = stateWithEffect.continuousEffects;
         break;
       }

@@ -443,7 +443,7 @@ describe("actions/executor", () => {
       id: "control-1",
       source: { id: "spell-1", zcc: 0 },
       layer: LAYERS.CONTROL,
-      timestamp: state.version,
+      timestamp: state.version + 1,
       duration: "until_end_of_turn",
       appliesTo: { kind: "object", objectId: "obj-creature" },
       effect: {
@@ -452,5 +452,57 @@ describe("actions/executor", () => {
       }
     });
     expect(computeGameObject("obj-creature", next).controller).toBe("p2");
+  });
+
+  it("assigns increasing timestamps to control effects created in one action batch", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "exec-batched-control",
+      rngSeed: "seed"
+    });
+    state.objectPool.set("obj-creature", {
+      id: "obj-creature",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "battlefield", scope: "shared" }
+    });
+
+    const next = applyActions(
+      state,
+      [
+        {
+          ...baseAction(),
+          id: "z-early",
+          source: { id: "spell-1", zcc: 0 },
+          type: "SET_CONTROL",
+          objectId: "obj-creature",
+          to: "p2",
+          duration: "until_end_of_turn"
+        },
+        {
+          ...baseAction(),
+          id: "a-late",
+          source: { id: "spell-2", zcc: 0 },
+          type: "SET_CONTROL",
+          objectId: "obj-creature",
+          to: "p1",
+          duration: "until_end_of_turn"
+        }
+      ],
+      new Rng(state.rngSeed)
+    );
+
+    expect(next.continuousEffects.map((effect) => effect.timestamp)).toEqual([
+      state.version + 1,
+      state.version + 2
+    ]);
+    expect(computeGameObject("obj-creature", next).controller).toBe("p1");
   });
 });

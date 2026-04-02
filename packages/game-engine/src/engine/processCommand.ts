@@ -1,5 +1,11 @@
 import type { Command, MakeChoiceCommand, PlayLandCommand } from "../commands/command";
-import { validateActivateAbility, validateCastSpell, validatePlayLand } from "../commands/validate";
+import {
+  getRequiredAttackerIds,
+  validateActivateAbility,
+  validateCastSpell,
+  validateDeclareAttackers,
+  validatePlayLand
+} from "../commands/validate";
 import { resumeChoiceResolution } from "../choices/resume";
 import { advanceStepWithEvents, passPriority, tapForMana } from "../engine/kernel";
 import { createEvent } from "../events/event";
@@ -91,6 +97,15 @@ function handleConcedeCommand(state: Readonly<GameState>, command: Command): Han
 
 function handlePassPriorityCommand(state: Readonly<GameState>, rng: Rng): HandlerResult {
   const playerWithPriority = state.turnState.priorityState.playerWithPriority;
+  if (
+    state.turnState.step === "DECLARE_ATTACKERS" &&
+    state.turnState.activePlayerId === playerWithPriority &&
+    state.turnState.attackers.length === 0 &&
+    getRequiredAttackerIds(state, playerWithPriority).length > 0
+  ) {
+    throw new Error("must-attack creatures must be declared before passing priority");
+  }
+
   const priorityResult = passPriority(state, playerWithPriority);
   const passedState: GameState = {
     ...priorityResult.state,
@@ -225,6 +240,8 @@ function handleDeclareAttackersCommand(
   if (command.type !== "DECLARE_ATTACKERS") {
     throw new Error("invalid declare attackers command");
   }
+
+  validateDeclareAttackers(state, command);
 
   return {
     state: {
