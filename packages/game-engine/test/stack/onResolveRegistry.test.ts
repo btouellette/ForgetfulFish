@@ -5,30 +5,44 @@ import { OnResolveRegistry } from "../../src/stack/onResolveRegistry";
 describe("stack/onResolveRegistry", () => {
   it("recognizes registered resolve effects", () => {
     const registry = new OnResolveRegistry([
-      { id: "DRAW_CHOOSE_RETURN", drawAmount: 3, returnAmount: 2 },
-      { id: "NAME_MILL_DRAW_ON_HIT", millAmount: 2, drawOnHitAmount: 2 }
+      { kind: "draw_cards", count: 3, player: "controller" },
+      {
+        kind: "choose_cards",
+        zone: "hand",
+        player: "controller",
+        min: 2,
+        max: 2,
+        prompt: "Choose 2 cards",
+        storeKey: "registry:selected"
+      }
     ]);
 
-    expect(registry.has("DRAW_CHOOSE_RETURN")).toBe(true);
-    expect(registry.has("NAME_MILL_DRAW_ON_HIT")).toBe(true);
+    expect(registry.has("draw_cards")).toBe(true);
+    expect(registry.has("choose_cards")).toBe(true);
+    expect(registry.requiresObjectTargets()).toBe(false);
   });
 
   it("returns false for effects not present in the spec", () => {
     const registry = new OnResolveRegistry([
-      { id: "SEARCH_LIBRARY_SHUFFLE_TOP", typeFilter: ["Instant", "Sorcery"], min: 0, max: 1 }
+      {
+        kind: "shuffle_zone",
+        zone: "library",
+        player: "controller",
+        topCardFromKey: "registry:selected"
+      }
     ]);
 
-    expect(registry.has("DRAW_BY_GRAVEYARD_COPY_COUNT")).toBe(false);
-    expect(registry.has("COUNTER_SPELL")).toBe(false);
+    expect(registry.has("draw_by_graveyard_self_count")).toBe(false);
+    expect(registry.requiresObjectTargets()).toBe(false);
   });
 
-  it("handles duplicate effect specs without changing membership semantics", () => {
+  it("tracks target requirements from primitive resolve specs", () => {
     const registry = new OnResolveRegistry([
-      { id: "COUNTER_SPELL", destination: "graveyard" },
-      { id: "COUNTER_SPELL", destination: "library-top" }
+      { kind: "counter_target_spell", destination: "graveyard" },
+      { kind: "counter_target_spell", destination: "library-top" }
     ]);
 
-    expect(registry.has("COUNTER_SPELL")).toBe(true);
-    expect(registry.has("DRAW_CHOOSE_RETURN")).toBe(false);
+    expect(registry.requiresObjectTargets()).toBe(true);
+    expect(registry.has("draw_cards")).toBe(false);
   });
 });
