@@ -21,7 +21,7 @@ export type Sublayer = Extract<Layer, "7a" | "7b" | "7c">;
 
 export type EffectTarget =
   | { kind: "all" }
-  | { kind: "object"; objectId: string }
+  | { kind: "object"; object: ObjectRef }
   | { kind: "controller"; playerId: string };
 
 export type ContinuousEffectPayload = {
@@ -180,7 +180,7 @@ export function matchesEffectTarget(
     case "all":
       return true;
     case "object":
-      return view.id === target.objectId;
+      return view.id === target.object.id && view.zcc === target.object.zcc;
     case "controller":
       return view.controller === target.playerId;
     default: {

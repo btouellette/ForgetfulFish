@@ -4,6 +4,10 @@ import type { ZoneRef } from "../state/zones";
 import type { Duration } from "../cards/abilityAst";
 import type { ContinuousEffect } from "../effects/continuous/layers";
 
+export type PendingContinuousEffect = Omit<ContinuousEffect, "timestamp"> & {
+  timestamp?: number;
+};
+
 export type ActionId = string;
 export type ReplacementId = string;
 
@@ -109,7 +113,7 @@ export interface GainLifeAction extends GameActionBase {
 
 export interface AddContinuousEffectAction extends GameActionBase {
   type: "ADD_CONTINUOUS_EFFECT";
-  effect: ContinuousEffect;
+  effect: PendingContinuousEffect;
 }
 
 export interface CreateTokenAction extends GameActionBase {

@@ -528,9 +528,8 @@ function resolveGainControlUntapMustAttack(
       id: actionId(context, "ADD_CONTINUOUS_EFFECT", "grant-haste"),
       source: context.stackItem.effectContext.source,
       layer: LAYERS.ABILITY,
-      timestamp: context.state.version,
       duration: "until_end_of_turn",
-      appliesTo: { kind: "object", objectId: target.object.id },
+      appliesTo: { kind: "object", object: target.object },
       effect: { kind: "grant_haste" }
     }
   };
@@ -544,9 +543,8 @@ function resolveGainControlUntapMustAttack(
       id: actionId(context, "ADD_CONTINUOUS_EFFECT", "must-attack"),
       source: context.stackItem.effectContext.source,
       layer: LAYERS.ABILITY,
-      timestamp: context.state.version,
       duration: "until_end_of_turn",
-      appliesTo: { kind: "object", objectId: target.object.id },
+      appliesTo: { kind: "object", object: target.object },
       effect: { kind: "must_attack" }
     }
   };

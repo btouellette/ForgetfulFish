@@ -265,7 +265,7 @@ export function applyActions(
             layer: LAYERS.CONTROL,
             timestamp: nextContinuousEffectTimestamp,
             duration: action.duration,
-            appliesTo: { kind: "object", objectId: action.objectId },
+            appliesTo: { kind: "object", object: { id: object.id, zcc: object.zcc } },
             effect: {
               kind: "set_controller",
               payload: { playerId: action.to }
@@ -361,7 +361,7 @@ export function applyActions(
         nextContinuousEffectTimestamp += 1;
         const stateWithEffect = addContinuousEffect(next, {
           ...action.effect,
-          timestamp: nextContinuousEffectTimestamp
+          timestamp: action.effect.timestamp ?? nextContinuousEffectTimestamp
         });
         next.continuousEffects = stateWithEffect.continuousEffects;
         break;

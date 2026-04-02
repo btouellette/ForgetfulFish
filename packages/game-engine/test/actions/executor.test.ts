@@ -445,7 +445,7 @@ describe("actions/executor", () => {
       layer: LAYERS.CONTROL,
       timestamp: state.version + 1,
       duration: "until_end_of_turn",
-      appliesTo: { kind: "object", objectId: "obj-creature" },
+      appliesTo: { kind: "object", object: { id: "obj-creature", zcc: 0 } },
       effect: {
         kind: "set_controller",
         payload: { playerId: "p2" }

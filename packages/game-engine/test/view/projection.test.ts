@@ -419,7 +419,7 @@ describe("view/projection", () => {
       layer: LAYERS.CONTROL,
       timestamp: 1,
       duration: "until_end_of_turn",
-      appliesTo: { kind: "object", objectId: "stolen-island" },
+      appliesTo: { kind: "object", object: { id: "stolen-island", zcc: 0 } },
       effect: { kind: "set_controller", payload: { playerId: "p1" } }
     });
 

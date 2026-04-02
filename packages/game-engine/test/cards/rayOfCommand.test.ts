@@ -164,7 +164,7 @@ describe("cards/ray-of-command", () => {
       resolved.nextState.continuousEffects.some(
         (effect) =>
           effect.appliesTo.kind === "object" &&
-          effect.appliesTo.objectId === "obj-target" &&
+          effect.appliesTo.object.id === "obj-target" &&
           effect.effect.kind === "must_attack" &&
           effect.duration === "until_end_of_turn"
       )

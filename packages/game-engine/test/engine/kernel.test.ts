@@ -103,7 +103,7 @@ describe("engine/kernel", () => {
       layer: LAYERS.CONTROL,
       timestamp: 1,
       duration: "until_end_of_turn",
-      appliesTo: { kind: "object", objectId: permanent.id },
+      appliesTo: { kind: "object", object: { id: permanent.id, zcc: permanent.zcc } },
       effect: { kind: "set_controller", payload: { playerId: "p1" } }
     });
 
@@ -205,7 +205,7 @@ describe("engine/kernel", () => {
           layer: LAYERS.CONTROL,
           timestamp: 1,
           duration: "permanent",
-          appliesTo: { kind: "object", objectId: "obj-kept" },
+          appliesTo: { kind: "object", object: { id: "obj-kept", zcc: 0 } },
           effect: { kind: "set_controller", payload: { playerId: "p1" } }
         },
         {
@@ -214,7 +214,7 @@ describe("engine/kernel", () => {
           layer: LAYERS.CONTROL,
           timestamp: 2,
           duration: "until_end_of_turn",
-          appliesTo: { kind: "object", objectId: "obj-expired" },
+          appliesTo: { kind: "object", object: { id: "obj-expired", zcc: 0 } },
           effect: { kind: "set_controller", payload: { playerId: "p2" } }
         }
       ]
@@ -231,7 +231,7 @@ describe("engine/kernel", () => {
         layer: LAYERS.CONTROL,
         timestamp: 1,
         duration: "permanent",
-        appliesTo: { kind: "object", objectId: "obj-kept" },
+        appliesTo: { kind: "object", object: { id: "obj-kept", zcc: 0 } },
         effect: { kind: "set_controller", payload: { playerId: "p1" } }
       }
     ]);

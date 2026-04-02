@@ -256,7 +256,7 @@ describe("commands/legal", () => {
       layer: LAYERS.CONTROL,
       timestamp: 1,
       duration: "until_end_of_turn",
-      appliesTo: { kind: "object", objectId: "obj-stolen-attacker" },
+      appliesTo: { kind: "object", object: { id: "obj-stolen-attacker", zcc: 0 } },
       effect: { kind: "set_controller", payload: { playerId: "p1" } }
     });
 
@@ -287,7 +287,7 @@ describe("commands/legal", () => {
         layer: LAYERS.CONTROL,
         timestamp: 1,
         duration: "until_end_of_turn",
-        appliesTo: { kind: "object", objectId: "obj-required-attacker" },
+        appliesTo: { kind: "object", object: { id: "obj-required-attacker", zcc: 0 } },
         effect: { kind: "set_controller", payload: { playerId: "p1" } }
       }),
       {
@@ -296,7 +296,7 @@ describe("commands/legal", () => {
         layer: LAYERS.ABILITY,
         timestamp: 2,
         duration: "until_end_of_turn",
-        appliesTo: { kind: "object", objectId: "obj-required-attacker" },
+        appliesTo: { kind: "object", object: { id: "obj-required-attacker", zcc: 0 } },
         effect: { kind: "must_attack" }
       }
     );
@@ -369,7 +369,7 @@ describe("commands/legal", () => {
       layer: LAYERS.CONTROL,
       timestamp: 1,
       duration: "until_end_of_turn",
-      appliesTo: { kind: "object", objectId: "obj-stolen-blocker" },
+      appliesTo: { kind: "object", object: { id: "obj-stolen-blocker", zcc: 0 } },
       effect: { kind: "set_controller", payload: { playerId: "p2" } }
     });
 
@@ -452,7 +452,7 @@ describe("commands/legal", () => {
       layer: LAYERS.CONTROL,
       timestamp: 1,
       duration: "until_end_of_turn",
-      appliesTo: { kind: "object", objectId: "obj-stolen-island" },
+      appliesTo: { kind: "object", object: { id: "obj-stolen-island", zcc: 0 } },
       effect: { kind: "set_controller", payload: { playerId: "p1" } }
     });
 

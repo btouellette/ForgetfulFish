@@ -477,7 +477,7 @@ describe("stack/resolve pipeline choice integration", () => {
       firstResolve.state.continuousEffects.some(
         (effect) =>
           effect.appliesTo.kind === "object" &&
-          effect.appliesTo.objectId === "obj-target" &&
+          effect.appliesTo.object.id === "obj-target" &&
           effect.effect.kind === "must_attack"
       )
     ).toBe(true);
@@ -485,7 +485,7 @@ describe("stack/resolve pipeline choice integration", () => {
       firstResolve.state.continuousEffects.some(
         (effect) =>
           effect.appliesTo.kind === "object" &&
-          effect.appliesTo.objectId === "obj-target" &&
+          effect.appliesTo.object.id === "obj-target" &&
           effect.effect.kind === "grant_haste"
       )
     ).toBe(true);

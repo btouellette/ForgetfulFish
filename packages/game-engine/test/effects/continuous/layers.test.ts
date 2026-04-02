@@ -44,7 +44,7 @@ function createEffect(id: string, timestamp = 1): ContinuousEffect {
     layer: LAYERS.CONTROL,
     timestamp,
     duration: "until_end_of_turn",
-    appliesTo: { kind: "object", objectId: "obj-a" },
+    appliesTo: { kind: "object", object: { id: "obj-a", zcc: 0 } },
     effect: {
       kind: "set_controller",
       payload: { playerId: "p2" }
@@ -194,6 +194,22 @@ describe("effects/continuous/layers", () => {
 
     expect(computed.controller).toBe("p2");
     expect(computed.summoningSick).toBe(false);
+  });
+
+  it("does not apply object-targeted effects after the object leaves and returns", () => {
+    const baseState = createStateWithObjects();
+    const returnedState: GameState = {
+      ...baseState,
+      objectPool: new Map(baseState.objectPool)
+    };
+    returnedState.objectPool.set("obj-a", {
+      ...returnedState.objectPool.get("obj-a")!,
+      zcc: 1
+    });
+
+    const withEffect = addContinuousEffect(returnedState, createEffect("effect-stale-target", 1));
+
+    expect(computeGameObject("obj-a", withEffect).controller).toBe("p1");
   });
 
   it("throws when computing a missing object", () => {

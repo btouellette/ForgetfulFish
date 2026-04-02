@@ -124,9 +124,8 @@ function sampleActions(): GameAction[] {
       id: "effect-1",
       source: { id: "source-1", zcc: 0 },
       layer: 2,
-      timestamp: 1,
       duration: "until_end_of_turn",
-      appliesTo: { kind: "object", objectId: "obj-4" },
+      appliesTo: { kind: "object", object: { id: "obj-4", zcc: 0 } },
       effect: {
         kind: "set_controller",
         payload: { playerId: "p2" }
