@@ -1,4 +1,4 @@
-import { cardRegistry } from "@forgetful-fish/game-engine";
+import { cardRegistry, OnResolveRegistry } from "@forgetful-fish/game-engine";
 import type { PlayerGameView } from "@forgetful-fish/realtime-contract";
 
 type ManaPool = PlayerGameView["viewer"]["manaPool"];
@@ -77,7 +77,9 @@ function hasSufficientManaPool(
 
 function spellRequiresTargets(cardDefId: string): boolean {
   const cardDefinition = cardRegistry.get(cardDefId);
-  return cardDefinition?.onResolve.some((effect) => effect.id === "COUNTER_SPELL") ?? false;
+  return cardDefinition === undefined
+    ? false
+    : new OnResolveRegistry(cardDefinition.onResolve).requiresObjectTargets();
 }
 
 function hasAvailableTarget(gameView: Readonly<PlayerGameView>, cardDefId: string): boolean {
