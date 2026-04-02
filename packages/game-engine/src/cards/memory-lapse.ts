@@ -16,7 +16,7 @@ export const memoryLapseCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: [{ id: "COUNTER_SPELL", destination: "library-top" }],
+  onResolve: [{ kind: "counter_target_spell", destination: "library-top" }],
   continuousEffects: [],
   replacementEffects: []
 };
