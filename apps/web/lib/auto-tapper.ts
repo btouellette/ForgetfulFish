@@ -83,11 +83,22 @@ function spellRequiresTargets(cardDefId: string): boolean {
 }
 
 function hasAvailableTarget(gameView: Readonly<PlayerGameView>, cardDefId: string): boolean {
-  if (!spellRequiresTargets(cardDefId)) {
+  const cardDefinition = cardRegistry.get(cardDefId);
+  if (cardDefinition === undefined) {
+    return false;
+  }
+
+  const registry = new OnResolveRegistry(cardDefinition.onResolve);
+  if (!registry.requiresObjectTargets()) {
     return true;
   }
 
-  return gameView.stack.length > 0;
+  const hasStackTarget = registry.requiresStackObjectTargets() ? gameView.stack.length > 0 : false;
+  const hasBattlefieldTarget = registry.requiresBattlefieldObjectTargets()
+    ? Object.values(gameView.objectPool).some((object) => object.zone.kind === "battlefield")
+    : false;
+
+  return hasStackTarget || hasBattlefieldTarget;
 }
 
 function getAvailableManaAbilityGroups(gameView: Readonly<PlayerGameView>): ManaAbilityOption[][] {

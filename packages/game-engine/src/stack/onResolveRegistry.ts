@@ -3,12 +3,23 @@ import type { ResolveEffectKind, ResolveEffectSpec } from "../cards/resolveEffec
 export class OnResolveRegistry {
   private readonly effects: Set<ResolveEffectKind>;
   private readonly objectTargetRequirement: boolean;
+  private readonly stackObjectTargetRequirement: boolean;
+  private readonly battlefieldObjectTargetRequirement: boolean;
 
   public constructor(effectSpecs: readonly ResolveEffectSpec[]) {
     this.effects = new Set(effectSpecs.map((effect) => effect.kind));
     this.objectTargetRequirement = effectSpecs.some(
       (effect) =>
         effect.kind === "counter_target_spell" ||
+        effect.kind === "set_control_of_target" ||
+        effect.kind === "untap_target" ||
+        effect.kind === "add_continuous_effect_to_target"
+    );
+    this.stackObjectTargetRequirement = effectSpecs.some(
+      (effect) => effect.kind === "counter_target_spell"
+    );
+    this.battlefieldObjectTargetRequirement = effectSpecs.some(
+      (effect) =>
         effect.kind === "set_control_of_target" ||
         effect.kind === "untap_target" ||
         effect.kind === "add_continuous_effect_to_target"
@@ -21,5 +32,13 @@ export class OnResolveRegistry {
 
   public requiresObjectTargets(): boolean {
     return this.objectTargetRequirement;
+  }
+
+  public requiresStackObjectTargets(): boolean {
+    return this.stackObjectTargetRequirement;
+  }
+
+  public requiresBattlefieldObjectTargets(): boolean {
+    return this.battlefieldObjectTargetRequirement;
   }
 }
