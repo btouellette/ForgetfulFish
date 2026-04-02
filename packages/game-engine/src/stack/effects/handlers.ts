@@ -235,7 +235,13 @@ function resolveChooseCards(
           ]
         : zoneCards;
 
-  if (zoneCards.length === 0) {
+  if (candidates.length < spec.min) {
+    throw new Error(
+      `resolveChooseCards: not enough candidate cards for ${spec.storeKey} (needed at least ${spec.min}, found ${candidates.length})`
+    );
+  }
+
+  if (candidates.length === 0) {
     context.writeScratch({ [spec.storeKey]: [] });
     return { kind: "continue" };
   }

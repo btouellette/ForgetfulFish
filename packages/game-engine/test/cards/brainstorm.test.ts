@@ -110,6 +110,36 @@ function createBrainstormState(): GameState {
   return state;
 }
 
+function createEmptyHandBrainstormState(): GameState {
+  cardRegistry.set(brainstormCardDefinition.id, brainstormCardDefinition);
+  const state = createInitialGameState("p1", "p2", {
+    id: "brainstorm-empty-hand-test",
+    rngSeed: "bs-empty-seed"
+  });
+  setMainPhasePriority(state, "p1");
+  setBlueMana(state, "p1", 1);
+
+  putInHand(
+    state,
+    "p1",
+    makeCard("obj-brainstorm", brainstormCardDefinition.id, "p1", {
+      kind: "hand",
+      scope: "player",
+      playerId: "p1"
+    })
+  );
+
+  for (let index = 0; index < 6; index += 1) {
+    addToSharedZone(
+      state,
+      "library",
+      makeCard(`obj-lib-empty-${index}`, "island", "p1", { kind: "library", scope: "shared" })
+    );
+  }
+
+  return state;
+}
+
 describe("cards/brainstorm", () => {
   it("loads as a one-mana blue instant", () => {
     expect(brainstormCardDefinition.name).toBe("Brainstorm");
@@ -300,5 +330,22 @@ describe("cards/brainstorm", () => {
     const finalResolve = order;
 
     expect(() => assertStateInvariants(finalResolve.nextState)).not.toThrow();
+  });
+
+  it("still requires choosing cards after drawing into an otherwise empty hand", () => {
+    const state = createEmptyHandBrainstormState();
+    const cast = processCommand(
+      state,
+      { type: "CAST_SPELL", cardId: "obj-brainstorm", targets: [] },
+      new Rng(state.rngSeed)
+    );
+    const resolved = passPriorityPair(cast.nextState);
+
+    expect(resolved.pendingChoice?.type).toBe("CHOOSE_CARDS");
+    expect(resolved.pendingChoice?.constraints).toMatchObject({
+      min: 2,
+      max: 2,
+      candidates: ["obj-lib-empty-0", "obj-lib-empty-1", "obj-lib-empty-2"]
+    });
   });
 });
