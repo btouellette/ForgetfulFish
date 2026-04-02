@@ -19,6 +19,12 @@ describe("cards/abilityAst", () => {
     expect(ability.landType).toBe("Island");
   });
 
+  it("constructs a KeywordAbilityAst for haste", () => {
+    const ability: KeywordAbilityAst = { kind: "keyword", keyword: "haste" };
+
+    expect(ability.keyword).toBe("haste");
+  });
+
   it("constructs a StaticAbilityAst for attack restriction", () => {
     const staticAbility: StaticAbilityAst = {
       kind: "static",

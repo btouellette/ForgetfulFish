@@ -1,4 +1,5 @@
-import type { ConditionAst, Duration } from "../../cards/abilityAst";
+import { cardRegistry } from "../../cards";
+import type { ConditionAst, Duration, KeywordAbilityAst } from "../../cards/abilityAst";
 import type { DerivedGameObjectView } from "../../state/gameObject";
 import type { GameState } from "../../state/gameState";
 import type { ObjectRef } from "../../state/objectRef";
@@ -112,14 +113,41 @@ function applyEffectToView(
     }
   }
 
-  if (effect.layer === LAYERS.ABILITY && effect.effect.kind === "grant_haste") {
-    return {
-      ...view,
-      summoningSick: false
-    };
+  if (effect.layer === LAYERS.ABILITY) {
+    const keywordAbility = toGrantedKeywordAbility(effect.effect);
+    if (keywordAbility !== null) {
+      return {
+        ...view,
+        abilities: [...view.abilities, keywordAbility]
+      };
+    }
   }
 
   return view;
+}
+
+function toGrantedKeywordAbility(
+  payload: Readonly<ContinuousEffectPayload>
+): KeywordAbilityAst | null {
+  if (payload.kind !== "grant_keyword") {
+    return null;
+  }
+
+  const keyword = payload.payload?.keyword;
+  if (keyword === "flying" || keyword === "first_strike" || keyword === "haste") {
+    return { kind: "keyword", keyword };
+  }
+
+  return null;
+}
+
+function hasKeywordAbility(
+  view: Readonly<DerivedGameObjectView>,
+  keyword: KeywordAbilityAst["keyword"]
+): boolean {
+  return view.abilities.some(
+    (ability) => ability.kind === "keyword" && ability.keyword === keyword
+  );
 }
 
 function requireBaseObject(objectId: string, state: Readonly<GameState>): DerivedGameObjectView {
@@ -128,7 +156,13 @@ function requireBaseObject(objectId: string, state: Readonly<GameState>): Derive
     throw new Error(`object '${objectId}' is missing from state '${state.id}'`);
   }
 
-  return baseObject;
+  const definition = cardRegistry.get(baseObject.cardDefId);
+  const definitionKeywords = definition?.keywords ?? [];
+
+  return {
+    ...baseObject,
+    abilities: [...definitionKeywords, ...baseObject.abilities]
+  };
 }
 
 function resolveContinuousEffects(
@@ -149,6 +183,13 @@ function resolveContinuousEffects(
 
     appliedEffects.push(effect);
     view = applyEffectToView(view, effect);
+  }
+
+  if (view.summoningSick && hasKeywordAbility(view, "haste")) {
+    view = {
+      ...view,
+      summoningSick: false
+    };
   }
 
   return {

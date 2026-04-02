@@ -186,13 +186,40 @@ describe("effects/continuous/layers", () => {
       layer: LAYERS.ABILITY,
       appliesTo: { kind: "controller", playerId: "p2" },
       effect: {
-        kind: "grant_haste"
+        kind: "grant_keyword",
+        payload: { keyword: "haste" }
       }
     });
 
     const computed = computeGameObject("obj-a", finalState);
 
     expect(computed.controller).toBe("p2");
+    expect(computed.summoningSick).toBe(false);
+  });
+
+  it("adds granted haste to abilities and derives summoning sickness from that keyword", () => {
+    const baseState = createStateWithObjects();
+    const withSummoningSickObject: GameState = {
+      ...baseState,
+      objectPool: new Map(baseState.objectPool)
+    };
+    withSummoningSickObject.objectPool.set("obj-a", {
+      ...withSummoningSickObject.objectPool.get("obj-a")!,
+      summoningSick: true
+    });
+
+    const finalState = addContinuousEffect(withSummoningSickObject, {
+      ...createEffect("effect-grant-keyword-haste", 1),
+      layer: LAYERS.ABILITY,
+      effect: {
+        kind: "grant_keyword",
+        payload: { keyword: "haste" }
+      }
+    });
+
+    const computed = computeGameObject("obj-a", finalState);
+
+    expect(computed.abilities).toContainEqual({ kind: "keyword", keyword: "haste" });
     expect(computed.summoningSick).toBe(false);
   });
 
