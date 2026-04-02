@@ -2,7 +2,234 @@
 
 Status: in progress
 
-- TODO: Split monolithic `ResolveEffectSpec` variants into smaller composable spec primitives with a clear assembly/composition model so future card growth does not force one bespoke resolve-spec shape per card.
+## Phase 3 execution plan updates
+
+### Resolve-spec composition refactor plan
+
+**Goal**: replace the current monolithic `ResolveEffectSpec` growth pattern with a small composable primitive set while preserving the existing pause/resume and action-pipeline model.
+
+**Current pain points confirmed in code**
+- `packages/game-engine/src/cards/resolveEffect.ts` is the monolithic discriminated union for `onResolve` specs.
+- `packages/game-engine/src/stack/effects/handlers.ts` contains the matching monolithic interpreter switch, so every new card pattern currently grows both the type surface and the runtime branching surface.
+- `packages/game-engine/src/cards/*.ts` accumulates card-specific spec objects directly, which encourages adding a new top-level variant whenever a card does not fit an existing shape.
+- `packages/game-engine/src/view/projection.ts` and `apps/web/lib/auto-tapper.ts` currently read specific effect IDs, so refactoring the spec model also needs a capability/query migration plan.
+
+**Composition model to target**
+- Keep `CardDefinition.onResolve` as an ordered list, but let each entry be a primitive or composite sequence instead of only a monolithic variant.
+- Reuse existing `GameAction` atoms as the runtime foundation: `DRAW`, `MOVE_ZONE`, `SHUFFLE`, `COUNTER`, `SET_CONTROL`, `UNTAP`, `ADD_CONTINUOUS_EFFECT`, and related pipeline-ready actions.
+- Reuse the existing step/pause helpers in `stack/effects/primitives.ts` for multi-step resolution so choices, resume checkpoints, and whiteboard scratch state stay compatible with `stack/resolve.ts`.
+- Introduce a small canonical primitive set for Phase 3 planning purposes: `draw`, `move_zone`, `shuffle`, `search_library`, `name_card`, `mill`, `counter`, `set_control`, `untap`, `add_continuous_effect`, `choose_cards`, `order_cards`, `conditional`, and `sequence`.
+
+**Execution order**
+1. Add primitive spec types and a primitive interpreter without changing card definitions yet.
+2. Convert the effect registry/query layer so projection/UI ask semantic capability questions instead of matching raw effect IDs.
+3. Convert card files from monolithic variants to primitive sequences, starting with heavily tested cards.
+4. Remove the old monolithic variant path as soon as the primitive interpreter and card updates are in place.
+
+**Files expected to change during implementation**
+- `cards/resolveEffect.ts`
+- `cards/cardDefinition.ts`
+- `cards/*.ts` (incremental migration)
+- `stack/effects/handlers.ts`
+- `stack/effects/primitives.ts`
+- `stack/effects/types.ts`
+- `stack/resolve.ts`
+- `stack/onResolveRegistry.ts`
+- `view/projection.ts`
+- `apps/web/lib/auto-tapper.ts`
+- `test/stack/**`, `test/cards/**`
+
+**Compatibility and verification requirements**
+- Preserve the current pause/resume contract in `EffectContext.whiteboard.scratch`; primitive execution must not regress interrupted resolution flows.
+- Preserve the action pipeline contract; primitive interpretation must still emit normal `GameAction`s so replacement/pipeline handling remains centralized.
+- Add parity tests proving each current monolithic variant produces the same action flow and choice pauses after being expressed through primitives.
+- Treat raw effect-ID queries as technical debt to remove as part of this refactor; replace them with capability queries before deleting the old variant path.
+- Add explicit parity tests for emitted `GameAction` ordering and effect visibility timing so primitive execution remains identical to the current interpreter from the pipeline/trigger system's perspective.
+- Call out cross-object dependency handling up front: if a text/ability effect on object A changes applicability or output for object B, dependency evaluation rules must stay deterministic and be covered by dedicated tests before broad card conversion.
+- Because there are no live users or in-progress games to preserve, Phase 3 should use a pure cutover: convert all relevant cards/consumers to primitives, then delete the old monolithic path rather than introducing any adapter layer.
+
+### Haste + summoning-sickness architecture plan
+
+**Goal**: make haste a real keyword in the computed object view and make summoning-sickness legality depend on keyword presence, so granted haste and native haste share one rules path.
+
+**Current pain points confirmed in code**
+- `packages/game-engine/src/effects/continuous/layers.ts` currently special-cases `grant_haste` by directly setting `summoningSick: false` in the derived view.
+- `packages/game-engine/src/stack/effects/handlers.ts` creates that special-case continuous effect for the current Ray of Command path.
+- `packages/game-engine/src/cards/abilityAst.ts` supports several keywords but does not currently include `haste`.
+- `CardDefinition.keywords` exists, but native card-definition keywords are not yet being injected into the runtime computed view in a way that lets haste naturally affect combat legality.
+- Newly entered permanents do not appear to have one centralized, reliable place where `summoningSick: true` is assigned on battlefield entry, which will matter once haste becomes the single source of truth for bypassing that restriction.
+
+**Architecture to target**
+- Add `haste` to the keyword AST so it is representable in both native card definitions and granted continuous effects.
+- Ensure the initial computed object view includes inherent card-definition keywords before continuous-effect application finishes.
+- Make Layer 6 ability handling operate on keyword presence rather than on a one-off `grant_haste` branch.
+- Keep attack legality keyed off the computed object view, so `canObjectAttack` naturally respects either printed or granted haste.
+- Centralize battlefield-entry handling so permanents enter with `summoningSick: true` when rules require it, and haste then clears the restriction through normal derived-view computation.
+
+**Execution order**
+1. Extend the keyword AST and related card-definition/runtime typing to include `haste`.
+2. Ensure `computeGameObject` starts from a base/derived view that includes native card-definition keywords.
+3. Generalize Layer 6 ability-grant handling so haste is represented as a keyword grant rather than only as a hard-coded summoning-sickness toggle.
+4. Update the current grant-haste producer sites to use the keyword-driven path.
+5. Audit battlefield-entry flows so creatures consistently acquire base summoning sickness on entry before derived-view keyword logic is applied.
+6. Add regression tests covering both native haste and temporarily granted haste using the same combat-legality path.
+
+**Files expected to change during implementation**
+- `cards/abilityAst.ts`
+- `cards/cardDefinition.ts`
+- `effects/continuous/layers.ts`
+- `stack/effects/handlers.ts`
+- `commands/validate.ts` (verification coverage even if behavior stays unchanged)
+- `actions/executor.ts`
+- `stack/resolve.ts`
+- `state/gameObject.ts`
+- `test/effects/continuous/**`, `test/cards/**`, `test/engine/combat*.test.ts`
+
+**Compatibility and verification requirements**
+- Keep combat legality sourced from the computed view rather than adding parallel haste checks in combat validation.
+- Add regression coverage for native-haste creatures, temporary haste grants, and re-entry/battlefield-entry cases that should still be summoning sick without haste.
+- Do not leave both models half-active; the implementation should converge on keyword presence as the reason a creature can ignore summoning sickness.
+- Update any keyword serialization/fixture/schema surfaces alongside `KeywordAbilityAst` so adding `haste` does not break card loading, persisted fixtures, or replay data.
+- Include token creation, blink/re-entry, and other battlefield-entry paths in the summoning-sickness audit so the new single-source-of-truth model does not remain correct only for cast spells.
+- Because old game-state compatibility is explicitly out of scope right now, prefer the simpler architecture over temporary compatibility layers when changing haste/keyword representations.
+
+### Cross-cutting implementation notes
+
+- The resolve-spec refactor and the haste refactor should land in that order: primitive `add_continuous_effect` / ability-grant composition makes the haste cleanup less bespoke.
+- Preserve TDD sequencing throughout: each migration slice should add failing parity/regression tests before interpreter or layer changes.
+- Record the final primitive-spec model and the keyword-driven haste decision in `docs/decisions/decision-log.md` once implementation is approved and starts changing behavior/architecture.
+- Since no production users or in-flight games need protection yet, implementation may update engine, projection, and UI consumers together and remove obsolete code paths immediately once replacements are in place.
+- Keep an eye on `computeGameObject` recomputation cost while widening Layer 6/keyword usage; if Phase 3 work noticeably increases call frequency or repeated scans, capture that in acceptance notes before Phase 3 is closed.
+- Do not add a temporary compile/bridge layer for resolve specs; Phase 3 should cut directly from the monolithic variant model to the primitive model.
+
+### Concrete execution slices
+
+#### [x] Slice A — Define primitive resolve-spec model and cut the interpreter over
+
+**Goal**: replace the monolithic `ResolveEffectSpec` union and handler switch with a primitive/composite spec model that can express the currently implemented cards without an adapter layer.
+
+**Files**
+- `cards/resolveEffect.ts`
+- `stack/effects/handlers.ts`
+- `stack/effects/primitives.ts`
+- `stack/effects/types.ts`
+- `stack/resolve.ts`
+- `test/stack/**`
+
+**Tests first**
+- Add or update stack/effect tests that prove the primitive interpreter preserves current pause/resume behavior for:
+  - Brainstorm-style draw/choose/order/return flows
+  - Mystical Tutor-style search/shuffle/top flows
+  - Predict-style name/mill/draw flows
+  - Memory Lapse-style counter-to-library flows
+  - Ray of Command-style multi-action resolution flows
+- Add explicit assertions for emitted `GameAction` ordering and the exact `pendingChoice` sequence.
+
+**Implementation steps**
+1. Replace the current top-level discriminated union with a primitive/composite spec vocabulary.
+2. Convert `handlers.ts` from per-card-shape resolution helpers to primitive interpreters built around the existing step/pause utilities.
+3. Keep `stack/resolve.ts` responsible for orchestration only; do not let card-specific branching leak back into it.
+4. Delete the old monolithic variant-only execution path in the same slice once the new interpreter is active.
+
+**Acceptance**
+- No old monolithic `ResolveEffectSpec` variants remain in runtime handling.
+- Existing Phase 2/3 card resolution tests pass through the primitive interpreter.
+
+#### [x] Slice B — Convert shipped card definitions and effect-ID consumers
+
+**Goal**: move card definitions and consumer queries to the new primitive/capability model so no code still depends on monolithic resolve-spec IDs.
+
+**Files**
+- `cards/*.ts`
+- `stack/onResolveRegistry.ts`
+- `view/projection.ts`
+- `apps/web/lib/auto-tapper.ts`
+- `test/cards/**`
+- `test/view/**`
+
+**Tests first**
+- Add/update tests proving card definitions still resolve correctly after conversion to primitive sequences.
+- Add/update tests proving projection/UI helpers query semantic capabilities instead of raw effect IDs.
+
+**Implementation steps**
+1. Convert all currently shipped `onResolve` card definitions to primitive sequences.
+2. Replace raw effect-ID checks with capability-style queries derived from the new primitive model.
+3. Remove now-dead ID-specific helper logic once all consumers are updated.
+
+**Acceptance**
+- No active card definition still uses the old monolithic resolve-spec shape.
+- Projection and UI helpers no longer branch on raw effect IDs.
+
+#### [x] Slice C — Add real haste keyword support to the rules model
+
+**Goal**: make haste representable as a first-class keyword and prepare the derived view to include native keyword data.
+
+**Files**
+- `cards/abilityAst.ts`
+- `cards/cardDefinition.ts`
+- `state/gameObject.ts`
+- `effects/continuous/layers.ts`
+- `test/effects/continuous/**`
+
+**Tests first**
+- Add/update tests proving native keywords are present in the computed view.
+- Add/update tests proving granted keyword abilities can be represented without bespoke `grant_haste`-only logic.
+
+**Implementation steps**
+1. Extend `KeywordAbilityAst` with `haste`.
+2. Ensure the computed/base object view includes card-definition keywords before continuous effects are applied.
+3. Generalize Layer 6 ability application so keyword grants flow through one path.
+
+**Acceptance**
+- `haste` exists as a normal keyword in the AST/type system.
+- Native keyword presence is visible in computed object views.
+
+#### [x] Slice D — Make summoning sickness derive from keyword presence
+
+**Goal**: remove the special-case haste toggle and make combat legality depend on the computed keyword-driven view.
+
+**Files**
+- `effects/continuous/layers.ts`
+- `stack/effects/handlers.ts`
+- `commands/validate.ts`
+- `actions/executor.ts`
+- `stack/resolve.ts`
+- `test/effects/continuous/**`
+- `test/engine/combat*.test.ts`
+- `test/cards/rayOfCommand.test.ts`
+
+**Tests first**
+- Add/update tests proving creatures with native haste can attack despite entering this turn.
+- Add/update tests proving temporarily granted haste uses the same legality path.
+- Add/update tests proving creatures without haste remain summoning sick after battlefield entry across cast, token, and re-entry paths.
+
+**Implementation steps**
+1. Replace the `grant_haste` special-case in `layers.ts` with keyword-based logic.
+2. Update haste-grant producer sites to grant the keyword rather than directly clearing summoning sickness.
+3. Audit battlefield-entry code paths so creatures consistently enter with base summoning sickness when required.
+4. Keep `commands/validate.ts` reading only the computed object view for attack legality.
+
+**Acceptance**
+- No runtime path directly uses a haste-only summoning-sickness toggle.
+- Native and granted haste both work through the same computed-view legality path.
+
+#### [ ] Slice E — Cleanup, verify, and document final architecture
+
+**Goal**: leave Phase 3 in the clean post-cutover state with no temporary dual systems.
+
+**Files**
+- all touched source/test files
+- `docs/decisions/decision-log.md`
+
+**Verification**
+- `lsp_diagnostics` clean on all changed files.
+- Relevant game-engine tests pass.
+- No dead monolithic resolve-spec paths remain.
+- No dead haste-specific compatibility branches remain.
+
+**Acceptance**
+- The engine uses only primitive resolve specs and keyword-driven haste behavior.
+- The decision log records the new canonical architecture.
 
 ### [x] P3.1 — ContinuousEffect type and registry
 
