@@ -1,87 +1,114 @@
-/**
- * Draw `drawAmount` cards, then pause to let the controller choose `returnAmount`
- * cards from their hand to put back on top of their library in a chosen order.
- *
- * @param drawAmount - Number of cards drawn at the start of resolution.
- * @param returnAmount - Exact number of cards the controller must return to library top.
- */
-export type DrawChooseReturnSpec = {
-  id: "DRAW_CHOOSE_RETURN";
-  drawAmount: number;
-  returnAmount: number;
+import type { Duration } from "./abilityAst";
+import type { ContinuousEffectPayload, Layer } from "../effects/continuous/layers";
+
+export type ResolveStoredValueKey = string;
+export type ResolveTargetObjectSelector = "first_object_target";
+export type ResolvePlayerSelector = "controller" | "target_player_or_controller";
+export type ResolveZoneSelector = "hand" | "library" | "graveyard";
+
+export type DrawCardsSpec = {
+  kind: "draw_cards";
+  count: number;
+  player: ResolvePlayerSelector;
 };
 
-/**
- * Pause to let the controller search their library for a card whose type line
- * includes any entry in `typeFilter`, selecting between `min` and `max` cards.
- * The library is then shuffled and the chosen card (if any) is placed on top.
- *
- * @param typeFilter - Type-line strings a card must match to be a valid candidate (e.g. ["Instant", "Sorcery"]).
- * @param min - Minimum number of cards to choose (0 means the search is optional).
- * @param max - Maximum number of cards to choose.
- */
-export type SearchLibraryShuffleTopSpec = {
-  id: "SEARCH_LIBRARY_SHUFFLE_TOP";
-  typeFilter: string[];
+export type ChooseCardsSpec = {
+  kind: "choose_cards";
+  zone: Extract<ResolveZoneSelector, "hand" | "library">;
+  player: "controller";
   min: number;
   max: number;
+  prompt: string;
+  storeKey: ResolveStoredValueKey;
+  typeFilter?: string[];
 };
 
-/**
- * Pause to let the controller name a card, then mill `millAmount` cards from
- * the top of the targeted player's library (or the controller if no player
- * target is provided). The controller always draws at least
- * `missDrawAmount` cards; if the named card was among the milled cards, the
- * controller draws `drawOnHitAmount` cards instead.
- *
- * @param millAmount - Number of cards milled from the top of the library.
- * @param drawOnHitAmount - Cards drawn when the named card is among the milled cards.
- * @param missDrawAmount - Cards drawn when the named card is NOT among the milled cards.
- */
-export type NameMillDrawOnHitSpec = {
-  id: "NAME_MILL_DRAW_ON_HIT";
-  millAmount: number;
-  drawOnHitAmount: number;
-  missDrawAmount: number;
+export type OrderCardsSpec = {
+  kind: "order_cards";
+  sourceKey: ResolveStoredValueKey;
+  prompt: string;
+  storeKey: ResolveStoredValueKey;
 };
 
-/**
- * Counter the target spell on the stack and move it to the specified destination zone.
- * Does nothing if the targeted object is no longer on the stack at its original zcc.
- *
- * @param destination - Where the countered spell is placed:
- *   - "graveyard": owner's graveyard (standard counterspell behavior).
- *   - "library-top": top of the owner's library (e.g. Memory Lapse).
- */
-export type CounterSpellSpec = {
-  id: "COUNTER_SPELL";
+export type MoveOrderedCardsSpec = {
+  kind: "move_ordered_cards";
+  sourceKey: ResolveStoredValueKey;
+  fromZone: Extract<ResolveZoneSelector, "hand">;
+  toZone: Extract<ResolveZoneSelector, "library">;
+  player: "controller";
+  placement: "top";
+};
+
+export type NameCardSpec = {
+  kind: "name_card";
+  prompt: string;
+  storeKey: ResolveStoredValueKey;
+};
+
+export type MillCardsSpec = {
+  kind: "mill_cards";
+  count: number;
+  player: ResolvePlayerSelector;
+  storeKey: ResolveStoredValueKey;
+};
+
+export type DrawByNamedHitSpec = {
+  kind: "draw_by_named_hit";
+  namedCardKey: ResolveStoredValueKey;
+  milledCardsKey: ResolveStoredValueKey;
+  hitCount: number;
+  missCount: number;
+};
+
+export type CounterTargetSpellSpec = {
+  kind: "counter_target_spell";
   destination: "graveyard" | "library-top";
 };
 
-/**
- * Draw cards equal to the number of copies of this card (by name) in the
- * controller's graveyard, plus `bonus`.
- *
- * Example: if `bonus` is 1 and there are 2 copies already in the graveyard,
- * the controller draws 3 cards.
- *
- * @param bonus - Additional cards drawn on top of the graveyard copy count.
- */
-export type DrawByGraveyardCopyCountSpec = {
-  id: "DRAW_BY_GRAVEYARD_COPY_COUNT";
+export type DrawByGraveyardSelfCountSpec = {
+  kind: "draw_by_graveyard_self_count";
   bonus: number;
 };
 
-export type GainControlUntapMustAttackSpec = {
-  id: "GAIN_CONTROL_UNTAP_MUST_ATTACK";
+export type SetControlOfTargetSpec = {
+  kind: "set_control_of_target";
+  target: ResolveTargetObjectSelector;
+  duration: Duration;
+};
+
+export type UntapTargetSpec = {
+  kind: "untap_target";
+  target: ResolveTargetObjectSelector;
+};
+
+export type AddContinuousEffectToTargetSpec = {
+  kind: "add_continuous_effect_to_target";
+  target: ResolveTargetObjectSelector;
+  layer: Layer;
+  duration: Duration;
+  effect: ContinuousEffectPayload;
+};
+
+export type ShuffleZoneSpec = {
+  kind: "shuffle_zone";
+  zone: Extract<ResolveZoneSelector, "library">;
+  player: "controller";
+  topCardFromKey?: ResolveStoredValueKey;
 };
 
 export type ResolveEffectSpec =
-  | DrawChooseReturnSpec
-  | SearchLibraryShuffleTopSpec
-  | NameMillDrawOnHitSpec
-  | CounterSpellSpec
-  | DrawByGraveyardCopyCountSpec
-  | GainControlUntapMustAttackSpec;
+  | DrawCardsSpec
+  | ChooseCardsSpec
+  | OrderCardsSpec
+  | MoveOrderedCardsSpec
+  | NameCardSpec
+  | MillCardsSpec
+  | DrawByNamedHitSpec
+  | CounterTargetSpellSpec
+  | DrawByGraveyardSelfCountSpec
+  | SetControlOfTargetSpec
+  | UntapTargetSpec
+  | AddContinuousEffectToTargetSpec
+  | ShuffleZoneSpec;
 
-export type ResolveEffectId = ResolveEffectSpec["id"];
+export type ResolveEffectKind = ResolveEffectSpec["kind"];
