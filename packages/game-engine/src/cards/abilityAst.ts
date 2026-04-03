@@ -28,7 +28,7 @@ export type Duration =
 export type KeywordAbilityAst =
   | {
       kind: "keyword";
-      keyword: "flying" | "first_strike";
+      keyword: "flying" | "first_strike" | "haste";
     }
   | {
       kind: "keyword";

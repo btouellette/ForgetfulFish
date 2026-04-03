@@ -58,7 +58,24 @@ const replacementResumeCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: [{ id: "SEARCH_LIBRARY_SHUFFLE_TOP", typeFilter: ["Instant"], min: 0, max: 1 }],
+  onResolve: [
+    {
+      kind: "choose_cards",
+      zone: "library",
+      player: "controller",
+      min: 0,
+      max: 1,
+      prompt: "Choose up to one Instant card",
+      storeKey: "replacement-resume:selected",
+      typeFilter: ["Instant"]
+    },
+    {
+      kind: "shuffle_zone",
+      zone: "library",
+      player: "controller",
+      topCardFromKey: "replacement-resume:selected"
+    }
+  ],
   continuousEffects: [],
   replacementEffects: []
 };
@@ -78,8 +95,38 @@ const controlThenReplacementResumeCardDefinition: CardDefinition = {
   triggeredAbilities: [],
   activatedAbilities: [],
   onResolve: [
-    { id: "GAIN_CONTROL_UNTAP_MUST_ATTACK" },
-    { id: "SEARCH_LIBRARY_SHUFFLE_TOP", typeFilter: ["Instant"], min: 0, max: 1 }
+    { kind: "set_control_of_target", target: "first_object_target", duration: "until_end_of_turn" },
+    { kind: "untap_target", target: "first_object_target" },
+    {
+      kind: "add_continuous_effect_to_target",
+      target: "first_object_target",
+      layer: 6,
+      duration: "until_end_of_turn",
+      effect: { kind: "grant_keyword", payload: { keyword: "haste" } }
+    },
+    {
+      kind: "add_continuous_effect_to_target",
+      target: "first_object_target",
+      layer: 6,
+      duration: "until_end_of_turn",
+      effect: { kind: "must_attack" }
+    },
+    {
+      kind: "choose_cards",
+      zone: "library",
+      player: "controller",
+      min: 0,
+      max: 1,
+      prompt: "Choose up to one Instant card",
+      storeKey: "control-then-replacement:selected",
+      typeFilter: ["Instant"]
+    },
+    {
+      kind: "shuffle_zone",
+      zone: "library",
+      player: "controller",
+      topCardFromKey: "control-then-replacement:selected"
+    }
   ],
   continuousEffects: [],
   replacementEffects: []
@@ -333,35 +380,21 @@ describe("stack/resolve pipeline choice integration", () => {
     state.stack = [stackItem];
 
     const firstResolve = resolveTopOfStack(state, new Rng(state.rngSeed));
-    expect(firstResolve.pendingChoice?.type).toBe("CHOOSE_CARDS");
-    if (firstResolve.pendingChoice?.type !== "CHOOSE_CARDS") {
-      throw new Error("expected CHOOSE_CARDS pending choice");
-    }
-
-    const chooseCards = processCommand(
-      firstResolve.state,
-      {
-        type: "MAKE_CHOICE",
-        payload: { type: "CHOOSE_CARDS", selected: [], min: 0, max: 1 }
-      },
-      new Rng(firstResolve.state.rngSeed)
-    );
-
-    expect(chooseCards.pendingChoice?.type).toBe("CHOOSE_REPLACEMENT");
-    if (chooseCards.pendingChoice?.type !== "CHOOSE_REPLACEMENT") {
+    expect(firstResolve.pendingChoice?.type).toBe("CHOOSE_REPLACEMENT");
+    if (firstResolve.pendingChoice?.type !== "CHOOSE_REPLACEMENT") {
       throw new Error("expected CHOOSE_REPLACEMENT pending choice");
     }
 
     const chooseReplacement = processCommand(
-      chooseCards.nextState,
+      firstResolve.state,
       {
         type: "MAKE_CHOICE",
         payload: { type: "CHOOSE_REPLACEMENT", replacementId: "replace-a" }
       },
-      new Rng(chooseCards.nextState.rngSeed)
+      new Rng(firstResolve.state.rngSeed)
     );
 
-    const shuffledEvents = [...chooseCards.newEvents, ...chooseReplacement.newEvents].filter(
+    const shuffledEvents = [...firstResolve.events, ...chooseReplacement.newEvents].filter(
       (event) => event.type === "SHUFFLED"
     );
 
@@ -467,14 +500,29 @@ describe("stack/resolve pipeline choice integration", () => {
     state.stack = [stackItem];
 
     const firstResolve = resolveTopOfStack(state, new Rng(state.rngSeed));
-    expect(firstResolve.pendingChoice?.type).toBe("CHOOSE_CARDS");
-    if (firstResolve.pendingChoice?.type !== "CHOOSE_CARDS") {
-      throw new Error("expected CHOOSE_CARDS pending choice");
+    expect(firstResolve.pendingChoice?.type).toBe("CHOOSE_REPLACEMENT");
+    if (firstResolve.pendingChoice?.type !== "CHOOSE_REPLACEMENT") {
+      throw new Error("expected CHOOSE_REPLACEMENT pending choice");
     }
 
-    expect(firstResolve.state.continuousEffects).toHaveLength(3);
+    expect(firstResolve.state.continuousEffects).toHaveLength(0);
+    expect(computeGameObject("obj-target", firstResolve.state).controller).toBe("p2");
+
+    const chooseReplacement = processCommand(
+      firstResolve.state,
+      {
+        type: "MAKE_CHOICE",
+        payload: { type: "CHOOSE_REPLACEMENT", replacementId: "replace-a" }
+      },
+      new Rng(firstResolve.state.rngSeed)
+    );
+
+    expect(chooseReplacement.pendingChoice).toBeNull();
+    expect(chooseReplacement.nextState.pendingChoice).toBeNull();
+    expect(chooseReplacement.nextState.stack).toHaveLength(0);
+    expect(chooseReplacement.nextState.continuousEffects).toHaveLength(3);
     expect(
-      firstResolve.state.continuousEffects.some(
+      chooseReplacement.nextState.continuousEffects.some(
         (effect) =>
           effect.appliesTo.kind === "object" &&
           effect.appliesTo.object.id === "obj-target" &&
@@ -482,44 +530,14 @@ describe("stack/resolve pipeline choice integration", () => {
       )
     ).toBe(true);
     expect(
-      firstResolve.state.continuousEffects.some(
+      chooseReplacement.nextState.continuousEffects.some(
         (effect) =>
           effect.appliesTo.kind === "object" &&
           effect.appliesTo.object.id === "obj-target" &&
-          effect.effect.kind === "grant_haste"
+          effect.effect.kind === "grant_keyword" &&
+          effect.effect.payload?.keyword === "haste"
       )
     ).toBe(true);
-    expect(computeGameObject("obj-target", firstResolve.state).controller).toBe("p1");
-
-    const chooseCards = processCommand(
-      firstResolve.state,
-      {
-        type: "MAKE_CHOICE",
-        payload: { type: "CHOOSE_CARDS", selected: [], min: 0, max: 1 }
-      },
-      new Rng(firstResolve.state.rngSeed)
-    );
-
-    expect(chooseCards.pendingChoice?.type).toBe("CHOOSE_REPLACEMENT");
-    if (chooseCards.pendingChoice?.type !== "CHOOSE_REPLACEMENT") {
-      throw new Error("expected CHOOSE_REPLACEMENT pending choice");
-    }
-    expect(chooseCards.nextState.continuousEffects).toHaveLength(3);
-    expect(computeGameObject("obj-target", chooseCards.nextState).controller).toBe("p1");
-
-    const chooseReplacement = processCommand(
-      chooseCards.nextState,
-      {
-        type: "MAKE_CHOICE",
-        payload: { type: "CHOOSE_REPLACEMENT", replacementId: "replace-a" }
-      },
-      new Rng(chooseCards.nextState.rngSeed)
-    );
-
-    expect(chooseReplacement.pendingChoice).toBeNull();
-    expect(chooseReplacement.nextState.pendingChoice).toBeNull();
-    expect(chooseReplacement.nextState.stack).toHaveLength(0);
-    expect(chooseReplacement.nextState.continuousEffects).toHaveLength(3);
     expect(computeGameObject("obj-target", chooseReplacement.nextState).controller).toBe("p1");
   });
 

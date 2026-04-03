@@ -16,7 +16,32 @@ export const brainstormCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: [{ id: "DRAW_CHOOSE_RETURN", drawAmount: 3, returnAmount: 2 }],
+  onResolve: [
+    { kind: "draw_cards", count: 3, player: "controller" },
+    {
+      kind: "choose_cards",
+      zone: "hand",
+      player: "controller",
+      min: 2,
+      max: 2,
+      prompt: "Choose 2 cards to put back on top of your library",
+      storeKey: "brainstorm:selected"
+    },
+    {
+      kind: "order_cards",
+      sourceKey: "brainstorm:selected",
+      prompt: "Order the chosen cards to put back on top",
+      storeKey: "brainstorm:ordered"
+    },
+    {
+      kind: "move_ordered_cards",
+      sourceKey: "brainstorm:ordered",
+      fromZone: "hand",
+      toZone: "library",
+      player: "controller",
+      placement: "top"
+    }
+  ],
   continuousEffects: [],
   replacementEffects: []
 };

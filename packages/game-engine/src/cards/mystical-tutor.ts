@@ -17,7 +17,22 @@ export const mysticalTutorCardDefinition: CardDefinition = {
   triggeredAbilities: [],
   activatedAbilities: [],
   onResolve: [
-    { id: "SEARCH_LIBRARY_SHUFFLE_TOP", typeFilter: ["Instant", "Sorcery"], min: 0, max: 1 }
+    {
+      kind: "choose_cards",
+      zone: "library",
+      player: "controller",
+      min: 0,
+      max: 1,
+      prompt: "Choose up to one Instant or Sorcery card",
+      storeKey: "mystical-tutor:selected",
+      typeFilter: ["Instant", "Sorcery"]
+    },
+    {
+      kind: "shuffle_zone",
+      zone: "library",
+      player: "controller",
+      topCardFromKey: "mystical-tutor:selected"
+    }
   ],
   continuousEffects: [],
   replacementEffects: []

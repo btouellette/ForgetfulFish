@@ -1,4 +1,5 @@
 import { cardRegistry } from "../cards";
+import { OnResolveRegistry } from "../stack/onResolveRegistry";
 import type { ActivatedAbilityAst, ManaAmount } from "../cards/abilityAst";
 import { getLegalCommands } from "../commands/validate";
 import { computeGameObject } from "../effects/continuous/layers";
@@ -110,7 +111,9 @@ function requireComputedObject(state: Readonly<GameState>, objectId: ObjectId): 
 
 function spellRequiresTargets(cardDefId: string): boolean {
   const cardDefinition = cardRegistry.get(cardDefId);
-  return cardDefinition?.onResolve.some((effect) => effect.id === "COUNTER_SPELL") ?? false;
+  return cardDefinition === undefined
+    ? false
+    : new OnResolveRegistry(cardDefinition.onResolve).requiresObjectTargets();
 }
 
 function isPureManaAbility(

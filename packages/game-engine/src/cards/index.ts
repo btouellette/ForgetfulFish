@@ -25,4 +25,4 @@ export { mysticalTutorCardDefinition };
 export { predictCardDefinition };
 export { rayOfCommandCardDefinition };
 export type { CardDefinition } from "./cardDefinition";
-export type { ResolveEffectId, ResolveEffectSpec } from "./resolveEffect";
+export type { ResolveEffectKind, ResolveEffectSpec } from "./resolveEffect";

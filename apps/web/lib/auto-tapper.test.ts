@@ -252,6 +252,98 @@ describe("auto-tapper helper", () => {
     expect(getAutoTapPlan(gameView, "spell-1")).toBeNull();
   });
 
+  it("allows auto-tap plans for battlefield-targeted spells when stack is empty", () => {
+    const gameView = createGameView({
+      viewer: {
+        id: "player-1",
+        life: 20,
+        manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
+        hand: [createCard("spell-1", "ray-of-command", { manaCost: { blue: 1, generic: 3 } })],
+        handCount: 1
+      },
+      objectPool: {
+        creature: {
+          id: "creature",
+          zcc: 0,
+          cardDefId: "merfolk-of-the-pearl-trident",
+          name: "Merfolk",
+          rulesText: "",
+          owner: "player-2",
+          controller: "player-2",
+          counters: {},
+          damage: 0,
+          tapped: false,
+          summoningSick: false,
+          attachments: [],
+          zone: { kind: "battlefield", scope: "shared" }
+        },
+        landA: createBattlefieldObject("landA", "island"),
+        landB: createBattlefieldObject("landB", "island"),
+        landC: createBattlefieldObject("landC", "island"),
+        landD: createBattlefieldObject("landD", "island")
+      },
+      legalActions: {
+        passPriority: { command: { type: "PASS_PRIORITY" } },
+        concede: { command: { type: "CONCEDE" } },
+        choice: null,
+        hand: {},
+        battlefield: {
+          landA: [
+            {
+              type: "ACTIVATE_ABILITY",
+              commandBase: { type: "ACTIVATE_ABILITY", sourceId: "landA", abilityIndex: 0 },
+              requiresTargets: false,
+              isManaAbility: true,
+              manaProduced: { blue: 1 },
+              blocksAutoPass: false
+            }
+          ],
+          landB: [
+            {
+              type: "ACTIVATE_ABILITY",
+              commandBase: { type: "ACTIVATE_ABILITY", sourceId: "landB", abilityIndex: 0 },
+              requiresTargets: false,
+              isManaAbility: true,
+              manaProduced: { colorless: 1 },
+              blocksAutoPass: false
+            }
+          ],
+          landC: [
+            {
+              type: "ACTIVATE_ABILITY",
+              commandBase: { type: "ACTIVATE_ABILITY", sourceId: "landC", abilityIndex: 0 },
+              requiresTargets: false,
+              isManaAbility: true,
+              manaProduced: { colorless: 1 },
+              blocksAutoPass: false
+            }
+          ],
+          landD: [
+            {
+              type: "ACTIVATE_ABILITY",
+              commandBase: { type: "ACTIVATE_ABILITY", sourceId: "landD", abilityIndex: 0 },
+              requiresTargets: false,
+              isManaAbility: true,
+              manaProduced: { colorless: 1 },
+              blocksAutoPass: false
+            }
+          ]
+        },
+        hasOtherBlockingActions: false
+      }
+    });
+
+    expect(getAutoTapPlan(gameView, "spell-1")).toEqual({
+      requiresTargets: true,
+      activations: [
+        { sourceId: "landA", abilityIndex: 0 },
+        { sourceId: "landB", abilityIndex: 0 },
+        { sourceId: "landC", abilityIndex: 0 },
+        { sourceId: "landD", abilityIndex: 0 }
+      ]
+    });
+  });
+
   it("caps auto-tap search work for large battlefields", () => {
     const battlefield: PlayerGameView["legalActions"]["battlefield"] = {};
     const objectPool: PlayerGameView["objectPool"] = {};

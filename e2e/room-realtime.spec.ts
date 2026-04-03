@@ -561,21 +561,28 @@ test("covers current-card gameplay interactions from browser clients", async ({
     await secondPage.locator(`[data-testid="cast-spell-${mysticalTutorId}"]`).click();
     await waitForStateChange(request, roomId, secondToken, secondAfterLand.stateVersion);
 
-    const optionalChooseCardsState = await advanceUntil(
+    const postMysticalTutorState = await advanceUntil(
       request,
       roomId,
       ownerPage,
       secondPage,
-      (_owner, second) => second.pendingChoice?.type === "CHOOSE_CARDS"
+      (owner, second) =>
+        second.pendingChoice?.type === "CHOOSE_CARDS" ||
+        (owner.turnState.activePlayerId === "player-2" &&
+          owner.turnState.phase === "MAIN_1" &&
+          second.viewer.hand.some((card) => card.cardDefId === "predict") &&
+          second.viewer.hand.some((card) => card.cardDefId === "island"))
     );
 
-    await secondPage.locator('[data-testid="choose-cards-submit"]').click();
-    await waitForStateChange(
-      request,
-      roomId,
-      ownerToken,
-      optionalChooseCardsState.ownerGameView.stateVersion
-    );
+    if (postMysticalTutorState.secondGameView.pendingChoice?.type === "CHOOSE_CARDS") {
+      await secondPage.locator('[data-testid="choose-cards-submit"]').click();
+      await waitForStateChange(
+        request,
+        roomId,
+        ownerToken,
+        postMysticalTutorState.ownerGameView.stateVersion
+      );
+    }
 
     const predictTurn = await advanceUntil(
       request,

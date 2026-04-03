@@ -1,4 +1,4 @@
-import { cardRegistry } from "@forgetful-fish/game-engine";
+import { cardRegistry, OnResolveRegistry } from "@forgetful-fish/game-engine";
 import type { PlayerGameView } from "@forgetful-fish/realtime-contract";
 
 type ManaPool = PlayerGameView["viewer"]["manaPool"];
@@ -77,15 +77,28 @@ function hasSufficientManaPool(
 
 function spellRequiresTargets(cardDefId: string): boolean {
   const cardDefinition = cardRegistry.get(cardDefId);
-  return cardDefinition?.onResolve.some((effect) => effect.id === "COUNTER_SPELL") ?? false;
+  return cardDefinition === undefined
+    ? false
+    : new OnResolveRegistry(cardDefinition.onResolve).requiresObjectTargets();
 }
 
 function hasAvailableTarget(gameView: Readonly<PlayerGameView>, cardDefId: string): boolean {
-  if (!spellRequiresTargets(cardDefId)) {
+  const cardDefinition = cardRegistry.get(cardDefId);
+  if (cardDefinition === undefined) {
+    return false;
+  }
+
+  const registry = new OnResolveRegistry(cardDefinition.onResolve);
+  if (!registry.requiresObjectTargets()) {
     return true;
   }
 
-  return gameView.stack.length > 0;
+  const hasStackTarget = registry.requiresStackObjectTargets() ? gameView.stack.length > 0 : false;
+  const hasBattlefieldTarget = registry.requiresBattlefieldObjectTargets()
+    ? Object.values(gameView.objectPool).some((object) => object.zone.kind === "battlefield")
+    : false;
+
+  return hasStackTarget || hasBattlefieldTarget;
 }
 
 function getAvailableManaAbilityGroups(gameView: Readonly<PlayerGameView>): ManaAbilityOption[][] {

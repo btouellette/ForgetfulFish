@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { CardDefinition } from "../../src/cards/cardDefinition";
 import { cardRegistry } from "../../src/cards";
 import { processCommand } from "../../src/engine/processCommand";
+import { computeGameObject } from "../../src/effects/continuous/layers";
 import type { GameMode } from "../../src/mode/gameMode";
 import { Rng } from "../../src/rng/rng";
 import type { GameObject } from "../../src/state/gameObject";
@@ -41,6 +42,25 @@ const merfolkOfThePearlTridentDefinition: CardDefinition = {
   power: 1,
   toughness: 1,
   keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [],
+  onResolve: [],
+  continuousEffects: [],
+  replacementEffects: []
+};
+
+const hasteMerfolkDefinition: CardDefinition = {
+  id: "haste-merfolk-cast-test",
+  name: "Haste Merfolk",
+  manaCost: { blue: 1 },
+  typeLine: ["Creature"],
+  subtypes: [{ kind: "creature_type", value: "Merfolk" }],
+  color: ["blue"],
+  supertypes: [],
+  power: 1,
+  toughness: 1,
+  keywords: [{ kind: "keyword", keyword: "haste" }],
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
@@ -235,6 +255,38 @@ describe("engine/cast", () => {
     const battlefield =
       secondPass.nextState.zones.get(zoneKey({ kind: "battlefield", scope: "shared" })) ?? [];
     expect(battlefield).toContain("obj-merfolk");
+    expect(secondPass.nextState.objectPool.get("obj-merfolk")?.summoningSick).toBe(true);
+  });
+
+  it("keeps native-haste creatures attack-ready through the computed view on entry", () => {
+    cardRegistry.set(hasteMerfolkDefinition.id, hasteMerfolkDefinition);
+
+    const base = createInitialGameState("p1", "p2", {
+      id: "cast-haste-creature",
+      rngSeed: "seed-cast-haste-creature"
+    });
+    const state = withBlueMana(base, "p1", 1);
+    setupPriorityAndMainPhase(state, "p1");
+    putInHand(state, "p1", createCardObject("obj-haste-merfolk", hasteMerfolkDefinition.id, "p1"));
+
+    const cast = processCommand(
+      state,
+      { type: "CAST_SPELL", cardId: "obj-haste-merfolk", targets: [] },
+      new Rng(state.rngSeed)
+    );
+    const firstPass = processCommand(
+      cast.nextState,
+      { type: "PASS_PRIORITY" },
+      new Rng(state.rngSeed)
+    );
+    const secondPass = processCommand(
+      firstPass.nextState,
+      { type: "PASS_PRIORITY" },
+      new Rng(state.rngSeed)
+    );
+
+    expect(secondPass.nextState.objectPool.get("obj-haste-merfolk")?.summoningSick).toBe(true);
+    expect(computeGameObject("obj-haste-merfolk", secondPass.nextState).summoningSick).toBe(false);
   });
 
   it("rejects cast with insufficient mana", () => {

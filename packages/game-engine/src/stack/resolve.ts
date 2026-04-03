@@ -137,6 +137,24 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     mutable.nextActions.push(action);
   };
 
+  let activeStackItem = stackItem;
+
+  const writeScratch = (entries: Record<string, unknown>): void => {
+    activeStackItem = {
+      ...activeStackItem,
+      effectContext: {
+        ...activeStackItem.effectContext,
+        whiteboard: {
+          ...activeStackItem.effectContext.whiteboard,
+          scratch: {
+            ...activeStackItem.effectContext.whiteboard.scratch,
+            ...entries
+          }
+        }
+      }
+    };
+  };
+
   const pauseWithChoice = (
     choice: NonNullable<GameState["pendingChoice"]>,
     updatedTopItem: GameState["stack"][number]
@@ -205,11 +223,12 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
 
         const effectResult = resolveOnResolveEffect(effectSpec, {
           state,
-          stackItem,
+          stackItem: activeStackItem,
           cardDefinition,
           rng,
           mutable,
           effects: onResolveRegistry,
+          writeScratch,
           enqueueAction,
           emit,
           pauseWithChoice
@@ -304,7 +323,13 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
 
   const movedObject = bumpZcc({
     ...object,
-    zone: destinationZone
+    zone: destinationZone,
+    summoningSick:
+      object.zone.kind !== "battlefield" &&
+      destinationZone.kind === "battlefield" &&
+      cardDefinition.typeLine.includes("Creature")
+        ? true
+        : object.summoningSick
   });
   mutable.nextObjectPool.set(movedObject.id, movedObject);
 

@@ -16,7 +16,24 @@ export const rayOfCommandCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: [{ id: "GAIN_CONTROL_UNTAP_MUST_ATTACK" }],
+  onResolve: [
+    { kind: "set_control_of_target", target: "first_object_target", duration: "until_end_of_turn" },
+    { kind: "untap_target", target: "first_object_target" },
+    {
+      kind: "add_continuous_effect_to_target",
+      target: "first_object_target",
+      layer: 6,
+      duration: "until_end_of_turn",
+      effect: { kind: "grant_keyword", payload: { keyword: "haste" } }
+    },
+    {
+      kind: "add_continuous_effect_to_target",
+      target: "first_object_target",
+      layer: 6,
+      duration: "until_end_of_turn",
+      effect: { kind: "must_attack" }
+    }
+  ],
   continuousEffects: [],
   replacementEffects: []
 };

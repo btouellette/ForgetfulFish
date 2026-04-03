@@ -390,6 +390,68 @@ describe("view/projection", () => {
     expect(view.legalActions.hasOtherBlockingActions).toBe(false);
   });
 
+  it("marks countermagic spells as requiring targets via resolve capabilities", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "projection-memory-lapse-targeting",
+      rngSeed: "projection-memory-lapse-targeting-seed"
+    });
+
+    state.turnState.phase = "MAIN_1";
+    state.turnState.step = "MAIN_1";
+    state.turnState.activePlayerId = "p1";
+    state.turnState.priorityState.playerWithPriority = "p1";
+    state.players[0].priority = true;
+    state.players[1].priority = false;
+    state.players[0].manaPool.blue = 1;
+    state.players[0].manaPool.colorless = 1;
+
+    addObject(
+      state,
+      createObject(
+        "hand-memory-lapse",
+        "p1",
+        { kind: "hand", scope: "player", playerId: "p1" },
+        { cardDefId: "memory-lapse" }
+      )
+    );
+
+    addObject(
+      state,
+      createObject(
+        "stack-target",
+        "p2",
+        { kind: "stack", scope: "shared" },
+        { cardDefId: "brainstorm" }
+      )
+    );
+
+    state.stack.push({
+      id: "stack-item-target",
+      object: { id: "stack-target", zcc: 0 },
+      controller: "p2",
+      targets: [],
+      effectContext: {
+        stackItemId: "stack-item-target",
+        source: { id: "stack-target", zcc: 0 },
+        controller: "p2",
+        targets: [],
+        cursor: { kind: "start" },
+        whiteboard: { actions: [], scratch: {} }
+      }
+    });
+
+    const view = projectPlayerView(state, "p1");
+
+    expect(view.legalActions.hand["hand-memory-lapse"]).toEqual([
+      {
+        type: "CAST_SPELL",
+        commandBase: { type: "CAST_SPELL", cardId: "hand-memory-lapse" },
+        requiresTargets: true,
+        availableModes: []
+      }
+    ]);
+  });
+
   it("projects computed controller and legal actions for continuously stolen permanents", () => {
     const state = createInitialGameState("p1", "p2", {
       id: "projection-derived-controller",

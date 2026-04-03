@@ -16,7 +16,7 @@ export const accumulatedKnowledgeCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: [{ id: "DRAW_BY_GRAVEYARD_COPY_COUNT", bonus: 1 }],
+  onResolve: [{ kind: "draw_by_graveyard_self_count", bonus: 1 }],
   continuousEffects: [],
   replacementEffects: []
 };
