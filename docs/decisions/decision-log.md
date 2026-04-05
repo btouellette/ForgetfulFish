@@ -111,6 +111,14 @@
   - Zustand stores session/authoritative gameplay state used by React UI surfaces.
   - High-frequency interaction and visual effects (drag/hover/targeting/FX) remain non-persistent refs + RAF state outside Zustand.
 
+## 2026-04-05 Phase 3 Resolve/Keyword Cutover
+
+- `CardDefinition.onResolve` now uses primitive `kind`-based resolve specs instead of monolithic bespoke resolve-effect IDs.
+- Stack resolution interprets those primitive specs directly and preserves the existing whiteboard/pause-resume model rather than compiling through a legacy adapter path.
+- Projection and web consumers query resolve capabilities through `OnResolveRegistry` instead of branching on raw resolve-effect IDs.
+- Haste is now modeled as a real keyword in the computed object view; granted haste uses keyword grants, and summoning-sickness legality derives from keyword presence rather than a haste-specific runtime toggle.
+- Creatures entering the battlefield become summoning sick through centralized battlefield-entry handling, with computed haste clearing that restriction in the derived view.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.
