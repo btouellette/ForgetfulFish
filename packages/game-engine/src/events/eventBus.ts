@@ -13,19 +13,23 @@ function collectTriggeredAbilities(
   events: readonly GameEvent[]
 ): TriggeredAbility[] {
   const queued: TriggeredAbility[] = [];
+  const triggeredAbilitiesByObjectId = new Map<string, TriggerDefinitionAst[]>();
 
-  const getTriggeredAbilities = (objectId: string): TriggerDefinitionAst[] =>
-    computeGameObject(objectId, state).abilities.filter(
-      (ability): ability is TriggerDefinitionAst => ability.kind === "trigger"
+  for (const object of state.objectPool.values()) {
+    if (object.zone.kind !== "battlefield") {
+      continue;
+    }
+
+    triggeredAbilitiesByObjectId.set(
+      object.id,
+      computeGameObject(object.id, state).abilities.filter(
+        (ability): ability is TriggerDefinitionAst => ability.kind === "trigger"
+      )
     );
+  }
 
   for (const event of events) {
-    for (const object of state.objectPool.values()) {
-      if (object.zone.kind !== "battlefield") {
-        continue;
-      }
-
-      const triggeredAbilities = getTriggeredAbilities(object.id);
+    for (const [objectId, triggeredAbilities] of triggeredAbilitiesByObjectId.entries()) {
       if (triggeredAbilities.length === 0) {
         continue;
       }
@@ -36,7 +40,7 @@ function collectTriggeredAbilities(
         }
 
         queued.push({
-          id: `${object.id}:${trigger.event}:${event.seq}:${triggerIndex}`
+          id: `${objectId}:${trigger.event}:${event.seq}:${triggerIndex}`
         });
       });
     }
