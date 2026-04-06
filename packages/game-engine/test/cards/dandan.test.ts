@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { cardRegistry } from "../../src/cards";
 import type { AbilityAst } from "../../src/cards/abilityAst";
+import type { CardDefinition } from "../../src/cards/cardDefinition";
 import { dandanCardDefinition } from "../../src/cards/dandan";
 import { mindBendCardDefinition } from "../../src/cards/mind-bend";
 import { crystalSprayCardDefinition } from "../../src/cards/crystal-spray";
@@ -13,6 +14,26 @@ import { createInitialGameState, type GameState } from "../../src/state/gameStat
 import { createInitialPriorityState } from "../../src/state/priorityState";
 import { zoneKey } from "../../src/state/zones";
 import { assertStateInvariants } from "../helpers/invariants";
+
+const testSwampDefinition: CardDefinition = {
+  id: "test-swamp-land",
+  name: "Test Swamp",
+  manaCost: {},
+  rulesText: "",
+  typeLine: ["Land"],
+  subtypes: [{ kind: "basic_land_type", value: "Swamp" }],
+  color: [],
+  supertypes: [],
+  power: null,
+  toughness: null,
+  keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [],
+  onResolve: [],
+  continuousEffects: [],
+  replacementEffects: []
+};
 
 function makeCard(
   id: string,
@@ -104,6 +125,7 @@ describe("cards/dandan", () => {
     expect(dandanCardDefinition.id).toBe("dandan");
     expect(dandanCardDefinition.manaCost).toEqual({ blue: 2 });
     expect(dandanCardDefinition.typeLine).toEqual(["Creature"]);
+    expect(dandanCardDefinition.subtypes).toEqual([{ kind: "creature_type", value: "Fish" }]);
     expect(dandanCardDefinition.color).toEqual(["blue"]);
     expect(dandanCardDefinition.power).toBe(4);
     expect(dandanCardDefinition.toughness).toBe(1);
@@ -169,6 +191,7 @@ describe("cards/dandan", () => {
   it("updates all three Island tokens when Mind Bend rewrites Dandan", () => {
     cardRegistry.set(dandanCardDefinition.id, dandanCardDefinition);
     cardRegistry.set(mindBendCardDefinition.id, mindBendCardDefinition);
+    cardRegistry.set(testSwampDefinition.id, testSwampDefinition);
     const state = createInitialGameState("p1", "p2", {
       id: "dandan-mind-bend-test",
       rngSeed: "dandan-mind-bend-seed"
@@ -186,6 +209,13 @@ describe("cards/dandan", () => {
     putOnBattlefield(
       state,
       makeCard("obj-support-island", "island", "p1", { kind: "battlefield", scope: "shared" })
+    );
+    putOnBattlefield(
+      state,
+      makeCard("obj-support-swamp", testSwampDefinition.id, "p1", {
+        kind: "battlefield",
+        scope: "shared"
+      })
     );
     putInHand(
       state,

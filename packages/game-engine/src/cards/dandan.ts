@@ -7,7 +7,7 @@ export const dandanCardDefinition: CardDefinition = {
   rulesText:
     "Islandwalk. Dandan can't attack unless defending player controls an Island. When you control no Islands, sacrifice Dandan.",
   typeLine: ["Creature"],
-  subtypes: [],
+  subtypes: [{ kind: "creature_type", value: "Fish" }],
   color: ["blue"],
   supertypes: [],
   power: 4,
