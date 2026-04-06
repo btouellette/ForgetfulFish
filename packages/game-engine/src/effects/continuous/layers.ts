@@ -10,6 +10,7 @@ import type { GameState } from "../../state/gameState";
 import type { ObjectRef } from "../../state/objectRef";
 import { zoneKey } from "../../state/zones";
 import { applyTextChangeToAbilities, isTextChangePayload } from "./textChange";
+import { BASIC_LAND_TYPE_VALUES } from "./textChange";
 
 export const LAYERS = {
   COPY: 1,
@@ -232,13 +233,7 @@ function toGrantedKeywordAbility(
 }
 
 function isBasicLandType(value: unknown): value is BasicLandType {
-  return (
-    value === "Plains" ||
-    value === "Island" ||
-    value === "Swamp" ||
-    value === "Mountain" ||
-    value === "Forest"
-  );
+  return BASIC_LAND_TYPE_VALUES.includes(value as BasicLandType);
 }
 
 function hasKeywordAbility(
