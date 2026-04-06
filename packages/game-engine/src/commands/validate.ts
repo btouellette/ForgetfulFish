@@ -106,7 +106,8 @@ function canObjectAttack(
   );
   if (
     attackRestrictions.some(
-      (ability) => !defendingPlayerControlsLandType(state, playerId, ability.condition.landType)
+      (ability) =>
+        !defendingPlayerControlsLandType(state, playerId, ability.condition.landType, definitionFor)
     )
   ) {
     return false;
@@ -118,7 +119,8 @@ function canObjectAttack(
 function defendingPlayerControlsLandType(
   state: Readonly<GameState>,
   attackingPlayerId: string,
-  landType: BasicLandType
+  landType: BasicLandType,
+  definitionFor: (cardDefId: string) => CardDefinition | undefined
 ): boolean {
   const defendingPlayer = state.players.find((player) => player.id !== attackingPlayerId);
   if (defendingPlayer === undefined) {
@@ -134,7 +136,7 @@ function defendingPlayerControlsLandType(
       return false;
     }
 
-    const definition = cardRegistry.get(object.cardDefId);
+    const definition = definitionFor(object.cardDefId);
     if (definition === undefined) {
       return false;
     }
