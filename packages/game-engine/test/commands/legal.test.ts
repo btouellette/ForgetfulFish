@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { cardRegistry } from "../../src/cards";
 import type { CardDefinition } from "../../src/cards/cardDefinition";
 import { dandanCardDefinition } from "../../src/cards/dandan";
-import { getLegalCommands } from "../../src/commands/validate";
 import { addContinuousEffect, LAYERS } from "../../src/effects/continuous/layers";
+import { getLegalCommands } from "../../src/commands/validate";
 import type { GameObject } from "../../src/state/gameObject";
 import {
   createInitialGameState,
@@ -253,6 +253,40 @@ describe("commands/legal", () => {
 
     const attackersCommands = getLegalCommands(attackersState);
     expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(false);
+  });
+
+  it("includes DECLARE_ATTACKERS when the defending player's Island is controlled via a continuous effect", () => {
+    cardRegistry.set(dandanCardDefinition.id, dandanCardDefinition);
+
+    const attackersState = createInitialGameState("p1", "p2", {
+      id: "legal-dandan-stolen-island",
+      rngSeed: "seed-legal-dandan-stolen-island"
+    });
+    attackersState.turnState.phase = "DECLARE_ATTACKERS";
+    attackersState.turnState.step = "DECLARE_ATTACKERS";
+    attackersState.turnState.activePlayerId = "p1";
+    setPriority(attackersState, "p1");
+    putOnBattlefield(attackersState, "p1", {
+      id: "obj-dandan",
+      cardDefId: dandanCardDefinition.id
+    });
+    putOnBattlefield(attackersState, "p1", {
+      id: "obj-island",
+      cardDefId: "island"
+    });
+
+    const withControlEffect = addContinuousEffect(attackersState, {
+      id: "effect-give-opponent-island",
+      source: { id: "source-island", zcc: 0 },
+      layer: LAYERS.CONTROL,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", object: { id: "obj-island", zcc: 0 } },
+      effect: { kind: "set_controller", payload: { playerId: "p2" } }
+    });
+
+    const attackersCommands = getLegalCommands(withControlEffect);
+    expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(true);
   });
 
   it("includes DECLARE_ATTACKERS when control of an opposing creature changes continuously", () => {

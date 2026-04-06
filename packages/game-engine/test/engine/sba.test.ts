@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { cardRegistry } from "../../src/cards";
 import type { CardDefinition } from "../../src/cards/cardDefinition";
 import { dandanCardDefinition } from "../../src/cards/dandan";
+import { addContinuousEffect, LAYERS } from "../../src/effects/continuous/layers";
 import { applySBAs, checkSBAs, runSBALoop, type SBAResult } from "../../src/engine/sba";
 import type { GameObject } from "../../src/state/gameObject";
 import { createInitialGameState, type GameState } from "../../src/state/gameState";
@@ -194,8 +195,35 @@ describe("engine/sba", () => {
     const graveyard =
       applied.state.zones.get(zoneKey({ kind: "graveyard", scope: "shared" })) ?? [];
 
-    expect(sbas).toContainEqual({ type: "SACRIFICE_WHEN_NO_LANDS", objectId: "obj-dandan" });
+    expect(sbas).toContainEqual({
+      type: "SACRIFICE_WHEN_NO_LAND_TYPE",
+      objectId: "obj-dandan",
+      landType: "Island"
+    });
     expect(graveyard).toContain("obj-dandan");
     expect(applied.events.some((event) => event.type === "ZONE_CHANGE")).toBe(true);
+  });
+
+  it("does not sacrifice Dandan when a controlling effect makes the player control an Island", () => {
+    cardRegistry.set(dandanCardDefinition.id, dandanCardDefinition);
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "sba-dandan-controlled-island",
+      rngSeed: "seed-sba-dandan-controlled-island"
+    });
+    putOnBattlefield(state, "obj-dandan", dandanCardDefinition.id, "p1");
+    putOnBattlefield(state, "obj-island", "island", "p2");
+
+    const withControlEffect = addContinuousEffect(state, {
+      id: "effect-control-island",
+      source: { id: "obj-dandan", zcc: 0 },
+      layer: LAYERS.CONTROL,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", object: { id: "obj-island", zcc: 0 } },
+      effect: { kind: "set_controller", payload: { playerId: "p1" } }
+    });
+
+    expect(checkSBAs(withControlEffect)).toEqual([]);
   });
 });

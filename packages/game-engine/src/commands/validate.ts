@@ -129,7 +129,7 @@ function defendingPlayerControlsLandType(
   const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
 
   return battlefield.some((objectId) => {
-    const object = state.objectPool.get(objectId);
+    const object = getEffectiveObject(state, objectId);
     if (object === undefined || object.controller !== defendingPlayer.id) {
       return false;
     }

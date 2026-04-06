@@ -1,5 +1,6 @@
 import { cardRegistry } from "../cards";
 import type { StaticAbilityAst } from "../cards/abilityAst";
+import { computeGameObject } from "../effects/continuous/layers";
 import { createEvent, type GameEvent } from "../events/event";
 import type { GameState } from "../state/gameState";
 import { type ObjectId, type PlayerId } from "../state/objectRef";
@@ -7,7 +8,7 @@ import { bumpZcc, type ZoneRef, zoneKey } from "../state/zones";
 
 export type SBAResult =
   | { type: "DESTROY_ZERO_TOUGHNESS"; objectId: ObjectId }
-  | { type: "SACRIFICE_WHEN_NO_LANDS"; objectId: ObjectId }
+  | { type: "SACRIFICE_WHEN_NO_LAND_TYPE"; objectId: ObjectId; landType: string }
   | { type: "PLAYER_LOSES"; playerId: PlayerId; reason: string };
 
 export function checkSBAs(state: Readonly<GameState>): SBAResult[] {
@@ -32,7 +33,8 @@ export function checkSBAs(state: Readonly<GameState>): SBAResult[] {
       results.push({ type: "DESTROY_ZERO_TOUGHNESS", objectId });
     }
 
-    const sacrificeAbility = cardDefinition.staticAbilities.find(
+    const computedObject = computeGameObject(objectId, state);
+    const sacrificeAbility = computedObject.abilities.find(
       (
         ability
       ): ability is Extract<StaticAbilityAst, { staticKind: "when_no_islands_sacrifice" }> =>
@@ -40,9 +42,13 @@ export function checkSBAs(state: Readonly<GameState>): SBAResult[] {
     );
     if (
       sacrificeAbility !== undefined &&
-      !controllerControlsLandType(state, object.controller, sacrificeAbility.landType)
+      !controllerControlsLandType(state, computedObject.controller, sacrificeAbility.landType)
     ) {
-      results.push({ type: "SACRIFICE_WHEN_NO_LANDS", objectId });
+      results.push({
+        type: "SACRIFICE_WHEN_NO_LAND_TYPE",
+        objectId,
+        landType: sacrificeAbility.landType
+      });
     }
   }
 
@@ -80,7 +86,7 @@ export function applySBAs(
     sbas
       .filter(
         (sba): sba is Extract<SBAResult, { objectId: ObjectId }> =>
-          sba.type === "DESTROY_ZERO_TOUGHNESS" || sba.type === "SACRIFICE_WHEN_NO_LANDS"
+          sba.type === "DESTROY_ZERO_TOUGHNESS" || sba.type === "SACRIFICE_WHEN_NO_LAND_TYPE"
       )
       .map((sba) => sba.objectId)
   );
@@ -221,7 +227,7 @@ function controllerControlsLandType(
   const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
 
   return battlefield.some((objectId) => {
-    const object = state.objectPool.get(objectId);
+    const object = computeGameObject(objectId, state);
     if (object === undefined || object.controller !== playerId) {
       return false;
     }
