@@ -50,9 +50,11 @@ export type ChooseModeSpec = {
   kind: "choose_mode";
   prompt: string;
   storeKey: ResolveStoredValueKey;
+  selectedLandTypeStoreKey?: ResolveStoredValueKey;
   modeSource:
     | { kind: "explicit"; modes: Mode[] }
     | { kind: "target_land_types"; target: ResolveTargetObjectSelector }
+    | { kind: "target_land_type_instances"; target: ResolveTargetObjectSelector }
     | { kind: "basic_land_types"; excludeStoreKey?: ResolveStoredValueKey };
 };
 
@@ -106,6 +108,7 @@ export type AddTextChangeEffectToTargetSpec = {
   duration: Duration;
   fromKey: ResolveStoredValueKey;
   toKey: ResolveStoredValueKey;
+  instanceKey?: ResolveStoredValueKey;
 };
 
 export type ShuffleZoneSpec = {
