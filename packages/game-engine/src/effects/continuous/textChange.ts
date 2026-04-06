@@ -1,7 +1,6 @@
 import type {
   AbilityAst,
   BasicLandType,
-  Color,
   ConditionAst,
   KeywordAbilityAst,
   StaticAbilityAst,
@@ -15,13 +14,10 @@ const BASIC_LAND_TYPES = new Set<BasicLandType>([
   "Mountain",
   "Forest"
 ]);
-const COLORS = new Set<Color>(["white", "blue", "black", "red", "green"]);
 
 export type TextChangePayload = {
   fromLandType?: BasicLandType;
   toLandType?: BasicLandType;
-  fromColor?: Color;
-  toColor?: Color;
 };
 
 function rewriteLandType(
@@ -37,18 +33,6 @@ function rewriteLandType(
   }
 
   return payload.toLandType;
-}
-
-function _rewriteColor(color: Color, payload: Readonly<TextChangePayload>): Color {
-  if (payload.toColor === undefined) {
-    return color;
-  }
-
-  if (payload.fromColor !== undefined && color !== payload.fromColor) {
-    return color;
-  }
-
-  return payload.toColor;
 }
 
 function rewriteCondition(
@@ -132,9 +116,7 @@ export function isTextChangePayload(payload: unknown): payload is TextChangePayl
   return (
     (record.fromLandType === undefined ||
       BASIC_LAND_TYPES.has(record.fromLandType as BasicLandType)) &&
-    (record.toLandType === undefined || BASIC_LAND_TYPES.has(record.toLandType as BasicLandType)) &&
-    (record.fromColor === undefined || COLORS.has(record.fromColor as Color)) &&
-    (record.toColor === undefined || COLORS.has(record.toColor as Color))
+    (record.toLandType === undefined || BASIC_LAND_TYPES.has(record.toLandType as BasicLandType))
   );
 }
 

@@ -265,4 +265,28 @@ describe("effects/continuous/text", () => {
       landType: "Island"
     });
   });
+
+  it("ignores unsupported color-only text change payloads", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "text-unsupported-color-payload-test",
+      rngSeed: "text-unsupported-color-payload-seed"
+    });
+    state.objectPool.set(
+      "obj-a",
+      makeObject("obj-a", "memory-lapse", [
+        { kind: "keyword", keyword: "landwalk", landType: "Island" }
+      ])
+    );
+
+    const withTextChange = addContinuousEffect(
+      state,
+      makeTextChangeEffect("effect-a", 1, { fromColor: "blue", toColor: "red" })
+    );
+
+    expect(computeGameObject("obj-a", withTextChange).abilities).toContainEqual({
+      kind: "keyword",
+      keyword: "landwalk",
+      landType: "Island"
+    });
+  });
 });
