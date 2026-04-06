@@ -1,3 +1,4 @@
+import type { ActivatedAbilityAst } from "../cards/abilityAst";
 import { cardRegistry } from "../cards";
 import { computeGameObject } from "../effects/continuous/layers";
 import { createEvent, type GameEvent } from "../events/event";
@@ -471,10 +472,12 @@ export function tapForMana(
 
   const manaAbility =
     abilityIndex === undefined
-      ? definition?.activatedAbilities.find(
-          (ability) => ability.isManaAbility && ability.effect.kind === "add_mana"
-        )
-      : definition?.activatedAbilities[abilityIndex];
+      ? effectiveObject.abilities
+          .filter((ability): ability is ActivatedAbilityAst => ability.kind === "activated")
+          .find((ability) => ability.isManaAbility && ability.effect.kind === "add_mana")
+      : effectiveObject.abilities.filter(
+          (ability): ability is ActivatedAbilityAst => ability.kind === "activated"
+        )[abilityIndex];
 
   if (manaAbility === undefined) {
     if (abilityIndex !== undefined) {

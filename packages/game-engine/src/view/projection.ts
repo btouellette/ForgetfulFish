@@ -133,10 +133,9 @@ function getActivatedAbility(
     return undefined;
   }
 
-  const sourceObject = computeGameObject(sourceId, state);
-
-  const cardDefinition = cardRegistry.get(sourceObject.cardDefId);
-  return cardDefinition?.activatedAbilities[abilityIndex];
+  return computeGameObject(sourceId, state).abilities.filter(
+    (ability): ability is ActivatedAbilityAst => ability.kind === "activated"
+  )[abilityIndex];
 }
 
 function addManaPool(base: Readonly<ManaPool>, mana: Readonly<ManaAmount>): ManaPool {
