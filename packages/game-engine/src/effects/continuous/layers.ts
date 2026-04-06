@@ -218,8 +218,16 @@ function hasKeywordAbility(
   );
 }
 
-function findDefendingPlayerId(state: Readonly<GameState>, attackerId: string): string | null {
-  const defender = state.players.find((player) => player.id !== attackerId);
+function findDefendingPlayerId(
+  state: Readonly<GameState>,
+  attackerPlayerId: string
+): string | null {
+  const attackerExists = state.players.some((player) => player.id === attackerPlayerId);
+  if (!attackerExists) {
+    return null;
+  }
+
+  const defender = state.players.find((player) => player.id !== attackerPlayerId);
   return defender?.id ?? null;
 }
 
@@ -232,36 +240,38 @@ function conditionAppliesToView(
     return true;
   }
 
-  if (condition.kind === "defender_controls_land_type") {
-    const defenderId = findDefendingPlayerId(state, view.controller);
-    if (defenderId === null) {
-      return false;
-    }
-
-    const battlefieldZone = state.mode.resolveZone(state, "battlefield", defenderId);
-    const battlefieldIds = state.zones.get(zoneKey(battlefieldZone));
-    if (battlefieldIds === undefined) {
-      return false;
-    }
-
-    return battlefieldIds.some((objectId) => {
-      const object = state.objectPool.get(objectId);
-      if (object === undefined) {
+  switch (condition.kind) {
+    case "defender_controls_land_type": {
+      const defenderId = findDefendingPlayerId(state, view.controller);
+      if (defenderId === null) {
         return false;
       }
 
-      const definition = cardRegistry.get(object.cardDefId);
-      if (definition === undefined) {
+      const battlefieldZone = state.mode.resolveZone(state, "battlefield", defenderId);
+      const battlefieldIds = state.zones.get(zoneKey(battlefieldZone));
+      if (battlefieldIds === undefined) {
         return false;
       }
 
-      return definition.subtypes.some(
-        (subtype) => subtype.kind === "basic_land_type" && subtype.value === condition.landType
-      );
-    });
+      return battlefieldIds.some((objectId) => {
+        const object = state.objectPool.get(objectId);
+        if (object === undefined || object.controller !== defenderId) {
+          return false;
+        }
+
+        const definition = cardRegistry.get(object.cardDefId);
+        if (definition === undefined) {
+          return false;
+        }
+
+        return definition.subtypes.some(
+          (subtype) => subtype.kind === "basic_land_type" && subtype.value === condition.landType
+        );
+      });
+    }
+    default:
+      throw new Error(`Unhandled condition kind: ${condition.kind satisfies never}`);
   }
-
-  return false;
 }
 
 function requireBaseObject(objectId: string, state: Readonly<GameState>): DerivedGameObjectView {

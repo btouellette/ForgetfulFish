@@ -149,4 +149,52 @@ describe("effects/continuous/compute", () => {
 
     expect(computeGameObject("obj-a", withConditionedEffect).controller).toBe("p1");
   });
+
+  it("does not count the attacker's own land toward defender land conditions", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "compute-condition-defender-only-test",
+      rngSeed: "compute-condition-defender-only-seed"
+    });
+    state.objectPool.set("obj-a", makeObject("obj-a", "memory-lapse"));
+    state.objectPool.set("obj-attacker-island", {
+      ...makeObject("obj-attacker-island", "island"),
+      owner: "p1",
+      controller: "p1"
+    });
+    state.zones.set(zoneKey({ kind: "battlefield", scope: "shared" }), [
+      "obj-a",
+      "obj-attacker-island"
+    ]);
+
+    const withConditionedEffect = addContinuousEffect(state, {
+      ...makeControlEffect("effect-conditioned", 1, "p2"),
+      condition: { kind: "defender_controls_land_type", landType: "Island" }
+    });
+
+    expect(computeGameObject("obj-a", withConditionedEffect).controller).toBe("p1");
+  });
+
+  it("fails closed when the conditioned object's controller is not a real player", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "compute-condition-invalid-controller-test",
+      rngSeed: "compute-condition-invalid-controller-seed"
+    });
+    state.objectPool.set("obj-a", {
+      ...makeObject("obj-a", "memory-lapse"),
+      controller: "missing-player"
+    });
+    state.objectPool.set("obj-island", {
+      ...makeObject("obj-island", "island"),
+      owner: "p2",
+      controller: "p2"
+    });
+    state.zones.set(zoneKey({ kind: "battlefield", scope: "shared" }), ["obj-a", "obj-island"]);
+
+    const withConditionedEffect = addContinuousEffect(state, {
+      ...makeControlEffect("effect-conditioned", 1, "p2"),
+      condition: { kind: "defender_controls_land_type", landType: "Island" }
+    });
+
+    expect(computeGameObject("obj-a", withConditionedEffect).controller).toBe("missing-player");
+  });
 });
