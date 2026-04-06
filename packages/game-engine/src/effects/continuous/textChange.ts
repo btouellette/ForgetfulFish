@@ -7,13 +7,15 @@ import type {
   TriggerDefinitionAst
 } from "../../cards/abilityAst";
 
-const BASIC_LAND_TYPES = new Set<BasicLandType>([
+export const BASIC_LAND_TYPE_VALUES: readonly BasicLandType[] = [
   "Plains",
   "Island",
   "Swamp",
   "Mountain",
   "Forest"
-]);
+] as const;
+
+const BASIC_LAND_TYPES = new Set<BasicLandType>(BASIC_LAND_TYPE_VALUES);
 
 export type TextChangePayload = {
   fromLandType?: BasicLandType;
@@ -125,4 +127,39 @@ export function applyTextChangeToAbilities(
   payload: Readonly<TextChangePayload>
 ): AbilityAst[] {
   return abilities.map((ability) => applyTextChangeToAbility(ability, payload));
+}
+
+export function listLandTypesInAbilities(
+  abilities: readonly Readonly<AbilityAst>[]
+): BasicLandType[] {
+  const landTypes = new Set<BasicLandType>();
+
+  for (const ability of abilities) {
+    switch (ability.kind) {
+      case "keyword":
+        if (ability.keyword === "landwalk") {
+          landTypes.add(ability.landType);
+        }
+        break;
+      case "static":
+        switch (ability.staticKind) {
+          case "cant_attack_unless":
+            landTypes.add(ability.condition.landType);
+            break;
+          case "when_no_islands_sacrifice":
+            landTypes.add(ability.landType);
+            break;
+        }
+        break;
+      case "trigger":
+        if (ability.condition !== undefined) {
+          landTypes.add(ability.condition.landType);
+        }
+        break;
+      case "activated":
+        break;
+    }
+  }
+
+  return [...landTypes];
 }
