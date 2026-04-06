@@ -37,6 +37,7 @@ import { computeGameObject, LAYERS } from "../../effects/continuous/layers";
 import {
   BASIC_LAND_TYPE_VALUES,
   isTextChangePayload,
+  listLandTypeInstancesInAbilities,
   listLandTypesInAbilities
 } from "../../effects/continuous/textChange";
 import type { GameState } from "../../state/gameState";
@@ -202,23 +203,16 @@ function readStoredString(
   return stored;
 }
 
+function readOptionalStoredString(
+  context: ResolveEffectHandlerContext,
+  key: string
+): string | null {
+  const stored = context.stackItem.effectContext.whiteboard.scratch[key];
+  return typeof stored === "string" ? stored : null;
+}
+
 function isBasicLandType(value: string): value is BasicLandType {
   return BASIC_LAND_TYPE_VALUES.includes(value as BasicLandType);
-}
-
-function shouldSkipRemainingOnResolveSteps(
-  context: ResolveEffectHandlerContext,
-  fromStepIndex: number
-): void {
-  context.writeScratch({ skipOnResolveFromStep: fromStepIndex });
-}
-
-function shouldSkipCurrentOnResolveStep(
-  context: ResolveEffectHandlerContext,
-  currentStepIndex: number
-): boolean {
-  const skipFromStep = context.stackItem.effectContext.whiteboard.scratch.skipOnResolveFromStep;
-  return typeof skipFromStep === "number" && currentStepIndex >= skipFromStep;
 }
 
 function resolveModes(spec: ChooseModeSpec, context: ResolveEffectHandlerContext) {
@@ -235,15 +229,25 @@ function resolveModes(spec: ChooseModeSpec, context: ResolveEffectHandlerContext
         computeGameObject(target.object.id, context.state).abilities
       ).map((landType) => ({ id: landType, label: landType }));
     }
+    case "target_land_type_instances": {
+      const target = resolveTargetObject(context, spec.modeSource.target);
+      if (target === undefined) {
+        return [];
+      }
+
+      return listLandTypeInstancesInAbilities(
+        computeGameObject(target.object.id, context.state).abilities
+      ).map((instance) => ({ id: instance.id, label: instance.label }));
+    }
     case "basic_land_types": {
       const excludedValue =
         spec.modeSource.excludeStoreKey === undefined
           ? null
-          : readStoredString(
-              context,
-              spec.modeSource.excludeStoreKey,
-              `missing mode source '${spec.modeSource.excludeStoreKey}' in scratch state`
-            );
+          : readOptionalStoredString(context, spec.modeSource.excludeStoreKey);
+
+      if (spec.modeSource.excludeStoreKey !== undefined && excludedValue === null) {
+        return [];
+      }
 
       return BASIC_LAND_TYPE_VALUES.filter((landType) => landType !== excludedValue).map(
         (landType) => ({
@@ -462,17 +466,8 @@ function resolveChooseMode(
   spec: ChooseModeSpec,
   context: ResolveEffectHandlerContext
 ): ResolveEffectResult {
-  const stepIndex =
-    context.stackItem.effectContext.cursor.kind === "step"
-      ? context.stackItem.effectContext.cursor.index
-      : 0;
-  if (shouldSkipCurrentOnResolveStep(context, stepIndex)) {
-    return { kind: "continue" };
-  }
-
   const modes = resolveModes(spec, context);
   if (modes.length === 0) {
-    shouldSkipRemainingOnResolveSteps(context, stepIndex);
     return { kind: "continue" };
   }
 
@@ -500,6 +495,26 @@ function resolveChooseMode(
     `missing ${spec.kind} choice id in scratch state for '${spec.storeKey}'`,
     `missing ${spec.kind} payload in scratch state for '${spec.storeKey}'`
   );
+
+  if (spec.modeSource.kind === "target_land_type_instances") {
+    const target = resolveTargetObject(context, spec.modeSource.target);
+    const selectedInstance =
+      target === undefined
+        ? null
+        : listLandTypeInstancesInAbilities(
+            computeGameObject(target.object.id, context.state).abilities
+          ).find((instance) => instance.id === payload.mode.id);
+
+    context.writeScratch({
+      [spec.storeKey]: payload.mode.id,
+      ...(spec.selectedLandTypeStoreKey === undefined || selectedInstance == null
+        ? {}
+        : { [spec.selectedLandTypeStoreKey]: selectedInstance.landType })
+    });
+
+    return { kind: "continue" };
+  }
+
   context.writeScratch({ [spec.storeKey]: payload.mode.id });
 
   return { kind: "continue" };
@@ -696,39 +711,33 @@ function resolveAddTextChangeEffectToTarget(
   spec: AddTextChangeEffectToTargetSpec,
   context: ResolveEffectHandlerContext
 ): ResolveEffectResult {
-  const stepIndex =
-    context.stackItem.effectContext.cursor.kind === "step"
-      ? context.stackItem.effectContext.cursor.index
-      : 0;
-  if (shouldSkipCurrentOnResolveStep(context, stepIndex)) {
-    return { kind: "continue" };
-  }
-
   const target = resolveTargetObject(context, spec.target);
   if (target === undefined) {
     return { kind: "continue" };
   }
 
-  const fromLandType = readStoredString(
-    context,
-    spec.fromKey,
-    `missing text-change source '${spec.fromKey}' in scratch state`
-  );
-  const toLandType = readStoredString(
-    context,
-    spec.toKey,
-    `missing text-change source '${spec.toKey}' in scratch state`
-  );
+  const fromLandType = readOptionalStoredString(context, spec.fromKey);
+  const toLandType = readOptionalStoredString(context, spec.toKey);
+  if (fromLandType === null || toLandType === null) {
+    return { kind: "continue" };
+  }
+
   if (!isBasicLandType(fromLandType) || !isBasicLandType(toLandType)) {
     throw new Error("text change mode selection must be a basic land type");
   }
 
-  const payload = { fromLandType, toLandType };
+  const instanceId =
+    spec.instanceKey === undefined ? null : readOptionalStoredString(context, spec.instanceKey);
+  const payload = {
+    fromLandType,
+    toLandType,
+    ...(instanceId === null ? {} : { instanceId })
+  };
   if (!isTextChangePayload(payload)) {
     throw new Error("invalid text change payload");
   }
 
-  const effectSuffix = `${spec.kind}:${fromLandType}->${toLandType}`;
+  const effectSuffix = `${spec.kind}:${fromLandType}->${toLandType}:${instanceId ?? "all"}`;
   const effectAction: AddContinuousEffectAction = {
     ...baseActionFields(context),
     id: actionId(context, "ADD_CONTINUOUS_EFFECT", effectSuffix),
