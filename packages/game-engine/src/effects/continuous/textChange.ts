@@ -20,7 +20,59 @@ const BASIC_LAND_TYPES = new Set<BasicLandType>(BASIC_LAND_TYPE_VALUES);
 export type TextChangePayload = {
   fromLandType?: BasicLandType;
   toLandType?: BasicLandType;
+  instanceId?: string;
 };
+
+export type LandTypeTextInstance = {
+  id: string;
+  landType: BasicLandType;
+  label: string;
+};
+
+function landTypeTextInstanceForAbility(
+  ability: Readonly<AbilityAst>,
+  _abilityIndex: number
+): LandTypeTextInstance | null {
+  switch (ability.kind) {
+    case "keyword":
+      if (ability.keyword !== "landwalk") {
+        return null;
+      }
+
+      return {
+        id: "keyword:landwalk",
+        landType: ability.landType,
+        label: `${ability.landType} (landwalk)`
+      };
+    case "static":
+      switch (ability.staticKind) {
+        case "cant_attack_unless":
+          return {
+            id: "static:cant_attack_unless",
+            landType: ability.condition.landType,
+            label: `${ability.condition.landType} (attack restriction)`
+          };
+        case "when_no_islands_sacrifice":
+          return {
+            id: "static:when_no_islands_sacrifice",
+            landType: ability.landType,
+            label: `${ability.landType} (sacrifice restriction)`
+          };
+      }
+    case "trigger":
+      if (ability.condition === undefined) {
+        return null;
+      }
+
+      return {
+        id: `trigger:${ability.event}:condition`,
+        landType: ability.condition.landType,
+        label: `${ability.condition.landType} (trigger condition)`
+      };
+    case "activated":
+      return null;
+  }
+}
 
 function rewriteLandType(
   landType: BasicLandType,
@@ -118,7 +170,8 @@ export function isTextChangePayload(payload: unknown): payload is TextChangePayl
   return (
     (record.fromLandType === undefined ||
       BASIC_LAND_TYPES.has(record.fromLandType as BasicLandType)) &&
-    (record.toLandType === undefined || BASIC_LAND_TYPES.has(record.toLandType as BasicLandType))
+    (record.toLandType === undefined || BASIC_LAND_TYPES.has(record.toLandType as BasicLandType)) &&
+    (record.instanceId === undefined || typeof record.instanceId === "string")
   );
 }
 
@@ -126,7 +179,16 @@ export function applyTextChangeToAbilities(
   abilities: readonly Readonly<AbilityAst>[],
   payload: Readonly<TextChangePayload>
 ): AbilityAst[] {
-  return abilities.map((ability) => applyTextChangeToAbility(ability, payload));
+  return abilities.map((ability, abilityIndex) => {
+    if (payload.instanceId !== undefined) {
+      const instance = landTypeTextInstanceForAbility(ability, abilityIndex);
+      if (instance?.id !== payload.instanceId) {
+        return ability;
+      }
+    }
+
+    return applyTextChangeToAbility(ability, payload);
+  });
 }
 
 export function listLandTypesInAbilities(
@@ -162,4 +224,12 @@ export function listLandTypesInAbilities(
   }
 
   return [...landTypes];
+}
+
+export function listLandTypeInstancesInAbilities(
+  abilities: readonly Readonly<AbilityAst>[]
+): LandTypeTextInstance[] {
+  return abilities
+    .map((ability, abilityIndex) => landTypeTextInstanceForAbility(ability, abilityIndex))
+    .filter((instance): instance is LandTypeTextInstance => instance !== null);
 }

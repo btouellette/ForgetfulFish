@@ -289,4 +289,50 @@ describe("effects/continuous/text", () => {
       landType: "Island"
     });
   });
+
+  it("can rewrite only one selected land-type instance", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "text-single-instance-test",
+      rngSeed: "text-single-instance-seed"
+    });
+    state.objectPool.set(
+      "obj-a",
+      makeObject("obj-a", "memory-lapse", [
+        { kind: "keyword", keyword: "landwalk", landType: "Island" },
+        {
+          kind: "static",
+          staticKind: "cant_attack_unless",
+          condition: { kind: "defender_controls_land_type", landType: "Island" }
+        },
+        {
+          kind: "static",
+          staticKind: "when_no_islands_sacrifice",
+          landType: "Island"
+        }
+      ])
+    );
+
+    const withTextChange = addContinuousEffect(
+      state,
+      makeTextChangeEffect("effect-a", 1, {
+        fromLandType: "Island",
+        toLandType: "Swamp",
+        instanceId: "static:cant_attack_unless"
+      })
+    );
+
+    expect(computeGameObject("obj-a", withTextChange).abilities).toEqual([
+      { kind: "keyword", keyword: "landwalk", landType: "Island" },
+      {
+        kind: "static",
+        staticKind: "cant_attack_unless",
+        condition: { kind: "defender_controls_land_type", landType: "Swamp" }
+      },
+      {
+        kind: "static",
+        staticKind: "when_no_islands_sacrifice",
+        landType: "Island"
+      }
+    ]);
+  });
 });
