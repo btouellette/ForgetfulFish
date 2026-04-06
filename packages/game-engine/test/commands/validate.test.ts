@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { cardRegistry } from "../../src/cards";
 import type { CardDefinition } from "../../src/cards/cardDefinition";
-import { partitionResolvedTargets } from "../../src/commands/validate";
+import { partitionResolvedTargets, validateActivateAbility } from "../../src/commands/validate";
 import type { Target } from "../../src/commands/command";
 import { Rng } from "../../src/rng/rng";
 import { resolveTopOfStack } from "../../src/stack/resolve";
@@ -174,5 +174,46 @@ describe("commands/validate target staleness", () => {
 
     const result = resolveTopOfStack(state, new Rng(state.rngSeed));
     expect(() => assertStateInvariants(result.state)).not.toThrow();
+  });
+
+  it("reports missing card definitions before derived activated-ability indexing", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "validate-missing-card-definition",
+      rngSeed: "seed-missing-card-definition"
+    });
+    const battlefieldZone = state.mode.resolveZone(state, "battlefield", "p1");
+    const battlefieldKey = zoneKey(battlefieldZone);
+
+    state.objectPool.set("obj-missing-def", {
+      id: "obj-missing-def",
+      zcc: 0,
+      cardDefId: "missing-definition",
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [
+        {
+          kind: "activated",
+          cost: [{ kind: "tap" }],
+          effect: { kind: "add_mana", mana: { blue: 1 } },
+          isManaAbility: true
+        }
+      ],
+      zone: battlefieldZone
+    });
+    state.zones.set(battlefieldKey, ["obj-missing-def"]);
+
+    expect(() =>
+      validateActivateAbility(state, {
+        type: "ACTIVATE_ABILITY",
+        sourceId: "obj-missing-def",
+        abilityIndex: 0,
+        targets: []
+      })
+    ).toThrow("missing card definition 'missing-definition'");
   });
 });

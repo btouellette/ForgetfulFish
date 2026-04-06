@@ -318,6 +318,11 @@ export function validateActivateAbility(
     throw new Error("can only activate abilities of permanents on the battlefield");
   }
 
+  const cardDefinition = cardRegistry.get(sourceObject.cardDefId);
+  if (cardDefinition === undefined) {
+    throw new Error(`missing card definition '${sourceObject.cardDefId}'`);
+  }
+
   const ability = getEffectiveActivatedAbilities(state, command.sourceId)[command.abilityIndex];
   if (ability === undefined) {
     throw new Error("ability index is out of range for the source permanent");
@@ -325,11 +330,6 @@ export function validateActivateAbility(
 
   if (!ability.isManaAbility || ability.effect.kind !== "add_mana") {
     throw new Error("only mana abilities are supported");
-  }
-
-  const cardDefinition = cardRegistry.get(sourceObject.cardDefId);
-  if (cardDefinition === undefined) {
-    throw new Error(`missing card definition '${sourceObject.cardDefId}'`);
   }
 
   if (!cardDefinition.typeLine.includes("Land")) {
