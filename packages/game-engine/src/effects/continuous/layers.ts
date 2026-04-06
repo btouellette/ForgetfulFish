@@ -4,6 +4,7 @@ import type { DerivedGameObjectView } from "../../state/gameObject";
 import type { GameState } from "../../state/gameState";
 import type { ObjectRef } from "../../state/objectRef";
 import { zoneKey } from "../../state/zones";
+import { applyTextChangeToAbilities, isTextChangePayload } from "./textChange";
 
 export const LAYERS = {
   COPY: 1,
@@ -191,6 +192,15 @@ function applyEffectToView(
     }
   }
 
+  if (effect.layer === LAYERS.TEXT && effect.effect.kind === "text_change") {
+    if (isTextChangePayload(effect.effect.payload)) {
+      return {
+        ...view,
+        abilities: applyTextChangeToAbilities(view.abilities, effect.effect.payload)
+      };
+    }
+  }
+
   return view;
 }
 
@@ -282,10 +292,19 @@ function requireBaseObject(objectId: string, state: Readonly<GameState>): Derive
 
   const definition = cardRegistry.get(baseObject.cardDefId);
   const definitionKeywords = definition?.keywords ?? [];
+  const definitionStaticAbilities = definition?.staticAbilities ?? [];
+  const definitionTriggeredAbilities = definition?.triggeredAbilities ?? [];
+  const definitionActivatedAbilities = definition?.activatedAbilities ?? [];
 
   return {
     ...baseObject,
-    abilities: [...definitionKeywords, ...baseObject.abilities]
+    abilities: [
+      ...definitionKeywords,
+      ...definitionStaticAbilities,
+      ...definitionTriggeredAbilities,
+      ...definitionActivatedAbilities,
+      ...baseObject.abilities
+    ]
   };
 }
 

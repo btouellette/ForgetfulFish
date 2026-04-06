@@ -114,7 +114,17 @@ describe("effects/continuous/layers", () => {
   it("returns a derived view identical to the base object when no effects apply", () => {
     const state = createStateWithObjects();
 
-    expect(computeGameObject("obj-a", state)).toEqual(state.objectPool.get("obj-a"));
+    expect(computeGameObject("obj-a", state)).toEqual({
+      ...state.objectPool.get("obj-a"),
+      abilities: [
+        {
+          kind: "activated",
+          cost: [{ kind: "tap" }],
+          effect: { kind: "add_mana", mana: { blue: 1 } },
+          isManaAbility: true
+        }
+      ]
+    });
   });
 
   it("applies layer 2 control effects to the derived view", () => {
