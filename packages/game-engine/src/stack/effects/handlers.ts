@@ -1,4 +1,5 @@
 import { cardRegistry } from "../../cards";
+import type { BasicLandType } from "../../cards/abilityAst";
 import type {
   AddContinuousEffectAction,
   CounterAction,
@@ -11,7 +12,9 @@ import type {
   GameActionBase
 } from "../../actions/action";
 import type {
+  AddTextChangeEffectToTargetSpec,
   AddContinuousEffectToTargetSpec,
+  ChooseModeSpec,
   ChooseCardsSpec,
   CounterTargetSpellSpec,
   DrawByGraveyardSelfCountSpec,
@@ -30,6 +33,12 @@ import type {
   UntapTargetSpec
 } from "../../cards/resolveEffect";
 import type { ChoicePayload } from "../../commands/command";
+import { computeGameObject, LAYERS } from "../../effects/continuous/layers";
+import {
+  BASIC_LAND_TYPE_VALUES,
+  isTextChangePayload,
+  listLandTypesInAbilities
+} from "../../effects/continuous/textChange";
 import type { GameState } from "../../state/gameState";
 import { zoneKey } from "../../state/zones";
 import { pauseWithChoiceAndScratch, requireChoicePayload, requireUniqueIds } from "./primitives";
@@ -74,6 +83,23 @@ function isNameCardPayload(
 
   const candidate = payload as Record<string, unknown>;
   return candidate.type === "NAME_CARD" && typeof candidate.cardName === "string";
+}
+
+function isChooseModePayload(
+  payload: unknown
+): payload is Extract<ChoicePayload, { type: "CHOOSE_MODE" }> {
+  if (typeof payload !== "object" || payload === null) {
+    return false;
+  }
+
+  const candidate = payload as Record<string, unknown>;
+  const mode = candidate.mode;
+  return (
+    candidate.type === "CHOOSE_MODE" &&
+    typeof mode === "object" &&
+    mode !== null &&
+    typeof (mode as Record<string, unknown>).id === "string"
+  );
 }
 
 function baseActionFields(
@@ -174,6 +200,59 @@ function readStoredString(
   }
 
   return stored;
+}
+
+function isBasicLandType(value: string): value is BasicLandType {
+  return BASIC_LAND_TYPE_VALUES.includes(value as BasicLandType);
+}
+
+function shouldSkipRemainingOnResolveSteps(
+  context: ResolveEffectHandlerContext,
+  fromStepIndex: number
+): void {
+  context.writeScratch({ skipOnResolveFromStep: fromStepIndex });
+}
+
+function shouldSkipCurrentOnResolveStep(
+  context: ResolveEffectHandlerContext,
+  currentStepIndex: number
+): boolean {
+  const skipFromStep = context.stackItem.effectContext.whiteboard.scratch.skipOnResolveFromStep;
+  return typeof skipFromStep === "number" && currentStepIndex >= skipFromStep;
+}
+
+function resolveModes(spec: ChooseModeSpec, context: ResolveEffectHandlerContext) {
+  switch (spec.modeSource.kind) {
+    case "explicit":
+      return spec.modeSource.modes;
+    case "target_land_types": {
+      const target = resolveTargetObject(context, spec.modeSource.target);
+      if (target === undefined) {
+        return [];
+      }
+
+      return listLandTypesInAbilities(
+        computeGameObject(target.object.id, context.state).abilities
+      ).map((landType) => ({ id: landType, label: landType }));
+    }
+    case "basic_land_types": {
+      const excludedValue =
+        spec.modeSource.excludeStoreKey === undefined
+          ? null
+          : readStoredString(
+              context,
+              spec.modeSource.excludeStoreKey,
+              `missing mode source '${spec.modeSource.excludeStoreKey}' in scratch state`
+            );
+
+      return BASIC_LAND_TYPE_VALUES.filter((landType) => landType !== excludedValue).map(
+        (landType) => ({
+          id: landType,
+          label: landType
+        })
+      );
+    }
+  }
 }
 
 function resolveTargetObject(
@@ -379,6 +458,53 @@ function resolveNameCard(
   return { kind: "continue" };
 }
 
+function resolveChooseMode(
+  spec: ChooseModeSpec,
+  context: ResolveEffectHandlerContext
+): ResolveEffectResult {
+  const stepIndex =
+    context.stackItem.effectContext.cursor.kind === "step"
+      ? context.stackItem.effectContext.cursor.index
+      : 0;
+  if (shouldSkipCurrentOnResolveStep(context, stepIndex)) {
+    return { kind: "continue" };
+  }
+
+  const modes = resolveModes(spec, context);
+  if (modes.length === 0) {
+    shouldSkipRemainingOnResolveSteps(context, stepIndex);
+    return { kind: "continue" };
+  }
+
+  const choiceIdKey = `${spec.storeKey}:choiceId`;
+  if (typeof context.stackItem.effectContext.whiteboard.scratch[choiceIdKey] !== "string") {
+    const choiceId = `${context.stackItem.id}:${spec.storeKey}:choose-mode`;
+    const choice: NonNullable<GameState["pendingChoice"]> = {
+      id: choiceId,
+      type: "CHOOSE_MODE",
+      forPlayer: context.stackItem.controller,
+      prompt: spec.prompt,
+      constraints: { modes }
+    };
+
+    return pauseWithChoiceAndScratch(context, choice, {
+      [choiceIdKey]: choiceId,
+      [`resumeStepIndex:${choiceId}`]: 0
+    });
+  }
+
+  const payload = requireChoicePayload(
+    context.stackItem,
+    choiceIdKey,
+    isChooseModePayload,
+    `missing ${spec.kind} choice id in scratch state for '${spec.storeKey}'`,
+    `missing ${spec.kind} payload in scratch state for '${spec.storeKey}'`
+  );
+  context.writeScratch({ [spec.storeKey]: payload.mode.id });
+
+  return { kind: "continue" };
+}
+
 function resolveMillCards(
   spec: MillCardsSpec,
   context: ResolveEffectHandlerContext
@@ -566,6 +692,64 @@ function resolveAddContinuousEffectToTarget(
   return { kind: "continue" };
 }
 
+function resolveAddTextChangeEffectToTarget(
+  spec: AddTextChangeEffectToTargetSpec,
+  context: ResolveEffectHandlerContext
+): ResolveEffectResult {
+  const stepIndex =
+    context.stackItem.effectContext.cursor.kind === "step"
+      ? context.stackItem.effectContext.cursor.index
+      : 0;
+  if (shouldSkipCurrentOnResolveStep(context, stepIndex)) {
+    return { kind: "continue" };
+  }
+
+  const target = resolveTargetObject(context, spec.target);
+  if (target === undefined) {
+    return { kind: "continue" };
+  }
+
+  const fromLandType = readStoredString(
+    context,
+    spec.fromKey,
+    `missing text-change source '${spec.fromKey}' in scratch state`
+  );
+  const toLandType = readStoredString(
+    context,
+    spec.toKey,
+    `missing text-change source '${spec.toKey}' in scratch state`
+  );
+  if (!isBasicLandType(fromLandType) || !isBasicLandType(toLandType)) {
+    throw new Error("text change mode selection must be a basic land type");
+  }
+
+  const payload = { fromLandType, toLandType };
+  if (!isTextChangePayload(payload)) {
+    throw new Error("invalid text change payload");
+  }
+
+  const effectSuffix = `${spec.kind}:${fromLandType}->${toLandType}`;
+  const effectAction: AddContinuousEffectAction = {
+    ...baseActionFields(context),
+    id: actionId(context, "ADD_CONTINUOUS_EFFECT", effectSuffix),
+    type: "ADD_CONTINUOUS_EFFECT",
+    effect: {
+      id: actionId(context, "ADD_CONTINUOUS_EFFECT", effectSuffix),
+      source: context.stackItem.effectContext.source,
+      layer: LAYERS.TEXT,
+      duration: spec.duration,
+      appliesTo: { kind: "object", object: target.object },
+      effect: {
+        kind: "text_change",
+        payload
+      }
+    }
+  };
+  context.enqueueAction(effectAction);
+
+  return { kind: "continue" };
+}
+
 function resolveShuffleZone(
   spec: ShuffleZoneSpec,
   context: ResolveEffectHandlerContext
@@ -607,6 +791,8 @@ export function resolveOnResolveEffect(
       return resolveMoveOrderedCards(spec, context);
     case "name_card":
       return resolveNameCard(spec, context);
+    case "choose_mode":
+      return resolveChooseMode(spec, context);
     case "mill_cards":
       return resolveMillCards(spec, context);
     case "draw_by_named_hit":
@@ -621,6 +807,8 @@ export function resolveOnResolveEffect(
       return resolveUntapTarget(spec, context);
     case "add_continuous_effect_to_target":
       return resolveAddContinuousEffectToTarget(spec, context);
+    case "add_text_change_effect_to_target":
+      return resolveAddTextChangeEffectToTarget(spec, context);
     case "shuffle_zone":
       return resolveShuffleZone(spec, context);
     default: {

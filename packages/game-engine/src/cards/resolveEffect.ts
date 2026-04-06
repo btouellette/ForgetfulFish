@@ -1,5 +1,6 @@
 import type { Duration } from "./abilityAst";
 import type { ContinuousEffectPayload, Layer } from "../effects/continuous/layers";
+import type { Mode } from "../commands/command";
 
 export type ResolveStoredValueKey = string;
 export type ResolveTargetObjectSelector = "first_object_target";
@@ -43,6 +44,16 @@ export type NameCardSpec = {
   kind: "name_card";
   prompt: string;
   storeKey: ResolveStoredValueKey;
+};
+
+export type ChooseModeSpec = {
+  kind: "choose_mode";
+  prompt: string;
+  storeKey: ResolveStoredValueKey;
+  modeSource:
+    | { kind: "explicit"; modes: Mode[] }
+    | { kind: "target_land_types"; target: ResolveTargetObjectSelector }
+    | { kind: "basic_land_types"; excludeStoreKey?: ResolveStoredValueKey };
 };
 
 export type MillCardsSpec = {
@@ -89,6 +100,14 @@ export type AddContinuousEffectToTargetSpec = {
   effect: ContinuousEffectPayload;
 };
 
+export type AddTextChangeEffectToTargetSpec = {
+  kind: "add_text_change_effect_to_target";
+  target: ResolveTargetObjectSelector;
+  duration: Duration;
+  fromKey: ResolveStoredValueKey;
+  toKey: ResolveStoredValueKey;
+};
+
 export type ShuffleZoneSpec = {
   kind: "shuffle_zone";
   zone: Extract<ResolveZoneSelector, "library">;
@@ -102,6 +121,7 @@ export type ResolveEffectSpec =
   | OrderCardsSpec
   | MoveOrderedCardsSpec
   | NameCardSpec
+  | ChooseModeSpec
   | MillCardsSpec
   | DrawByNamedHitSpec
   | CounterTargetSpellSpec
@@ -109,6 +129,7 @@ export type ResolveEffectSpec =
   | SetControlOfTargetSpec
   | UntapTargetSpec
   | AddContinuousEffectToTargetSpec
+  | AddTextChangeEffectToTargetSpec
   | ShuffleZoneSpec;
 
 export type ResolveEffectKind = ResolveEffectSpec["kind"];

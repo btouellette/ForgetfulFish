@@ -13,7 +13,8 @@ export class OnResolveRegistry {
         effect.kind === "counter_target_spell" ||
         effect.kind === "set_control_of_target" ||
         effect.kind === "untap_target" ||
-        effect.kind === "add_continuous_effect_to_target"
+        effect.kind === "add_continuous_effect_to_target" ||
+        effect.kind === "add_text_change_effect_to_target"
     );
     this.stackObjectTargetRequirement = effectSpecs.some(
       (effect) => effect.kind === "counter_target_spell"
@@ -22,7 +23,8 @@ export class OnResolveRegistry {
       (effect) =>
         effect.kind === "set_control_of_target" ||
         effect.kind === "untap_target" ||
-        effect.kind === "add_continuous_effect_to_target"
+        effect.kind === "add_continuous_effect_to_target" ||
+        effect.kind === "add_text_change_effect_to_target"
     );
   }
 
