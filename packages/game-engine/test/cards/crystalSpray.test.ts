@@ -163,9 +163,9 @@ describe("cards/crystal-spray", () => {
     }
 
     expect(resolved.pendingChoice.constraints.modes).toEqual([
-      { id: "keyword:landwalk", label: "Island (landwalk)" },
-      { id: "static:cant_attack_unless", label: "Island (attack restriction)" },
-      { id: "static:when_no_islands_sacrifice", label: "Island (sacrifice restriction)" }
+      { id: "keyword:landwalk:0", label: "Island (landwalk #1)" },
+      { id: "static:cant_attack_unless:0", label: "Island (attack restriction #1)" },
+      { id: "static:when_no_islands_sacrifice:0", label: "Island (sacrifice restriction #1)" }
     ]);
   });
 
@@ -187,7 +187,7 @@ describe("cards/crystal-spray", () => {
         type: "MAKE_CHOICE",
         payload: {
           type: "CHOOSE_MODE",
-          mode: { id: "static:cant_attack_unless" }
+          mode: { id: "static:cant_attack_unless:0" }
         }
       },
       new Rng(firstResolve.nextState.rngSeed)
@@ -223,7 +223,7 @@ describe("cards/crystal-spray", () => {
         type: "MAKE_CHOICE",
         payload: {
           type: "CHOOSE_MODE",
-          mode: { id: "static:cant_attack_unless" }
+          mode: { id: "static:cant_attack_unless:0" }
         }
       },
       new Rng(firstResolve.nextState.rngSeed)
@@ -244,7 +244,7 @@ describe("cards/crystal-spray", () => {
           effect.effect.kind === "text_change" &&
           effect.effect.payload?.fromLandType === "Island" &&
           effect.effect.payload?.toLandType === "Mountain" &&
-          effect.effect.payload?.instanceId === "static:cant_attack_unless"
+          effect.effect.payload?.instanceId === "static:cant_attack_unless:0"
       )
     ).toBe(true);
     expect(
@@ -284,7 +284,7 @@ describe("cards/crystal-spray", () => {
         type: "MAKE_CHOICE",
         payload: {
           type: "CHOOSE_MODE",
-          mode: { id: "static:cant_attack_unless" }
+          mode: { id: "static:cant_attack_unless:0" }
         }
       },
       new Rng(firstResolve.nextState.rngSeed)
@@ -387,7 +387,7 @@ describe("cards/crystal-spray", () => {
         type: "MAKE_CHOICE",
         payload: {
           type: "CHOOSE_MODE",
-          mode: { id: "trigger:CUSTOM_EVENT:condition" }
+          mode: { id: "trigger:CUSTOM_EVENT:condition:0" }
         }
       },
       new Rng(firstResolve.nextState.rngSeed)
@@ -444,7 +444,7 @@ describe("cards/crystal-spray", () => {
         type: "MAKE_CHOICE",
         payload: {
           type: "CHOOSE_MODE",
-          mode: { id: "static:cant_attack_unless" }
+          mode: { id: "static:cant_attack_unless:0" }
         }
       },
       new Rng(staleState.rngSeed)
@@ -457,5 +457,74 @@ describe("cards/crystal-spray", () => {
         (event) => event.type === "CARD_DRAWN" && event.playerId === "p1"
       )
     ).toHaveLength(1);
+  });
+
+  it("lets the player select between duplicate attack-restriction instances", () => {
+    const state = createCrystalSprayState();
+    state.objectPool.set(
+      "obj-target",
+      makeCard("obj-target", "memory-lapse", "p2", { kind: "battlefield", scope: "shared" }, [
+        {
+          kind: "static",
+          staticKind: "cant_attack_unless",
+          condition: { kind: "defender_controls_land_type", landType: "Island" }
+        },
+        {
+          kind: "static",
+          staticKind: "cant_attack_unless",
+          condition: { kind: "defender_controls_land_type", landType: "Swamp" }
+        }
+      ])
+    );
+
+    const cast = processCommand(
+      state,
+      {
+        type: "CAST_SPELL",
+        cardId: "obj-crystal-spray",
+        targets: [{ kind: "object", object: { id: "obj-target", zcc: 0 } }]
+      },
+      new Rng(state.rngSeed)
+    );
+    const resolved = passPriorityPair(cast.nextState);
+
+    expect(resolved.pendingChoice?.type).toBe("CHOOSE_MODE");
+    if (resolved.pendingChoice?.type !== "CHOOSE_MODE") {
+      throw new Error("expected duplicate-instance CHOOSE_MODE pending choice");
+    }
+    expect(resolved.pendingChoice.constraints.modes).toEqual([
+      { id: "static:cant_attack_unless:0", label: "Island (attack restriction #1)" },
+      { id: "static:cant_attack_unless:1", label: "Swamp (attack restriction #2)" }
+    ]);
+
+    const chooseInstance = processCommand(
+      resolved.nextState,
+      {
+        type: "MAKE_CHOICE",
+        payload: {
+          type: "CHOOSE_MODE",
+          mode: { id: "static:cant_attack_unless:1" }
+        }
+      },
+      new Rng(resolved.nextState.rngSeed)
+    );
+    const chooseTo = processCommand(
+      chooseInstance.nextState,
+      { type: "MAKE_CHOICE", payload: { type: "CHOOSE_MODE", mode: { id: "Mountain" } } },
+      new Rng(chooseInstance.nextState.rngSeed)
+    );
+
+    expect(computeGameObject("obj-target", chooseTo.nextState).abilities).toEqual([
+      {
+        kind: "static",
+        staticKind: "cant_attack_unless",
+        condition: { kind: "defender_controls_land_type", landType: "Island" }
+      },
+      {
+        kind: "static",
+        staticKind: "cant_attack_unless",
+        condition: { kind: "defender_controls_land_type", landType: "Mountain" }
+      }
+    ]);
   });
 });

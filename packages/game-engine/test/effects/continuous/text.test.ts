@@ -317,7 +317,7 @@ describe("effects/continuous/text", () => {
       makeTextChangeEffect("effect-a", 1, {
         fromLandType: "Island",
         toLandType: "Swamp",
-        instanceId: "static:cant_attack_unless"
+        instanceId: "static:cant_attack_unless:0"
       })
     );
 
@@ -332,6 +332,122 @@ describe("effects/continuous/text", () => {
         kind: "static",
         staticKind: "when_no_islands_sacrifice",
         landType: "Island"
+      }
+    ]);
+  });
+
+  it("distinguishes duplicate semantic instances by occurrence", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "text-duplicate-instance-test",
+      rngSeed: "text-duplicate-instance-seed"
+    });
+    state.objectPool.set(
+      "obj-a",
+      makeObject("obj-a", "memory-lapse", [
+        {
+          kind: "static",
+          staticKind: "cant_attack_unless",
+          condition: { kind: "defender_controls_land_type", landType: "Island" }
+        },
+        {
+          kind: "static",
+          staticKind: "cant_attack_unless",
+          condition: { kind: "defender_controls_land_type", landType: "Swamp" }
+        }
+      ])
+    );
+
+    const withTextChange = addContinuousEffect(
+      state,
+      makeTextChangeEffect("effect-a", 1, {
+        fromLandType: "Swamp",
+        toLandType: "Mountain",
+        instanceId: "static:cant_attack_unless:1"
+      })
+    );
+
+    expect(computeGameObject("obj-a", withTextChange).abilities).toEqual([
+      {
+        kind: "static",
+        staticKind: "cant_attack_unless",
+        condition: { kind: "defender_controls_land_type", landType: "Island" }
+      },
+      {
+        kind: "static",
+        staticKind: "cant_attack_unless",
+        condition: { kind: "defender_controls_land_type", landType: "Mountain" }
+      }
+    ]);
+  });
+
+  it("distinguishes duplicate landwalk instances by occurrence", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "text-duplicate-landwalk-instance-test",
+      rngSeed: "text-duplicate-landwalk-instance-seed"
+    });
+    state.objectPool.set(
+      "obj-a",
+      makeObject("obj-a", "memory-lapse", [
+        { kind: "keyword", keyword: "landwalk", landType: "Island" },
+        { kind: "keyword", keyword: "landwalk", landType: "Swamp" }
+      ])
+    );
+
+    const withTextChange = addContinuousEffect(
+      state,
+      makeTextChangeEffect("effect-a", 1, {
+        fromLandType: "Swamp",
+        toLandType: "Mountain",
+        instanceId: "keyword:landwalk:1"
+      })
+    );
+
+    expect(computeGameObject("obj-a", withTextChange).abilities).toEqual([
+      { kind: "keyword", keyword: "landwalk", landType: "Island" },
+      { kind: "keyword", keyword: "landwalk", landType: "Mountain" }
+    ]);
+  });
+
+  it("distinguishes duplicate trigger-condition instances by occurrence", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "text-duplicate-trigger-instance-test",
+      rngSeed: "text-duplicate-trigger-instance-seed"
+    });
+    state.objectPool.set(
+      "obj-a",
+      makeObject("obj-a", "memory-lapse", [
+        {
+          kind: "trigger",
+          event: "CUSTOM_EVENT",
+          condition: { kind: "defender_controls_land_type", landType: "Island" }
+        },
+        {
+          kind: "trigger",
+          event: "CUSTOM_EVENT",
+          condition: { kind: "defender_controls_land_type", landType: "Swamp" }
+        }
+      ])
+    );
+
+    const withTextChange = addContinuousEffect(
+      state,
+      makeTextChangeEffect("effect-a", 1, {
+        fromLandType: "Swamp",
+        toLandType: "Mountain",
+        instanceId: "trigger:CUSTOM_EVENT:condition:1"
+      })
+    );
+
+    expect(computeGameObject("obj-a", withTextChange).abilities).toEqual([
+      {
+        kind: "trigger",
+        event: "CUSTOM_EVENT",
+        condition: { kind: "defender_controls_land_type", landType: "Island" }
+      },
+      {
+        kind: "trigger",
+        event: "CUSTOM_EVENT",
+        condition: { kind: "defender_controls_land_type", landType: "Mountain" }
       }
     ]);
   });

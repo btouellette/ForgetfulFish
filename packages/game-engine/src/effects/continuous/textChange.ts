@@ -29,10 +29,33 @@ export type LandTypeTextInstance = {
   label: string;
 };
 
+function instanceSemanticKey(ability: Readonly<AbilityAst>): string | null {
+  switch (ability.kind) {
+    case "keyword":
+      return ability.keyword === "landwalk" ? "keyword:landwalk" : null;
+    case "static":
+      switch (ability.staticKind) {
+        case "cant_attack_unless":
+          return "static:cant_attack_unless";
+        case "when_no_islands_sacrifice":
+          return "static:when_no_islands_sacrifice";
+      }
+    case "trigger":
+      return ability.condition === undefined ? null : `trigger:${ability.event}:condition`;
+    case "activated":
+      return null;
+  }
+}
+
 function landTypeTextInstanceForAbility(
   ability: Readonly<AbilityAst>,
-  _abilityIndex: number
+  occurrenceIndex: number
 ): LandTypeTextInstance | null {
+  const semanticKey = instanceSemanticKey(ability);
+  if (semanticKey === null) {
+    return null;
+  }
+
   switch (ability.kind) {
     case "keyword":
       if (ability.keyword !== "landwalk") {
@@ -40,23 +63,23 @@ function landTypeTextInstanceForAbility(
       }
 
       return {
-        id: "keyword:landwalk",
+        id: `${semanticKey}:${occurrenceIndex}`,
         landType: ability.landType,
-        label: `${ability.landType} (landwalk)`
+        label: `${ability.landType} (landwalk #${occurrenceIndex + 1})`
       };
     case "static":
       switch (ability.staticKind) {
         case "cant_attack_unless":
           return {
-            id: "static:cant_attack_unless",
+            id: `${semanticKey}:${occurrenceIndex}`,
             landType: ability.condition.landType,
-            label: `${ability.condition.landType} (attack restriction)`
+            label: `${ability.condition.landType} (attack restriction #${occurrenceIndex + 1})`
           };
         case "when_no_islands_sacrifice":
           return {
-            id: "static:when_no_islands_sacrifice",
+            id: `${semanticKey}:${occurrenceIndex}`,
             landType: ability.landType,
-            label: `${ability.landType} (sacrifice restriction)`
+            label: `${ability.landType} (sacrifice restriction #${occurrenceIndex + 1})`
           };
       }
     case "trigger":
@@ -65,9 +88,9 @@ function landTypeTextInstanceForAbility(
       }
 
       return {
-        id: `trigger:${ability.event}:condition`,
+        id: `${semanticKey}:${occurrenceIndex}`,
         landType: ability.condition.landType,
-        label: `${ability.condition.landType} (trigger condition)`
+        label: `${ability.condition.landType} (trigger condition #${occurrenceIndex + 1})`
       };
     case "activated":
       return null;
@@ -179,9 +202,18 @@ export function applyTextChangeToAbilities(
   abilities: readonly Readonly<AbilityAst>[],
   payload: Readonly<TextChangePayload>
 ): AbilityAst[] {
-  return abilities.map((ability, abilityIndex) => {
+  const semanticOccurrences = new Map<string, number>();
+
+  return abilities.map((ability) => {
+    const semanticKey = instanceSemanticKey(ability);
+    const occurrenceIndex = semanticKey === null ? 0 : (semanticOccurrences.get(semanticKey) ?? 0);
+
+    if (semanticKey !== null) {
+      semanticOccurrences.set(semanticKey, occurrenceIndex + 1);
+    }
+
     if (payload.instanceId !== undefined) {
-      const instance = landTypeTextInstanceForAbility(ability, abilityIndex);
+      const instance = landTypeTextInstanceForAbility(ability, occurrenceIndex);
       if (instance?.id !== payload.instanceId) {
         return ability;
       }
@@ -229,7 +261,19 @@ export function listLandTypesInAbilities(
 export function listLandTypeInstancesInAbilities(
   abilities: readonly Readonly<AbilityAst>[]
 ): LandTypeTextInstance[] {
+  const semanticOccurrences = new Map<string, number>();
+
   return abilities
-    .map((ability, abilityIndex) => landTypeTextInstanceForAbility(ability, abilityIndex))
+    .map((ability) => {
+      const semanticKey = instanceSemanticKey(ability);
+      const occurrenceIndex =
+        semanticKey === null ? 0 : (semanticOccurrences.get(semanticKey) ?? 0);
+
+      if (semanticKey !== null) {
+        semanticOccurrences.set(semanticKey, occurrenceIndex + 1);
+      }
+
+      return landTypeTextInstanceForAbility(ability, occurrenceIndex);
+    })
     .filter((instance): instance is LandTypeTextInstance => instance !== null);
 }
