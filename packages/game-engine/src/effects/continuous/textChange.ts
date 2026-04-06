@@ -39,7 +39,7 @@ function rewriteLandType(
   return payload.toLandType;
 }
 
-function rewriteColor(color: Color, payload: Readonly<TextChangePayload>): Color {
+function _rewriteColor(color: Color, payload: Readonly<TextChangePayload>): Color {
   if (payload.toColor === undefined) {
     return color;
   }
