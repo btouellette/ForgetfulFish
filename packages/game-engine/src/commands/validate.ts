@@ -1,6 +1,6 @@
 import { cardRegistry } from "../cards";
 import { computeGameObject, getApplicableContinuousEffects } from "../effects/continuous/layers";
-import type { ActivatedAbilityAst } from "../cards/abilityAst";
+import type { ActivatedAbilityAst, BasicLandType, StaticAbilityAst } from "../cards/abilityAst";
 import type {
   ActivateAbilityCommand,
   CastSpellCommand,
@@ -100,7 +100,49 @@ function canObjectAttack(
     return false;
   }
 
+  const attackRestrictions = object.abilities.filter(
+    (ability): ability is Extract<StaticAbilityAst, { staticKind: "cant_attack_unless" }> =>
+      ability.kind === "static" && ability.staticKind === "cant_attack_unless"
+  );
+  if (
+    attackRestrictions.some(
+      (ability) => !defendingPlayerControlsLandType(state, playerId, ability.condition.landType)
+    )
+  ) {
+    return false;
+  }
+
   return !object.tapped && !object.summoningSick;
+}
+
+function defendingPlayerControlsLandType(
+  state: Readonly<GameState>,
+  attackingPlayerId: string,
+  landType: BasicLandType
+): boolean {
+  const defendingPlayer = state.players.find((player) => player.id !== attackingPlayerId);
+  if (defendingPlayer === undefined) {
+    return false;
+  }
+
+  const battlefieldZone = state.mode.resolveZone(state, "battlefield", defendingPlayer.id);
+  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
+
+  return battlefield.some((objectId) => {
+    const object = state.objectPool.get(objectId);
+    if (object === undefined || object.controller !== defendingPlayer.id) {
+      return false;
+    }
+
+    const definition = cardRegistry.get(object.cardDefId);
+    if (definition === undefined) {
+      return false;
+    }
+
+    return definition.subtypes.some(
+      (subtype) => subtype.kind === "basic_land_type" && subtype.value === landType
+    );
+  });
 }
 
 function canObjectBlock(

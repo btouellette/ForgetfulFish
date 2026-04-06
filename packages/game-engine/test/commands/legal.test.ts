@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { cardRegistry } from "../../src/cards";
 import type { CardDefinition } from "../../src/cards/cardDefinition";
+import { dandanCardDefinition } from "../../src/cards/dandan";
 import { getLegalCommands } from "../../src/commands/validate";
 import { addContinuousEffect, LAYERS } from "../../src/effects/continuous/layers";
 import type { GameObject } from "../../src/state/gameObject";
@@ -232,6 +233,26 @@ describe("commands/legal", () => {
 
     const attackersCommands = getLegalCommands(attackersState);
     expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(true);
+  });
+
+  it("does not include DECLARE_ATTACKERS when Dandan's attack restriction is not satisfied", () => {
+    cardRegistry.set(dandanCardDefinition.id, dandanCardDefinition);
+
+    const attackersState = createInitialGameState("p1", "p2", {
+      id: "legal-dandan-no-island",
+      rngSeed: "seed-legal-dandan-no-island"
+    });
+    attackersState.turnState.phase = "DECLARE_ATTACKERS";
+    attackersState.turnState.step = "DECLARE_ATTACKERS";
+    attackersState.turnState.activePlayerId = "p1";
+    setPriority(attackersState, "p1");
+    putOnBattlefield(attackersState, "p1", {
+      id: "obj-dandan",
+      cardDefId: dandanCardDefinition.id
+    });
+
+    const attackersCommands = getLegalCommands(attackersState);
+    expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(false);
   });
 
   it("includes DECLARE_ATTACKERS when control of an opposing creature changes continuously", () => {
