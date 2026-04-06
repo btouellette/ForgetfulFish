@@ -45,6 +45,7 @@ export type StaticAbilityAst =
   | {
       kind: "static";
       staticKind: "when_no_islands_sacrifice";
+      landType: BasicLandType;
     };
 
 export type TextChangeEffect = {

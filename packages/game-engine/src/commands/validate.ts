@@ -1,5 +1,6 @@
 import { cardRegistry } from "../cards";
 import { computeGameObject, getApplicableContinuousEffects } from "../effects/continuous/layers";
+import type { ActivatedAbilityAst } from "../cards/abilityAst";
 import type {
   ActivateAbilityCommand,
   CastSpellCommand,
@@ -40,6 +41,20 @@ function getEffectiveObject(state: Readonly<GameState>, objectId: string) {
   const computed = computeGameObject(objectId, state);
   cacheForState.set(objectId, computed);
   return computed;
+}
+
+function getEffectiveActivatedAbilities(
+  state: Readonly<GameState>,
+  objectId: string
+): ActivatedAbilityAst[] {
+  const object = getEffectiveObject(state, objectId);
+  if (object === undefined) {
+    return [];
+  }
+
+  return object.abilities.filter(
+    (ability): ability is ActivatedAbilityAst => ability.kind === "activated"
+  );
 }
 
 function objectMustAttackIfAble(state: Readonly<GameState>, objectId: string): boolean {
@@ -308,7 +323,7 @@ export function validateActivateAbility(
     throw new Error(`missing card definition '${sourceObject.cardDefId}'`);
   }
 
-  const ability = cardDefinition.activatedAbilities[command.abilityIndex];
+  const ability = getEffectiveActivatedAbilities(state, command.sourceId)[command.abilityIndex];
   if (ability === undefined) {
     throw new Error("ability index is out of range for the source permanent");
   }
@@ -561,16 +576,12 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
       continue;
     }
 
-    const sourceDefinition = definitionFor(sourceObject.cardDefId);
-    if (sourceDefinition === undefined || sourceDefinition.activatedAbilities.length === 0) {
+    const activatedAbilities = getEffectiveActivatedAbilities(state, sourceId);
+    if (activatedAbilities.length === 0) {
       continue;
     }
 
-    for (
-      let abilityIndex = 0;
-      abilityIndex < sourceDefinition.activatedAbilities.length;
-      abilityIndex += 1
-    ) {
+    for (let abilityIndex = 0; abilityIndex < activatedAbilities.length; abilityIndex += 1) {
       const activateAbilityCommand: ActivateAbilityCommand = {
         type: "ACTIVATE_ABILITY",
         sourceId,

@@ -1,3 +1,4 @@
+import type { ActivatedAbilityAst } from "../cards/abilityAst";
 import { cardRegistry } from "../cards";
 import { computeGameObject } from "../effects/continuous/layers";
 import { createEvent, type GameEvent } from "../events/event";
@@ -469,12 +470,16 @@ export function tapForMana(
     throw new Error("only lands can be tapped for mana");
   }
 
+  const activatedAbilities = effectiveObject.abilities.filter(
+    (ability): ability is ActivatedAbilityAst => ability.kind === "activated"
+  );
+
   const manaAbility =
     abilityIndex === undefined
-      ? definition?.activatedAbilities.find(
+      ? activatedAbilities.find(
           (ability) => ability.isManaAbility && ability.effect.kind === "add_mana"
         )
-      : definition?.activatedAbilities[abilityIndex];
+      : activatedAbilities[abilityIndex];
 
   if (manaAbility === undefined) {
     if (abilityIndex !== undefined) {

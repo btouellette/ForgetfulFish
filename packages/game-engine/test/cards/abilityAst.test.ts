@@ -35,6 +35,16 @@ describe("cards/abilityAst", () => {
     expect(staticAbility.staticKind).toBe("cant_attack_unless");
   });
 
+  it("constructs a StaticAbilityAst for land-type sacrifice checks", () => {
+    const staticAbility: StaticAbilityAst = {
+      kind: "static",
+      staticKind: "when_no_islands_sacrifice",
+      landType: "Island"
+    };
+
+    expect(staticAbility.landType).toBe("Island");
+  });
+
   it("supports all Duration variants", () => {
     const durations: Duration[] = [
       "permanent",
