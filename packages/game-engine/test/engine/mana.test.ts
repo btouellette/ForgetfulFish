@@ -1,10 +1,43 @@
 import { describe, expect, it } from "vitest";
 
+import { cardRegistry } from "../../src/cards";
 import { addContinuousEffect, LAYERS } from "../../src/effects/continuous/layers";
 import { payManaCost, tapForMana } from "../../src/engine/kernel";
 import type { GameObject } from "../../src/state/gameObject";
 import { createInitialGameState } from "../../src/state/gameState";
 import { zoneKey } from "../../src/state/zones";
+
+cardRegistry.set("test-dual-mana-land", {
+  id: "test-dual-mana-land",
+  name: "Test Dual Mana Land",
+  manaCost: {},
+  typeLine: ["Land"],
+  subtypes: [],
+  color: [],
+  supertypes: [],
+  power: null,
+  toughness: null,
+  keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [
+    {
+      kind: "activated",
+      cost: [{ kind: "tap" }],
+      effect: { kind: "add_mana", mana: { blue: 1 } },
+      isManaAbility: true
+    },
+    {
+      kind: "activated",
+      cost: [{ kind: "tap" }],
+      effect: { kind: "add_mana", mana: { red: 1 } },
+      isManaAbility: true
+    }
+  ],
+  onResolve: [],
+  continuousEffects: [],
+  replacementEffects: []
+});
 
 function createPermanent(
   id: string,
@@ -68,6 +101,20 @@ describe("engine/mana", () => {
 
     expect(result.state.players[0].manaPool.blue).toBe(1);
     expect(result.state.players[1].manaPool.blue).toBe(0);
+  });
+
+  it("tapForMana uses indexed activated abilities from the computed view", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "mana-indexed-ability",
+      rngSeed: "seed-mana-indexed-ability"
+    });
+    putOnBattlefield(state, createPermanent("obj-dual-land", "test-dual-mana-land", "p1"));
+
+    const result = tapForMana(state, "obj-dual-land", 1);
+
+    expect(result.state.objectPool.get("obj-dual-land")?.tapped).toBe(true);
+    expect(result.state.players[0].manaPool.blue).toBe(0);
+    expect(result.state.players[0].manaPool.red).toBe(1);
   });
 
   it("payManaCost deducts one blue mana", () => {

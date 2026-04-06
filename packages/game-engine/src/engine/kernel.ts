@@ -470,14 +470,16 @@ export function tapForMana(
     throw new Error("only lands can be tapped for mana");
   }
 
+  const activatedAbilities = effectiveObject.abilities.filter(
+    (ability): ability is ActivatedAbilityAst => ability.kind === "activated"
+  );
+
   const manaAbility =
     abilityIndex === undefined
-      ? effectiveObject.abilities
-          .filter((ability): ability is ActivatedAbilityAst => ability.kind === "activated")
-          .find((ability) => ability.isManaAbility && ability.effect.kind === "add_mana")
-      : effectiveObject.abilities.filter(
-          (ability): ability is ActivatedAbilityAst => ability.kind === "activated"
-        )[abilityIndex];
+      ? activatedAbilities.find(
+          (ability) => ability.isManaAbility && ability.effect.kind === "add_mana"
+        )
+      : activatedAbilities[abilityIndex];
 
   if (manaAbility === undefined) {
     if (abilityIndex !== undefined) {
