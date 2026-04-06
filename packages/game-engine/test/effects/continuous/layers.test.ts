@@ -233,6 +233,63 @@ describe("effects/continuous/layers", () => {
     expect(computed.summoningSick).toBe(false);
   });
 
+  it("adds granted landwalk to abilities in Layer 6", () => {
+    const finalState = addContinuousEffect(createStateWithObjects(), {
+      ...createEffect("effect-grant-landwalk", 1),
+      layer: LAYERS.ABILITY,
+      effect: {
+        kind: "grant_keyword",
+        payload: { keyword: "landwalk", landType: "Island" }
+      }
+    });
+
+    expect(computeGameObject("obj-a", finalState).abilities).toContainEqual({
+      kind: "keyword",
+      keyword: "landwalk",
+      landType: "Island"
+    });
+  });
+
+  it("removes granted landwalk from abilities when the effect is removed", () => {
+    const withEffect = addContinuousEffect(createStateWithObjects(), {
+      ...createEffect("effect-grant-landwalk", 1),
+      layer: LAYERS.ABILITY,
+      effect: {
+        kind: "grant_keyword",
+        payload: { keyword: "landwalk", landType: "Island" }
+      }
+    });
+    const afterRemoval = removeContinuousEffect(withEffect, "effect-grant-landwalk");
+
+    expect(computeGameObject("obj-a", afterRemoval).abilities).not.toContainEqual({
+      kind: "keyword",
+      keyword: "landwalk",
+      landType: "Island"
+    });
+  });
+
+  it("does not add landwalk when the granted payload has no valid basic land type", () => {
+    const finalState = addContinuousEffect(createStateWithObjects(), {
+      ...createEffect("effect-invalid-landwalk", 1),
+      layer: LAYERS.ABILITY,
+      effect: {
+        kind: "grant_keyword",
+        payload: { keyword: "landwalk", landType: "Volcano" }
+      }
+    });
+
+    expect(computeGameObject("obj-a", finalState).abilities).not.toContainEqual({
+      kind: "keyword",
+      keyword: "landwalk",
+      landType: "Volcano"
+    });
+    expect(computeGameObject("obj-a", finalState).abilities).not.toContainEqual({
+      kind: "keyword",
+      keyword: "landwalk",
+      landType: "Island"
+    });
+  });
+
   it("does not apply object-targeted effects after the object leaves and returns", () => {
     const baseState = createStateWithObjects();
     const returnedState: GameState = {
