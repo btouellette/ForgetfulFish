@@ -213,7 +213,7 @@ Status: in progress
 - No runtime path directly uses a haste-only summoning-sickness toggle.
 - Native and granted haste both work through the same computed-view legality path.
 
-#### [ ] Slice E — Cleanup, verify, and document final architecture
+#### [x] Slice E — Cleanup, verify, and document final architecture
 
 **Goal**: leave Phase 3 in the clean post-cutover state with no temporary dual systems.
 
@@ -230,6 +230,11 @@ Status: in progress
 **Acceptance**
 - The engine uses only primitive resolve specs and keyword-driven haste behavior.
 - The decision log records the new canonical architecture.
+
+**Closure notes**
+- Verified there are no remaining monolithic resolve-spec IDs in the codebase.
+- Verified there are no remaining `grant_haste` compatibility paths in the codebase.
+- Recorded the final primitive resolve-spec and keyword-driven haste architecture in `docs/decisions/decision-log.md`.
 
 ### [x] P3.1 — ContinuousEffect type and registry
 
@@ -276,6 +281,12 @@ Test: **Write tests FIRST**, then implement.
 5. Derived view contains all fields from the `GameObjectBase`.
 6. Dependency ordering (if any) overrides timestamp ordering within a layer.
 Acceptance: Layer system produces correct derived views.
+
+**Current status / intended next direction**
+- The current implementation now covers the first meaningful P3.2 increments: dependency-aware same-layer ordering, deterministic cycle fallback, and condition-aware effect filtering for the currently supported `ConditionAst` surface.
+- The next intended P3.2 work is to broaden per-layer application beyond the current control/ability subset, starting with the next effect kinds actually needed by deck/card growth.
+- When additional layer kinds land, `computeGameObject` should keep the same sequencing model already established here: layer order first, dependency-aware ordering within a layer, then stable timestamp/insertion fallback.
+- `ConditionAst` support in continuous effects is intentionally conservative for now. If future conditions require richer context than `(view, state)`, they should introduce an explicit continuous-effect evaluation context rather than ad-hoc branching inside individual layer handlers.
 
 ### [ ] P3.3 — Duration tracking and cleanup
 

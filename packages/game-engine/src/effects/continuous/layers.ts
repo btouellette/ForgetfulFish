@@ -3,6 +3,7 @@ import type { ConditionAst, Duration, KeywordAbilityAst } from "../../cards/abil
 import type { DerivedGameObjectView } from "../../state/gameObject";
 import type { GameState } from "../../state/gameState";
 import type { ObjectRef } from "../../state/objectRef";
+import { zoneKey } from "../../state/zones";
 
 export const LAYERS = {
   COPY: 1,
@@ -99,6 +100,73 @@ function sortEffectsForApplication(
   return 0;
 }
 
+function orderEffectsWithinLayer(
+  effects: readonly Readonly<ContinuousEffect>[]
+): ContinuousEffect[] {
+  const ordered = [...effects].sort(sortEffectsForApplication);
+  const byId = new Map(ordered.map((effect) => [effect.id, effect]));
+  const remainingIds = new Set(ordered.map((effect) => effect.id));
+  const resolvedIds = new Set<string>();
+  const result: ContinuousEffect[] = [];
+
+  while (remainingIds.size > 0) {
+    let progressed = false;
+
+    for (const effect of ordered) {
+      if (!remainingIds.has(effect.id)) {
+        continue;
+      }
+
+      const unmetDependencies = (effect.dependsOn ?? []).filter((dependency) => {
+        if (!remainingIds.has(dependency.effectId)) {
+          return false;
+        }
+
+        return byId.has(dependency.effectId) && !resolvedIds.has(dependency.effectId);
+      });
+
+      if (unmetDependencies.length > 0) {
+        continue;
+      }
+
+      result.push(effect);
+      remainingIds.delete(effect.id);
+      resolvedIds.add(effect.id);
+      progressed = true;
+    }
+
+    if (!progressed) {
+      for (const effect of ordered) {
+        if (!remainingIds.has(effect.id)) {
+          continue;
+        }
+
+        result.push(effect);
+        remainingIds.delete(effect.id);
+        resolvedIds.add(effect.id);
+        break;
+      }
+    }
+  }
+
+  return result;
+}
+
+function orderEffectsForApplication(
+  effects: readonly Readonly<ContinuousEffect>[]
+): ContinuousEffect[] {
+  const layers = new Map<Layer, ContinuousEffect[]>();
+  for (const effect of effects) {
+    const existing = layers.get(effect.layer) ?? [];
+    existing.push(effect);
+    layers.set(effect.layer, existing);
+  }
+
+  return [...layers.entries()]
+    .sort(([leftLayer], [rightLayer]) => layerSortKey(leftLayer) - layerSortKey(rightLayer))
+    .flatMap(([, layerEffects]) => orderEffectsWithinLayer(layerEffects));
+}
+
 function applyEffectToView(
   view: Readonly<DerivedGameObjectView>,
   effect: Readonly<ContinuousEffect>
@@ -150,6 +218,62 @@ function hasKeywordAbility(
   );
 }
 
+function findDefendingPlayerId(
+  state: Readonly<GameState>,
+  attackerPlayerId: string
+): string | null {
+  const attackerExists = state.players.some((player) => player.id === attackerPlayerId);
+  if (!attackerExists) {
+    return null;
+  }
+
+  const defender = state.players.find((player) => player.id !== attackerPlayerId);
+  return defender?.id ?? null;
+}
+
+function conditionAppliesToView(
+  condition: ConditionAst | undefined,
+  view: Readonly<DerivedGameObjectView>,
+  state: Readonly<GameState>
+): boolean {
+  if (condition === undefined) {
+    return true;
+  }
+
+  switch (condition.kind) {
+    case "defender_controls_land_type": {
+      const defenderId = findDefendingPlayerId(state, view.controller);
+      if (defenderId === null) {
+        return false;
+      }
+
+      const battlefieldZone = state.mode.resolveZone(state, "battlefield", defenderId);
+      const battlefieldIds = state.zones.get(zoneKey(battlefieldZone));
+      if (battlefieldIds === undefined) {
+        return false;
+      }
+
+      return battlefieldIds.some((objectId) => {
+        const object = state.objectPool.get(objectId);
+        if (object === undefined || object.controller !== defenderId) {
+          return false;
+        }
+
+        const definition = cardRegistry.get(object.cardDefId);
+        if (definition === undefined) {
+          return false;
+        }
+
+        return definition.subtypes.some(
+          (subtype) => subtype.kind === "basic_land_type" && subtype.value === condition.landType
+        );
+      });
+    }
+    default:
+      throw new Error(`Unhandled condition kind: ${condition.kind satisfies never}`);
+  }
+}
+
 function requireBaseObject(objectId: string, state: Readonly<GameState>): DerivedGameObjectView {
   const baseObject = state.objectPool.get(objectId);
   if (baseObject === undefined) {
@@ -172,12 +296,16 @@ function resolveContinuousEffects(
   view: DerivedGameObjectView;
   appliedEffects: ContinuousEffect[];
 } {
-  const sortedEffects = [...state.continuousEffects].sort(sortEffectsForApplication);
+  const sortedEffects = orderEffectsForApplication(state.continuousEffects);
   const appliedEffects: ContinuousEffect[] = [];
 
   let view = cloneDerivedView(requireBaseObject(objectId, state));
   for (const effect of sortedEffects) {
     if (!matchesEffectTarget(effect.appliesTo, view, state)) {
+      continue;
+    }
+
+    if (!conditionAppliesToView(effect.condition, view, state)) {
       continue;
     }
 
