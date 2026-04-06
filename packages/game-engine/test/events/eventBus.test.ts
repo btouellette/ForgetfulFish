@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { cardRegistry } from "../../src/cards";
 import type { CardDefinition } from "../../src/cards/cardDefinition";
+import { LAYERS, addContinuousEffect } from "../../src/effects/continuous/layers";
 import { emitEvents } from "../../src/events/eventBus";
 import { createEvent, type GameEvent } from "../../src/events/event";
 import type { GameObject } from "../../src/state/gameObject";
@@ -188,5 +189,36 @@ describe("events/eventBus", () => {
     expect(nextState.id).toBe(state.id);
     expect(nextState.version).toBe(state.version);
     expect(nextState.triggerQueue).toEqual(state.triggerQueue);
+  });
+
+  it("reads triggered abilities from the computed object view", () => {
+    const textTriggerDefinition: CardDefinition = {
+      ...vanillaDefinition,
+      id: "event-bus-text-trigger",
+      name: "Event Bus Text Trigger",
+      triggeredAbilities: [{ kind: "trigger", event: "ZONE_CHANGE" }]
+    };
+    cardRegistry.set(textTriggerDefinition.id, textTriggerDefinition);
+    const state = createInitialGameState("p1", "p2", { id: "event-bus-7", rngSeed: "seed-7" });
+    putOnBattlefield(state, "obj-trigger", textTriggerDefinition.id);
+
+    const withTextChange = addContinuousEffect(state, {
+      id: "effect-text-change",
+      source: { id: "obj-trigger", zcc: 0 },
+      layer: LAYERS.TEXT,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", object: { id: "obj-trigger", zcc: 0 } },
+      effect: {
+        kind: "text_change",
+        payload: { fromLandType: "Island", toLandType: "Swamp" }
+      }
+    });
+    const [zoneChangeEvent] = makeEvents(withTextChange);
+
+    const nextState = emitEvents(withTextChange, [zoneChangeEvent]);
+
+    expect(nextState.triggerQueue).toHaveLength(1);
+    expect(nextState.triggerQueue[0]?.id).toContain("obj-trigger");
   });
 });

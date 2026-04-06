@@ -1,4 +1,5 @@
-import { cardRegistry } from "../cards";
+import type { TriggerDefinitionAst } from "../cards/abilityAst";
+import { computeGameObject } from "../effects/continuous/layers";
 import type { GameEvent } from "./event";
 import type { GameState, TriggeredAbility } from "../state/gameState";
 
@@ -13,18 +14,23 @@ function collectTriggeredAbilities(
 ): TriggeredAbility[] {
   const queued: TriggeredAbility[] = [];
 
+  const getTriggeredAbilities = (objectId: string): TriggerDefinitionAst[] =>
+    computeGameObject(objectId, state).abilities.filter(
+      (ability): ability is TriggerDefinitionAst => ability.kind === "trigger"
+    );
+
   for (const event of events) {
     for (const object of state.objectPool.values()) {
       if (object.zone.kind !== "battlefield") {
         continue;
       }
 
-      const card = cardRegistry.get(object.cardDefId);
-      if (card === undefined || card.triggeredAbilities.length === 0) {
+      const triggeredAbilities = getTriggeredAbilities(object.id);
+      if (triggeredAbilities.length === 0) {
         continue;
       }
 
-      card.triggeredAbilities.forEach((trigger, triggerIndex) => {
+      triggeredAbilities.forEach((trigger, triggerIndex) => {
         if (trigger.event !== event.type) {
           return;
         }
