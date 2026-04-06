@@ -1,4 +1,5 @@
 import { cardRegistry } from "../cards";
+import type { StaticAbilityAst } from "../cards/abilityAst";
 import { createEvent, type GameEvent } from "../events/event";
 import type { GameState } from "../state/gameState";
 import { type ObjectId, type PlayerId } from "../state/objectRef";
@@ -6,6 +7,7 @@ import { bumpZcc, type ZoneRef, zoneKey } from "../state/zones";
 
 export type SBAResult =
   | { type: "DESTROY_ZERO_TOUGHNESS"; objectId: ObjectId }
+  | { type: "SACRIFICE_WHEN_NO_LANDS"; objectId: ObjectId }
   | { type: "PLAYER_LOSES"; playerId: PlayerId; reason: string };
 
 export function checkSBAs(state: Readonly<GameState>): SBAResult[] {
@@ -28,6 +30,19 @@ export function checkSBAs(state: Readonly<GameState>): SBAResult[] {
 
     if (toughness <= 0) {
       results.push({ type: "DESTROY_ZERO_TOUGHNESS", objectId });
+    }
+
+    const sacrificeAbility = cardDefinition.staticAbilities.find(
+      (
+        ability
+      ): ability is Extract<StaticAbilityAst, { staticKind: "when_no_islands_sacrifice" }> =>
+        ability.kind === "static" && ability.staticKind === "when_no_islands_sacrifice"
+    );
+    if (
+      sacrificeAbility !== undefined &&
+      !controllerControlsLandType(state, object.controller, sacrificeAbility.landType)
+    ) {
+      results.push({ type: "SACRIFICE_WHEN_NO_LANDS", objectId });
     }
   }
 
@@ -62,7 +77,12 @@ export function applySBAs(
   }
 
   const destroySet = new Set(
-    sbas.filter((sba) => sba.type === "DESTROY_ZERO_TOUGHNESS").map((sba) => sba.objectId)
+    sbas
+      .filter(
+        (sba): sba is Extract<SBAResult, { objectId: ObjectId }> =>
+          sba.type === "DESTROY_ZERO_TOUGHNESS" || sba.type === "SACRIFICE_WHEN_NO_LANDS"
+      )
+      .map((sba) => sba.objectId)
   );
   const lossEntries = sbas.filter((sba) => sba.type === "PLAYER_LOSES");
   const lossMap = new Map<PlayerId, string>();
@@ -190,6 +210,31 @@ export function applySBAs(
     state: nextState,
     events
   };
+}
+
+function controllerControlsLandType(
+  state: Readonly<GameState>,
+  playerId: PlayerId,
+  landType: Extract<StaticAbilityAst, { staticKind: "when_no_islands_sacrifice" }>["landType"]
+): boolean {
+  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
+  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
+
+  return battlefield.some((objectId) => {
+    const object = state.objectPool.get(objectId);
+    if (object === undefined || object.controller !== playerId) {
+      return false;
+    }
+
+    const definition = cardRegistry.get(object.cardDefId);
+    if (definition === undefined) {
+      return false;
+    }
+
+    return definition.subtypes.some(
+      (subtype) => subtype.kind === "basic_land_type" && subtype.value === landType
+    );
+  });
 }
 
 export function runSBALoop(state: Readonly<GameState>): { state: GameState; events: GameEvent[] } {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { cardRegistry } from "../../src/cards";
 import type { CardDefinition } from "../../src/cards/cardDefinition";
+import { dandanCardDefinition } from "../../src/cards/dandan";
 import { applySBAs, checkSBAs, runSBALoop, type SBAResult } from "../../src/engine/sba";
 import type { GameObject } from "../../src/state/gameObject";
 import { createInitialGameState, type GameState } from "../../src/state/gameState";
@@ -177,5 +178,24 @@ describe("engine/sba", () => {
     const sbas: SBAResult[] = checkSBAs(state);
     expect(sbas).toEqual([]);
     expect(runSBALoop(state).events).toEqual([]);
+  });
+
+  it("moves Dandan to the graveyard when its controller controls no Islands", () => {
+    cardRegistry.set(dandanCardDefinition.id, dandanCardDefinition);
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "sba-dandan-no-islands",
+      rngSeed: "seed-sba-dandan-no-islands"
+    });
+    putOnBattlefield(state, "obj-dandan", dandanCardDefinition.id, "p1");
+
+    const sbas = checkSBAs(state);
+    const applied = applySBAs(state, sbas);
+    const graveyard =
+      applied.state.zones.get(zoneKey({ kind: "graveyard", scope: "shared" })) ?? [];
+
+    expect(sbas).toContainEqual({ type: "SACRIFICE_WHEN_NO_LANDS", objectId: "obj-dandan" });
+    expect(graveyard).toContain("obj-dandan");
+    expect(applied.events.some((event) => event.type === "ZONE_CHANGE")).toBe(true);
   });
 });
