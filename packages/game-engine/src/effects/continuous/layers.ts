@@ -1,10 +1,16 @@
 import { cardRegistry } from "../../cards";
-import type { ConditionAst, Duration, KeywordAbilityAst } from "../../cards/abilityAst";
+import type {
+  BasicLandType,
+  ConditionAst,
+  Duration,
+  KeywordAbilityAst
+} from "../../cards/abilityAst";
 import type { DerivedGameObjectView } from "../../state/gameObject";
 import type { GameState } from "../../state/gameState";
 import type { ObjectRef } from "../../state/objectRef";
 import { zoneKey } from "../../state/zones";
 import { applyTextChangeToAbilities, isTextChangePayload } from "./textChange";
+import { BASIC_LAND_TYPE_VALUES } from "./textChange";
 
 export const LAYERS = {
   COPY: 1,
@@ -216,7 +222,18 @@ function toGrantedKeywordAbility(
     return { kind: "keyword", keyword };
   }
 
+  if (keyword === "landwalk") {
+    const landType = payload.payload?.landType;
+    if (isBasicLandType(landType)) {
+      return { kind: "keyword", keyword: "landwalk", landType };
+    }
+  }
+
   return null;
+}
+
+function isBasicLandType(value: unknown): value is BasicLandType {
+  return BASIC_LAND_TYPE_VALUES.includes(value as BasicLandType);
 }
 
 function hasKeywordAbility(
