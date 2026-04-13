@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { addContinuousEffect, LAYERS } from "../../src/effects/continuous/layers";
-import { advanceStep, advanceTurn, handlePassPriority } from "../../src/engine/kernel";
+import {
+  advanceStep,
+  advanceStepWithEvents,
+  advanceTurn,
+  handlePassPriority
+} from "../../src/engine/kernel";
+import { Rng } from "../../src/rng/rng";
 import { createInitialGameState, type GameState } from "../../src/state/gameState";
 import { createInitialPriorityState } from "../../src/state/priorityState";
 import { zoneKey } from "../../src/state/zones";
@@ -220,11 +226,11 @@ describe("engine/kernel", () => {
       ]
     };
 
-    const next = advanceStep(state);
+    const next = advanceStepWithEvents(state, new Rng(state.rngSeed));
 
-    expect(next.turnState.step).toBe("UNTAP");
-    expect(next.turnState.activePlayerId).toBe("p2");
-    expect(next.continuousEffects).toEqual([
+    expect(next.state.turnState.step).toBe("UNTAP");
+    expect(next.state.turnState.activePlayerId).toBe("p2");
+    expect(next.state.continuousEffects).toEqual([
       {
         id: "effect-kept",
         source: { id: "source-kept", zcc: 0 },
@@ -235,6 +241,12 @@ describe("engine/kernel", () => {
         effect: { kind: "set_controller", payload: { playerId: "p1" } }
       }
     ]);
+    expect(next.events.map((event) => event.type)).toContain("CONTINUOUS_EFFECT_REMOVED");
+    const removedEvent = next.events.find(
+      (event): event is (typeof next.events)[number] & { type: "CONTINUOUS_EFFECT_REMOVED" } =>
+        event.type === "CONTINUOUS_EFFECT_REMOVED"
+    );
+    expect(removedEvent).toMatchObject({ effectId: "effect-expired" });
   });
 
   it("resets pass flags when entering a new priority step", () => {

@@ -1,5 +1,6 @@
 import type { ActivatedAbilityAst } from "../cards/abilityAst";
 import { cardRegistry } from "../cards";
+import { cleanupExpiredEffects } from "../effects/continuous/duration";
 import { computeGameObject } from "../effects/continuous/layers";
 import { createEvent, type GameEvent } from "../events/event";
 import { Rng } from "../rng/rng";
@@ -221,15 +222,6 @@ export function drawCard(state: Readonly<GameState>, playerId: PlayerId, _rng: R
   };
 }
 
-function removeUntilEndOfTurnEffects(state: Readonly<GameState>): GameState {
-  return {
-    ...state,
-    continuousEffects: state.continuousEffects.filter(
-      (effect) => effect.duration !== "until_end_of_turn"
-    )
-  };
-}
-
 export function givePriority(state: Readonly<GameState>, to: PlayerId): GameState {
   assertKnownPlayerId(state, to);
 
@@ -355,7 +347,8 @@ export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): Ste
   }
 
   if (state.turnState.step === "CLEANUP") {
-    const turnedState = advanceTurn(removeUntilEndOfTurnEffects(processedState));
+    const cleanupResult = cleanupExpiredEffects(processedState);
+    const turnedState = advanceTurn(cleanupResult.state);
     const nextState: GameState = {
       ...turnedState,
       version: turnedState.version + 1
@@ -376,7 +369,7 @@ export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): Ste
 
     return {
       state: nextState,
-      events: [...events, phaseChangedEvent]
+      events: [...events, ...cleanupResult.events, phaseChangedEvent]
     };
   }
 
