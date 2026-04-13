@@ -226,4 +226,33 @@ describe("engine/sba", () => {
 
     expect(checkSBAs(withControlEffect)).toEqual([]);
   });
+
+  it("uses derived toughness when a Layer 7a effect sets a creature to zero toughness", () => {
+    cardRegistry.set(grizzlyDefinition.id, grizzlyDefinition);
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "sba-derived-toughness",
+      rngSeed: "seed-sba-derived-toughness"
+    });
+    putOnBattlefield(state, "obj-grizzly", grizzlyDefinition.id, "p1");
+
+    const withSetPtEffect = addContinuousEffect(state, {
+      id: "effect-zero-pt",
+      source: { id: "obj-grizzly", zcc: 0 },
+      layer: LAYERS.PT_SET,
+      sublayer: LAYERS.PT_SET,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", object: { id: "obj-grizzly", zcc: 0 } },
+      effect: {
+        kind: "set_pt",
+        payload: { power: 0, toughness: 0 }
+      }
+    });
+
+    expect(checkSBAs(withSetPtEffect)).toContainEqual({
+      type: "DESTROY_ZERO_TOUGHNESS",
+      objectId: "obj-grizzly"
+    });
+  });
 });
