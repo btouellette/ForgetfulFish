@@ -1,6 +1,6 @@
 import type { ManaCost } from "../cards/cardDefinition";
 import type { PendingChoice } from "../choices/pendingChoice";
-import type { GameObject } from "../state/gameObject";
+import type { DerivedGameObjectView } from "../state/gameObject";
 import type { ManaPool, TurnPhase } from "../state/gameState";
 import type { ObjectId, ObjectRef, PlayerId } from "../state/objectRef";
 import type { ZoneRef } from "../state/zones";
@@ -45,7 +45,9 @@ export type LegalActionsView = {
   hasOtherBlockingActions: boolean;
 };
 
-export type GameObjectView = Omit<GameObject, "abilities" | "counters"> & {
+export type GameObjectView = Omit<DerivedGameObjectView, "abilities" | "counters"> & {
+  power?: number | null;
+  toughness?: number | null;
   name?: string;
   manaCost?: ManaCost;
   rulesText?: string;
