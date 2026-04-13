@@ -1,5 +1,6 @@
 import { cardRegistry } from "../cards";
 import type { StaticAbilityAst } from "../cards/abilityAst";
+import { removeSourceGoneEffects } from "../effects/continuous/duration";
 import { computeGameObject } from "../effects/continuous/layers";
 import { createEvent, type GameEvent } from "../events/event";
 import type { GameState } from "../state/gameState";
@@ -254,8 +255,9 @@ export function runSBALoop(state: Readonly<GameState>): { state: GameState; even
     }
 
     const applied = applySBAs(currentState, sbas);
-    currentState = applied.state;
-    allEvents.push(...applied.events);
+    const sourceCleanup = removeSourceGoneEffects(applied.state);
+    currentState = sourceCleanup.state;
+    allEvents.push(...applied.events, ...sourceCleanup.events);
   }
 
   throw new Error("SBA loop did not converge within 20 iterations");
