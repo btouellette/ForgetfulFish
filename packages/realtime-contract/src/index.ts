@@ -297,6 +297,8 @@ export const gameObjectViewSchema = z
     owner: playerIdSchema,
     controller: playerIdSchema,
     counters: z.record(z.string(), z.number().int()),
+    power: z.number().int().nullable().optional(),
+    toughness: z.number().int().nullable().optional(),
     damage: z.number().int().min(0),
     tapped: z.boolean(),
     summoningSick: z.boolean(),
