@@ -372,6 +372,77 @@ describe("actions/executor", () => {
     expect(next.lkiStore.size).toBeGreaterThan(0);
   });
 
+  it("captures derived power and toughness in LKI when MOVE_ZONE changes zones", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "exec-move-lki-derived-pt",
+      rngSeed: "seed"
+    });
+    const battlefieldZone = state.mode.resolveZone(state, "battlefield", "p1");
+    const graveyardZone = state.mode.resolveZone(state, "graveyard", "p1");
+    const battlefieldKey = zoneKey(battlefieldZone);
+    state.objectPool.set("obj-a", {
+      id: "obj-a",
+      zcc: 0,
+      cardDefId: executorCreatureDefinition.id,
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: battlefieldZone
+    });
+    state.zones.set(battlefieldKey, ["obj-a"]);
+
+    const withSetPtEffect = applyActions(
+      state,
+      [
+        {
+          ...baseAction(),
+          id: "set-pt-1",
+          type: "ADD_CONTINUOUS_EFFECT",
+          effect: {
+            id: "effect-set-pt",
+            source: { id: "obj-a", zcc: 0 },
+            layer: LAYERS.PT_SET,
+            sublayer: LAYERS.PT_SET,
+            timestamp: 1,
+            duration: "until_end_of_turn",
+            appliesTo: { kind: "object", object: { id: "obj-a", zcc: 0 } },
+            effect: {
+              kind: "set_pt",
+              payload: { power: 4, toughness: 4 }
+            }
+          }
+        }
+      ],
+      new Rng(state.rngSeed)
+    );
+
+    const next = applyActions(
+      withSetPtEffect,
+      [
+        {
+          ...baseAction(),
+          id: "move-pt-1",
+          type: "MOVE_ZONE",
+          objectId: "obj-a",
+          from: battlefieldZone,
+          to: graveyardZone
+        }
+      ],
+      new Rng(withSetPtEffect.rngSeed)
+    );
+
+    const snapshot = next.lkiStore.get("obj-a:0");
+
+    expect(snapshot?.base.cardDefId).toBe(executorCreatureDefinition.id);
+    expect(snapshot?.derived.power).toBe(4);
+    expect(snapshot?.derived.toughness).toBe(4);
+  });
+
   it("removes stack item and stack-zone object when COUNTER resolves", () => {
     const state = createInitialGameState("p1", "p2", { id: "exec-counter", rngSeed: "seed" });
     const stackZone = state.mode.resolveZone(state, "stack", "p1");

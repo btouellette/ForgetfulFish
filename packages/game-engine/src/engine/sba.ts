@@ -24,7 +24,8 @@ export function checkSBAs(state: Readonly<GameState>): SBAResult[] {
       continue;
     }
 
-    const toughness = cardDefinition.toughness;
+    const computedObject = computeGameObject(objectId, state);
+    const toughness = computedObject.toughness;
     if (toughness === null) {
       continue;
     }
@@ -33,7 +34,6 @@ export function checkSBAs(state: Readonly<GameState>): SBAResult[] {
       results.push({ type: "DESTROY_ZERO_TOUGHNESS", objectId });
     }
 
-    const computedObject = computeGameObject(objectId, state);
     const sacrificeAbility = computedObject.abilities.find(
       (
         ability

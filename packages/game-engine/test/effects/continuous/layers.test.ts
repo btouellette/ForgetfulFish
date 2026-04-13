@@ -116,6 +116,8 @@ describe("effects/continuous/layers", () => {
 
     expect(computeGameObject("obj-a", state)).toEqual({
       ...state.objectPool.get("obj-a"),
+      power: null,
+      toughness: null,
       abilities: [
         {
           kind: "activated",

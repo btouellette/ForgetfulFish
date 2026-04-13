@@ -172,7 +172,7 @@ export function drawCard(state: Readonly<GameState>, playerId: PlayerId, _rng: R
   const nextLkiStore = new Map(state.lkiStore);
   nextLkiStore.set(
     lkiKey(drawnObject.id, drawnObject.zcc),
-    captureSnapshot(drawnObject, drawnObject, libraryZone)
+    captureSnapshot(drawnObject, computeGameObject(drawnCardId, state), libraryZone)
   );
 
   const nextPlayers: GameState["players"] = [

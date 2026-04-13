@@ -3,7 +3,7 @@ import { OnResolveRegistry } from "../stack/onResolveRegistry";
 import type { ActivatedAbilityAst, ManaAmount } from "../cards/abilityAst";
 import { getLegalCommands } from "../commands/validate";
 import { computeGameObject } from "../effects/continuous/layers";
-import type { GameObject } from "../state/gameObject";
+import type { DerivedGameObjectView, GameObject } from "../state/gameObject";
 import type { GameState, ManaPool, PlayerInfo } from "../state/gameState";
 import type { ObjectId, PlayerId } from "../state/objectRef";
 import { zoneKey, type ZoneRef } from "../state/zones";
@@ -33,7 +33,7 @@ function countersToRecord(counters: ReadonlyMap<string, number>): Record<string,
   return record;
 }
 
-function toGameObjectView(object: Readonly<GameObject>): GameObjectView {
+function toGameObjectView(object: Readonly<DerivedGameObjectView>): GameObjectView {
   const { abilities: _abilities, counters, ...rest } = object;
   const cardDefinition = cardRegistry.get(object.cardDefId);
 
@@ -104,7 +104,10 @@ function requireObject(state: Readonly<GameState>, objectId: ObjectId): GameObje
   return object;
 }
 
-function requireComputedObject(state: Readonly<GameState>, objectId: ObjectId): GameObject {
+function requireComputedObject(
+  state: Readonly<GameState>,
+  objectId: ObjectId
+): DerivedGameObjectView {
   requireObject(state, objectId);
   return computeGameObject(objectId, state);
 }

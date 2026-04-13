@@ -284,6 +284,7 @@ Acceptance: Layer system produces correct derived views.
 
 **Current status / intended next direction**
 - The current implementation now covers the first meaningful P3.2 increments: dependency-aware same-layer ordering, deterministic cycle fallback, and condition-aware effect filtering for the currently supported `ConditionAst` surface.
+- Derived views now also carry base card-definition power/toughness and support Layer 7a `set_pt` overrides, so zero-toughness SBA checks can read the computed view instead of stale printed toughness.
 - The next intended P3.2 work is to broaden per-layer application beyond the current control/ability subset, starting with the next effect kinds actually needed by deck/card growth.
 - When additional layer kinds land, `computeGameObject` should keep the same sequencing model already established here: layer order first, dependency-aware ordering within a layer, then stable timestamp/insertion fallback.
 - `ConditionAst` support in continuous effects is intentionally conservative for now. If future conditions require richer context than `(view, state)`, they should introduce an explicit continuous-effect evaluation context rather than ad-hoc branching inside individual layer handlers.

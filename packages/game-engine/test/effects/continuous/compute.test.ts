@@ -49,7 +49,107 @@ function makeControlEffect(
   };
 }
 
+function makeSetPtEffect(
+  id: string,
+  timestamp: number,
+  power: number,
+  toughness: number,
+  dependsOn?: ContinuousEffect["dependsOn"]
+): ContinuousEffect {
+  return {
+    id,
+    source: { id: "obj-a", zcc: 0 },
+    layer: LAYERS.PT_SET,
+    sublayer: LAYERS.PT_SET,
+    timestamp,
+    duration: "until_end_of_turn",
+    appliesTo: { kind: "object", object: { id: "obj-a", zcc: 0 } },
+    effect: {
+      kind: "set_pt",
+      payload: { power, toughness }
+    },
+    ...(dependsOn === undefined ? {} : { dependsOn })
+  };
+}
+
 describe("effects/continuous/compute", () => {
+  it("includes base power and toughness from the card definition in the derived view", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "compute-base-pt-test",
+      rngSeed: "compute-base-pt-seed"
+    });
+    state.objectPool.set("obj-a", makeObject("obj-a", "dandan"));
+
+    const computed = computeGameObject("obj-a", state);
+
+    expect(computed.power).toBe(4);
+    expect(computed.toughness).toBe(1);
+  });
+
+  it("keeps non-creature power and toughness null in the derived view", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "compute-null-pt-test",
+      rngSeed: "compute-null-pt-seed"
+    });
+    state.objectPool.set("obj-a", makeObject("obj-a", "island"));
+
+    const computed = computeGameObject("obj-a", state);
+
+    expect(computed.power).toBeNull();
+    expect(computed.toughness).toBeNull();
+  });
+
+  it("applies Layer 7a set_pt effects to the derived view", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "compute-set-pt-test",
+      rngSeed: "compute-set-pt-seed"
+    });
+    state.objectPool.set("obj-a", makeObject("obj-a", "dandan"));
+
+    const withSetPt = addContinuousEffect(state, makeSetPtEffect("effect-set-pt", 1, 4, 4));
+
+    const computed = computeGameObject("obj-a", withSetPt);
+
+    expect(computed.power).toBe(4);
+    expect(computed.toughness).toBe(4);
+  });
+
+  it("applies same-layer set_pt effects in timestamp order", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "compute-set-pt-timestamp-test",
+      rngSeed: "compute-set-pt-timestamp-seed"
+    });
+    state.objectPool.set("obj-a", makeObject("obj-a", "dandan"));
+
+    const withFirst = addContinuousEffect(state, makeSetPtEffect("effect-first", 1, 5, 5));
+    const withSecond = addContinuousEffect(withFirst, makeSetPtEffect("effect-second", 2, 2, 2));
+
+    const computed = computeGameObject("obj-a", withSecond);
+
+    expect(computed.power).toBe(2);
+    expect(computed.toughness).toBe(2);
+  });
+
+  it("respects same-layer dependencies for set_pt effects", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "compute-set-pt-dependency-test",
+      rngSeed: "compute-set-pt-dependency-seed"
+    });
+    state.objectPool.set("obj-a", makeObject("obj-a", "dandan"));
+
+    const withDependent = addContinuousEffect(
+      state,
+      makeSetPtEffect("effect-a", 1, 5, 5, [{ effectId: "effect-b" }])
+    );
+    const withDependency = addContinuousEffect(withDependent, makeSetPtEffect("effect-b", 2, 1, 1));
+
+    expect(computeGameObject("obj-a", withDependency).power).toBe(5);
+    expect(computeGameObject("obj-a", withDependency).toughness).toBe(5);
+    expect(
+      getApplicableContinuousEffects("obj-a", withDependency).map((effect) => effect.id)
+    ).toEqual(["effect-b", "effect-a"]);
+  });
+
   it("applies same-layer dependencies before timestamp ordering", () => {
     const state = createInitialGameState("p1", "p2", {
       id: "compute-dependency-test",
