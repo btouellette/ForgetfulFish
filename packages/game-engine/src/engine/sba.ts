@@ -250,14 +250,21 @@ export function runSBALoop(state: Readonly<GameState>): { state: GameState; even
 
   for (let iteration = 0; iteration < 20; iteration += 1) {
     const sbas = checkSBAs(currentState);
+    const sourceCleanup = removeSourceGoneEffects(currentState);
     if (sbas.length === 0) {
-      return { state: currentState, events: allEvents };
+      if (sourceCleanup.events.length === 0) {
+        return { state: currentState, events: allEvents };
+      }
+
+      currentState = sourceCleanup.state;
+      allEvents.push(...sourceCleanup.events);
+      continue;
     }
 
     const applied = applySBAs(currentState, sbas);
-    const sourceCleanup = removeSourceGoneEffects(applied.state);
-    currentState = sourceCleanup.state;
-    allEvents.push(...applied.events, ...sourceCleanup.events);
+    const postSbaCleanup = removeSourceGoneEffects(applied.state);
+    currentState = postSbaCleanup.state;
+    allEvents.push(...applied.events, ...postSbaCleanup.events);
   }
 
   throw new Error("SBA loop did not converge within 20 iterations");
