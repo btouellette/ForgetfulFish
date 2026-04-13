@@ -178,6 +178,18 @@ function applyEffectToView(
   view: Readonly<DerivedGameObjectView>,
   effect: Readonly<ContinuousEffect>
 ): DerivedGameObjectView {
+  if (effect.layer === LAYERS.PT_SET && effect.effect.kind === "set_pt") {
+    const power = effect.effect.payload?.power;
+    const toughness = effect.effect.payload?.toughness;
+    if (typeof power === "number" && typeof toughness === "number") {
+      return {
+        ...view,
+        power,
+        toughness
+      };
+    }
+  }
+
   if (effect.layer === LAYERS.CONTROL && effect.effect.kind === "set_controller") {
     const playerId = effect.effect.payload?.playerId;
     if (typeof playerId === "string") {
@@ -315,6 +327,8 @@ function requireBaseObject(objectId: string, state: Readonly<GameState>): Derive
 
   return {
     ...baseObject,
+    power: definition?.power ?? null,
+    toughness: definition?.toughness ?? null,
     abilities: [
       ...definitionKeywords,
       ...definitionStaticAbilities,

@@ -17,6 +17,9 @@ export type GameObjectBase = {
   zone: ZoneRef;
 };
 
-export type DerivedGameObjectView = GameObjectBase;
+export type DerivedGameObjectView = GameObjectBase & {
+  power: number | null;
+  toughness: number | null;
+};
 
 export type GameObject = GameObjectBase;
