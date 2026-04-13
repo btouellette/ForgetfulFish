@@ -1,5 +1,5 @@
 import type { GameAction } from "./action";
-import { addContinuousEffect, LAYERS } from "../effects/continuous/layers";
+import { addContinuousEffect, computeGameObject, LAYERS } from "../effects/continuous/layers";
 import type { GameEventPayload } from "../events/event";
 import type { Rng } from "../rng/rng";
 import { cardRegistry } from "../cards";
@@ -53,7 +53,10 @@ function setObjectZoneAndMove(
   const toKey = zoneKey(to);
 
   if (fromKey !== toKey) {
-    state.lkiStore.set(lkiKey(object.id, object.zcc), captureSnapshot(object, object, object.zone));
+    state.lkiStore.set(
+      lkiKey(object.id, object.zcc),
+      captureSnapshot(object, computeGameObject(object.id, state), object.zone)
+    );
   }
 
   const fromZone = state.zones.get(fromKey) ?? [];
@@ -142,7 +145,7 @@ function drawOne(state: GameState, playerId: string): string | null {
   const nextOwner = state.mode.determineOwner(playerId, "draw");
   state.lkiStore.set(
     lkiKey(topObject.id, topObject.zcc),
-    captureSnapshot(topObject, topObject, libraryZone)
+    captureSnapshot(topObject, computeGameObject(topObject.id, state), libraryZone)
   );
   state.objectPool.set(
     top,
