@@ -255,4 +255,93 @@ describe("engine/sba", () => {
       objectId: "obj-grizzly"
     });
   });
+
+  it("removes while_source_on_battlefield effects after SBA moves their source off the battlefield", () => {
+    cardRegistry.set(grizzlyDefinition.id, grizzlyDefinition);
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "sba-remove-source-based-effect",
+      rngSeed: "seed-sba-remove-source-based-effect"
+    });
+    putOnBattlefield(state, "obj-grizzly", grizzlyDefinition.id, "p1");
+
+    const withEffects = addContinuousEffect(
+      addContinuousEffect(state, {
+        id: "effect-zero-pt",
+        source: { id: "obj-grizzly", zcc: 0 },
+        layer: LAYERS.PT_SET,
+        sublayer: LAYERS.PT_SET,
+        timestamp: 1,
+        duration: "until_end_of_turn",
+        appliesTo: { kind: "object", object: { id: "obj-grizzly", zcc: 0 } },
+        effect: {
+          kind: "set_pt",
+          payload: { power: 0, toughness: 0 }
+        }
+      }),
+      {
+        id: "effect-source-bound",
+        source: { id: "obj-grizzly", zcc: 0 },
+        layer: LAYERS.CONTROL,
+        timestamp: 2,
+        duration: "while_source_on_battlefield",
+        appliesTo: { kind: "object", object: { id: "obj-grizzly", zcc: 0 } },
+        effect: { kind: "set_controller", payload: { playerId: "p2" } }
+      }
+    );
+
+    const result = runSBALoop(withEffects);
+
+    expect(result.state.continuousEffects.map((effect) => effect.id)).toEqual(["effect-zero-pt"]);
+    expect(result.events.map((event) => event.type)).toContain("ZONE_CHANGE");
+    expect(result.events.map((event) => event.type)).toContain("CONTINUOUS_EFFECT_REMOVED");
+    expect(() => assertStateInvariants(result.state)).not.toThrow();
+  });
+
+  it("removes while_source_on_battlefield effects even when no SBA results are produced", () => {
+    cardRegistry.set(grizzlyDefinition.id, grizzlyDefinition);
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "sba-remove-source-bound-without-sba",
+      rngSeed: "seed-sba-remove-source-bound-without-sba"
+    });
+    putOnBattlefield(state, "obj-grizzly", grizzlyDefinition.id, "p1");
+
+    const sourceObject = state.objectPool.get("obj-grizzly");
+    if (sourceObject === undefined) {
+      throw new Error("Expected grizzly to be on the battlefield");
+    }
+
+    const battlefieldZone = sourceObject.zone;
+    const battlefieldKey = zoneKey(battlefieldZone);
+    const graveyardZone = state.mode.resolveZone(state, "graveyard", sourceObject.owner);
+    const graveyardKey = zoneKey(graveyardZone);
+    state.zones.set(
+      battlefieldKey,
+      (state.zones.get(battlefieldKey) ?? []).filter((objectId) => objectId !== "obj-grizzly")
+    );
+    state.zones.set(graveyardKey, [...(state.zones.get(graveyardKey) ?? []), "obj-grizzly"]);
+
+    state.objectPool.set("obj-grizzly", {
+      ...sourceObject,
+      zone: graveyardZone,
+      zcc: 1
+    });
+
+    const withEffect = addContinuousEffect(state, {
+      id: "effect-source-bound",
+      source: { id: "obj-grizzly", zcc: 0 },
+      layer: LAYERS.CONTROL,
+      timestamp: 1,
+      duration: "while_source_on_battlefield",
+      appliesTo: { kind: "object", object: { id: "obj-grizzly", zcc: 0 } },
+      effect: { kind: "set_controller", payload: { playerId: "p2" } }
+    });
+
+    const result = runSBALoop(withEffect);
+
+    expect(result.state.continuousEffects).toEqual([]);
+    expect(result.events.map((event) => event.type)).toEqual(["CONTINUOUS_EFFECT_REMOVED"]);
+    expect(() => assertStateInvariants(result.state)).not.toThrow();
+  });
 });

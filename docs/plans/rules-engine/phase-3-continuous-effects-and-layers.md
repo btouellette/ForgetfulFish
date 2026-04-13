@@ -315,7 +315,8 @@ Acceptance: Effects expire at correct times.
 
 **Current status / intended next direction**
 - `cleanupExpiredEffects` now exists as a dedicated helper and handles the `until_end_of_turn` case with `CONTINUOUS_EFFECT_REMOVED` event emission, wired through the cleanup step.
-- The remaining P3.3 work is still open: `while_source_on_battlefield`, `until_cleanup`, and `as_long_as` need their own expiration triggers and should extend the same helper rather than reintroducing inline cleanup logic.
+- `while_source_on_battlefield` effects now also expire when their source leaves the battlefield or changes identity, wired through the SBA loop so battlefield departures clean up source-bound effects in the same convergence pass.
+- The remaining P3.3 work is still open: `until_cleanup` and `as_long_as` need their own expiration triggers and should extend the same duration helper entry points rather than reintroducing inline cleanup logic.
 
 ### [ ] P3.4 — Layer 2: control-changing effects
 

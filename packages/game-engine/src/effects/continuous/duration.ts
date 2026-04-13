@@ -6,6 +6,35 @@ type CleanupExpiredEffectsResult = {
   events: GameEvent[];
 };
 
+function createRemovalResult(
+  state: Readonly<GameState>,
+  removedEffectIds: string[]
+): CleanupExpiredEffectsResult {
+  if (removedEffectIds.length === 0) {
+    return {
+      state: { ...state },
+      events: []
+    };
+  }
+
+  const removedIdSet = new Set(removedEffectIds);
+  const events = removedEffectIds.map((effectId, index) =>
+    createEvent(buildEnvelope(state), state.version + index + 1, {
+      type: "CONTINUOUS_EFFECT_REMOVED",
+      effectId
+    })
+  );
+
+  return {
+    state: {
+      ...state,
+      version: state.version + removedEffectIds.length,
+      continuousEffects: state.continuousEffects.filter((effect) => !removedIdSet.has(effect.id))
+    },
+    events
+  };
+}
+
 function buildEnvelope(state: Readonly<GameState>): EventEnvelope {
   return {
     engineVersion: state.engineVersion,
@@ -15,32 +44,33 @@ function buildEnvelope(state: Readonly<GameState>): EventEnvelope {
 }
 
 export function cleanupExpiredEffects(state: Readonly<GameState>): CleanupExpiredEffectsResult {
-  const removedEffects = state.continuousEffects.filter(
-    (effect) => effect.duration === "until_end_of_turn"
+  return createRemovalResult(
+    state,
+    state.continuousEffects
+      .filter((effect) => effect.duration === "until_end_of_turn")
+      .map((effect) => effect.id)
   );
+}
 
-  if (removedEffects.length === 0) {
-    return {
-      state: { ...state },
-      events: []
-    };
-  }
+export function removeSourceGoneEffects(state: Readonly<GameState>): CleanupExpiredEffectsResult {
+  const removedEffectIds = state.continuousEffects
+    .filter((effect) => {
+      if (effect.duration !== "while_source_on_battlefield") {
+        return false;
+      }
 
-  const events = removedEffects.map((effect, index) =>
-    createEvent(buildEnvelope(state), state.version + index + 1, {
-      type: "CONTINUOUS_EFFECT_REMOVED",
-      effectId: effect.id
+      const sourceObject = state.objectPool.get(effect.source.id);
+      if (sourceObject === undefined) {
+        return true;
+      }
+
+      if (sourceObject.zone.kind !== "battlefield") {
+        return true;
+      }
+
+      return sourceObject.zcc !== effect.source.zcc;
     })
-  );
+    .map((effect) => effect.id);
 
-  return {
-    state: {
-      ...state,
-      version: state.version + removedEffects.length,
-      continuousEffects: state.continuousEffects.filter(
-        (effect) => effect.duration !== "until_end_of_turn"
-      )
-    },
-    events
-  };
+  return createRemovalResult(state, removedEffectIds);
 }
