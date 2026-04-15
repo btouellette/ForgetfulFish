@@ -437,6 +437,10 @@ Test: **Write tests FIRST**, then implement.
 6. Negative power or toughness is handled correctly according to MTG rules.
 Acceptance: P/T math is correct through all sublayers.
 
+**Current status / intended next direction**
+- Layer 7a `set_pt` effects already apply through `computeGameObject`, and Layer 7b now also adjusts derived power/toughness for `+1/+1` and `-1/-1` counters on the computed view.
+- The remaining P3.8 work is still open: generalized +N/+N continuous-effect adjustments, Layer 7c switching, and broader negative/stacked P/T interaction coverage still need dedicated implementation and tests.
+
 ### [ ] P3.9 — Card: Dandan (full implementation)
 
 **Files**: `cards/dandan.ts`
