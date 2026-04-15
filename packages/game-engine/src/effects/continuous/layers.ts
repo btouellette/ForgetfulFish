@@ -193,7 +193,7 @@ function applyEffectToView(
     }
   }
 
-  if (effect.layer === LAYERS.PT_ADJUST && effect.effect.kind === "apply_counters") {
+  if (effect.layer === LAYERS.PT_ADJUST && isSyntheticCounterAdjustmentEffect(effect)) {
     return applyCounterAdjustments(view);
   }
 
@@ -485,6 +485,10 @@ export function addContinuousEffect(
   state: Readonly<GameState>,
   effect: ContinuousEffect
 ): GameState {
+  if (effect.effect.kind === "apply_counters") {
+    throw new Error("continuous effect kind 'apply_counters' is reserved for engine-internal use");
+  }
+
   if (effect.id.startsWith(COUNTER_ADJUSTMENT_EFFECT_ID_PREFIX)) {
     throw new Error(`continuous effect id '${effect.id}' is reserved for engine-internal use`);
   }
