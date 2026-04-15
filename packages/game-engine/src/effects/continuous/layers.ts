@@ -257,6 +257,26 @@ function hasKeywordAbility(
   );
 }
 
+function applyCounterAdjustments(view: Readonly<DerivedGameObjectView>): DerivedGameObjectView {
+  if (view.power === null || view.toughness === null) {
+    return cloneDerivedView(view);
+  }
+
+  const plusOneCounters = view.counters.get("+1/+1") ?? 0;
+  const minusOneCounters = view.counters.get("-1/-1") ?? 0;
+  const netAdjustment = plusOneCounters - minusOneCounters;
+
+  if (netAdjustment === 0) {
+    return cloneDerivedView(view);
+  }
+
+  return {
+    ...cloneDerivedView(view),
+    power: view.power + netAdjustment,
+    toughness: view.toughness + netAdjustment
+  };
+}
+
 function findDefendingPlayerId(
   state: Readonly<GameState>,
   attackerPlayerId: string
@@ -362,6 +382,8 @@ function resolveContinuousEffects(
     appliedEffects.push(effect);
     view = applyEffectToView(view, effect);
   }
+
+  view = applyCounterAdjustments(view);
 
   if (view.summoningSick && hasKeywordAbility(view, "haste")) {
     view = {
