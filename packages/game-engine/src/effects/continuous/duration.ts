@@ -7,6 +7,23 @@ type CleanupExpiredEffectsResult = {
   events: GameEvent[];
 };
 
+function getCandidateObjectIdsForAsLongAs(
+  state: Readonly<GameState>,
+  effect: Readonly<GameState["continuousEffects"][number]>
+): string[] {
+  switch (effect.appliesTo.kind) {
+    case "object":
+      return state.objectPool.has(effect.appliesTo.object.id) ? [effect.appliesTo.object.id] : [];
+    case "all":
+    case "controller":
+      return [...state.objectPool.keys()];
+    default: {
+      const neverTarget: never = effect.appliesTo;
+      return neverTarget;
+    }
+  }
+}
+
 function createRemovalResult(
   state: Readonly<GameState>,
   removedEffectIds: string[]
@@ -78,7 +95,7 @@ export function removeAsLongAsEffects(state: Readonly<GameState>): CleanupExpire
         )
       };
 
-      for (const [objectId] of stateWithoutEffect.objectPool) {
+      for (const objectId of getCandidateObjectIdsForAsLongAs(stateWithoutEffect, effect)) {
         const view = computeGameObject(objectId, stateWithoutEffect);
         if (!matchesEffectTarget(effect.appliesTo, view, stateWithoutEffect)) {
           continue;

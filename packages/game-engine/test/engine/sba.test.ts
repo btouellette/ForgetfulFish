@@ -393,4 +393,60 @@ describe("engine/sba", () => {
     expect(result.events.map((event) => event.type)).toEqual(["CONTINUOUS_EFFECT_REMOVED"]);
     expect(() => assertStateInvariants(result.state)).not.toThrow();
   });
+
+  it("cleans up expired as_long_as PT effects before checking zero-toughness SBAs", () => {
+    cardRegistry.set(grizzlyDefinition.id, grizzlyDefinition);
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "sba-as-long-as-before-zero-toughness",
+      rngSeed: "seed-sba-as-long-as-before-zero-toughness"
+    });
+    putOnBattlefield(state, "obj-grizzly", grizzlyDefinition.id, "p1");
+    putOnBattlefield(state, "obj-island", "island", "p2");
+
+    const island = state.objectPool.get("obj-island");
+    if (island === undefined) {
+      throw new Error("Expected Island to be on the battlefield");
+    }
+
+    const battlefieldKey = zoneKey(island.zone);
+    const graveyardZone = state.mode.resolveZone(state, "graveyard", island.owner);
+    const graveyardKey = zoneKey(graveyardZone);
+    state.zones.set(
+      battlefieldKey,
+      (state.zones.get(battlefieldKey) ?? []).filter((objectId) => objectId !== "obj-island")
+    );
+    state.zones.set(graveyardKey, [...(state.zones.get(graveyardKey) ?? []), "obj-island"]);
+    state.objectPool.set("obj-island", {
+      ...island,
+      zone: graveyardZone,
+      zcc: 1
+    });
+
+    const withEffect = addContinuousEffect(state, {
+      id: "effect-as-long-as-zero-pt",
+      source: { id: "obj-grizzly", zcc: 0 },
+      layer: LAYERS.PT_SET,
+      sublayer: LAYERS.PT_SET,
+      timestamp: 1,
+      duration: {
+        kind: "as_long_as",
+        condition: { kind: "defender_controls_land_type", landType: "Island" }
+      },
+      appliesTo: { kind: "object", object: { id: "obj-grizzly", zcc: 0 } },
+      effect: {
+        kind: "set_pt",
+        payload: { power: 0, toughness: 0 }
+      }
+    });
+
+    const result = runSBALoop(withEffect);
+    const battlefield =
+      result.state.zones.get(zoneKey({ kind: "battlefield", scope: "shared" })) ?? [];
+
+    expect(result.state.continuousEffects).toEqual([]);
+    expect(battlefield).toContain("obj-grizzly");
+    expect(result.events.map((event) => event.type)).toEqual(["CONTINUOUS_EFFECT_REMOVED"]);
+    expect(() => assertStateInvariants(result.state)).not.toThrow();
+  });
 });
