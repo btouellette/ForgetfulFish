@@ -374,6 +374,10 @@ Test: **Write tests FIRST**, then implement.
 6. Circular dependencies are broken using effect timestamps.
 Acceptance: Layer 3 with dependency ordering works for Mind Bend + Crystal Spray interaction.
 
+**Current status / intended next direction**
+- Layer 3 now infers per-object dependency ordering for text-change effects when one rewrite makes another effect newly applicable, reusing the existing topological sort and timestamp cycle fallback in the shared continuous-effect engine.
+- The remaining P3.5 work is still open: `Color` token substitution is not implemented yet, so the next text-change slice should cover color-word rewriting and any card-level coverage that depends on it.
+
 ### [ ] P3.6 — Layer 4: type-changing effects
 
 **Files**: `effects/continuous/typeChange.ts`
