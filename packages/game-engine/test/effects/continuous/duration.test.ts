@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  cleanupUntilCleanupEffects,
   cleanupExpiredEffects,
   removeSourceGoneEffects
 } from "../../../src/effects/continuous/duration";
@@ -130,6 +131,70 @@ describe("effects/continuous/duration", () => {
       "effect-as-long-as"
     ]);
     expect(result.events).toEqual([]);
+  });
+
+  it("does not remove until_cleanup effects during end-of-turn cleanup", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "duration-until-cleanup-persist",
+      rngSeed: "seed"
+    });
+    state.continuousEffects = [makeEffect("effect-cleanup", "until_cleanup", 1)];
+
+    const result = cleanupExpiredEffects(state);
+
+    expect(result.state.continuousEffects.map((effect) => effect.id)).toEqual(["effect-cleanup"]);
+    expect(result.events).toEqual([]);
+  });
+
+  it("removes until_cleanup effects during cleanup-step cleanup", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "duration-until-cleanup-remove",
+      rngSeed: "seed"
+    });
+    state.continuousEffects = [
+      makeEffect("effect-cleanup", "until_cleanup", 1),
+      makeEffect("effect-permanent", "permanent", 2)
+    ];
+
+    const result = cleanupUntilCleanupEffects(state);
+
+    expect(result.state.continuousEffects.map((effect) => effect.id)).toEqual(["effect-permanent"]);
+  });
+
+  it("emits removal events for each until_cleanup effect removed during cleanup-step cleanup", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "duration-until-cleanup-events",
+      rngSeed: "seed"
+    });
+    state.continuousEffects = [
+      makeEffect("effect-a", "until_cleanup", 1),
+      makeEffect("effect-b", "until_cleanup", 2)
+    ];
+
+    const result = cleanupUntilCleanupEffects(state);
+
+    const removedEvents = result.events.filter(isContinuousEffectRemovedEvent);
+    expect(removedEvents.map((event) => event.effectId)).toEqual(["effect-a", "effect-b"]);
+    expect(result.state.version).toBe(state.version + 2);
+  });
+
+  it("lets until_cleanup effects survive end-of-turn cleanup but removes them in cleanup-step cleanup", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "duration-until-cleanup-sequence",
+      rngSeed: "seed"
+    });
+    state.continuousEffects = [
+      makeEffect("effect-eot", "until_end_of_turn", 1),
+      makeEffect("effect-cleanup", "until_cleanup", 2)
+    ];
+
+    const afterEotCleanup = cleanupExpiredEffects(state);
+    const afterCleanupStep = cleanupUntilCleanupEffects(afterEotCleanup.state);
+
+    expect(afterEotCleanup.state.continuousEffects.map((effect) => effect.id)).toEqual([
+      "effect-cleanup"
+    ]);
+    expect(afterCleanupStep.state.continuousEffects).toEqual([]);
   });
 
   it("removes while_source_on_battlefield effects when the source leaves the battlefield", () => {

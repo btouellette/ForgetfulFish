@@ -52,6 +52,17 @@ export function cleanupExpiredEffects(state: Readonly<GameState>): CleanupExpire
   );
 }
 
+export function cleanupUntilCleanupEffects(
+  state: Readonly<GameState>
+): CleanupExpiredEffectsResult {
+  return createRemovalResult(
+    state,
+    state.continuousEffects
+      .filter((effect) => effect.duration === "until_cleanup")
+      .map((effect) => effect.id)
+  );
+}
+
 export function removeSourceGoneEffects(state: Readonly<GameState>): CleanupExpiredEffectsResult {
   const removedEffectIds = state.continuousEffects
     .filter((effect) => {

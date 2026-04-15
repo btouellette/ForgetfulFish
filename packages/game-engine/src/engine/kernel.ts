@@ -1,6 +1,6 @@
 import type { ActivatedAbilityAst } from "../cards/abilityAst";
 import { cardRegistry } from "../cards";
-import { cleanupExpiredEffects } from "../effects/continuous/duration";
+import { cleanupExpiredEffects, cleanupUntilCleanupEffects } from "../effects/continuous/duration";
 import { computeGameObject } from "../effects/continuous/layers";
 import { createEvent, type GameEvent } from "../events/event";
 import { Rng } from "../rng/rng";
@@ -347,8 +347,9 @@ export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): Ste
   }
 
   if (state.turnState.step === "CLEANUP") {
-    const cleanupResult = cleanupExpiredEffects(processedState);
-    const turnedState = advanceTurn(cleanupResult.state);
+    const endOfTurnCleanup = cleanupExpiredEffects(processedState);
+    const untilCleanupResult = cleanupUntilCleanupEffects(endOfTurnCleanup.state);
+    const turnedState = advanceTurn(untilCleanupResult.state);
     const nextState: GameState = {
       ...turnedState,
       version: turnedState.version + 1
@@ -369,7 +370,12 @@ export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): Ste
 
     return {
       state: nextState,
-      events: [...events, ...cleanupResult.events, phaseChangedEvent]
+      events: [
+        ...events,
+        ...endOfTurnCleanup.events,
+        ...untilCleanupResult.events,
+        phaseChangedEvent
+      ]
     };
   }
 
