@@ -56,6 +56,7 @@ export type ContinuousEffect = {
 };
 
 const COUNTER_ADJUSTMENT_EFFECT_ID_PREFIX = "__counter_adjustment__";
+const LAST_SYNTHETIC_COUNTER_TIMESTAMP = Number.MAX_SAFE_INTEGER;
 
 function cloneDerivedView(view: Readonly<DerivedGameObjectView>): DerivedGameObjectView {
   return {
@@ -294,7 +295,8 @@ function createCounterAdjustmentEffect(
 
   const plusOneCounters = object.counters.get("+1/+1") ?? 0;
   const minusOneCounters = object.counters.get("-1/-1") ?? 0;
-  if (plusOneCounters === 0 && minusOneCounters === 0) {
+  const netAdjustment = plusOneCounters - minusOneCounters;
+  if (netAdjustment === 0) {
     return null;
   }
 
@@ -303,7 +305,7 @@ function createCounterAdjustmentEffect(
     source: { id: object.id, zcc: object.zcc },
     layer: LAYERS.PT_ADJUST,
     sublayer: LAYERS.PT_ADJUST,
-    timestamp: Number.MAX_SAFE_INTEGER,
+    timestamp: LAST_SYNTHETIC_COUNTER_TIMESTAMP,
     duration: "permanent",
     appliesTo: { kind: "object", object: { id: object.id, zcc: object.zcc } },
     effect: { kind: "apply_counters" }
@@ -311,7 +313,13 @@ function createCounterAdjustmentEffect(
 }
 
 function isSyntheticCounterAdjustmentEffect(effect: Readonly<ContinuousEffect>): boolean {
-  return effect.effect.kind === "apply_counters";
+  return (
+    effect.id.startsWith(COUNTER_ADJUSTMENT_EFFECT_ID_PREFIX) &&
+    effect.layer === LAYERS.PT_ADJUST &&
+    effect.sublayer === LAYERS.PT_ADJUST &&
+    effect.timestamp === LAST_SYNTHETIC_COUNTER_TIMESTAMP &&
+    effect.effect.kind === "apply_counters"
+  );
 }
 
 function findDefendingPlayerId(
@@ -477,6 +485,10 @@ export function addContinuousEffect(
   state: Readonly<GameState>,
   effect: ContinuousEffect
 ): GameState {
+  if (effect.id.startsWith(COUNTER_ADJUSTMENT_EFFECT_ID_PREFIX)) {
+    throw new Error(`continuous effect id '${effect.id}' is reserved for engine-internal use`);
+  }
+
   if (state.continuousEffects.some((existingEffect) => existingEffect.id === effect.id)) {
     throw new Error(`continuous effect '${effect.id}' already exists`);
   }
