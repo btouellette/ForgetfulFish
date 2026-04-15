@@ -165,6 +165,9 @@ describe("effects/continuous/compute", () => {
 
     expect(computed.power).toBe(5);
     expect(computed.toughness).toBe(5);
+    expect(getApplicableContinuousEffects("obj-a", withSetPt).map((effect) => effect.id)).toEqual([
+      "effect-set-pt"
+    ]);
   });
 
   it("accumulates multiple +1/+1 counters in Layer 7b", () => {

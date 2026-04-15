@@ -288,7 +288,13 @@ function createCounterAdjustmentEffect(
   state: Readonly<GameState>
 ): ContinuousEffect | null {
   const object = state.objectPool.get(objectId);
-  if (object === undefined || object.counters.size === 0) {
+  if (object === undefined) {
+    return null;
+  }
+
+  const plusOneCounters = object.counters.get("+1/+1") ?? 0;
+  const minusOneCounters = object.counters.get("-1/-1") ?? 0;
+  if (plusOneCounters === 0 && minusOneCounters === 0) {
     return null;
   }
 
