@@ -279,6 +279,52 @@ describe("engine/kernel", () => {
     expect(removedEvents.map((event) => event.effectId)).toEqual(["effect-cleanup"]);
   });
 
+  it("cleanup also removes as_long_as effects when their condition is false", () => {
+    const base = createInitialGameState("p1", "p2", {
+      id: "kernel-cleanup-as-long-as",
+      rngSeed: "seed-kernel-cleanup-as-long-as"
+    });
+    const state: GameState = {
+      ...withStep(base, "CLEANUP"),
+      objectPool: new Map([
+        [
+          "obj-conditional",
+          {
+            ...createIsland("obj-conditional", "p1"),
+            zone: { kind: "battlefield", scope: "shared" }
+          }
+        ]
+      ]),
+      zones: new Map([
+        ...base.zones,
+        [zoneKey({ kind: "battlefield", scope: "shared" }), ["obj-conditional"]]
+      ]),
+      continuousEffects: [
+        {
+          id: "effect-as-long-as",
+          source: { id: "source-conditional", zcc: 0 },
+          layer: LAYERS.CONTROL,
+          timestamp: 1,
+          duration: {
+            kind: "as_long_as",
+            condition: { kind: "defender_controls_land_type", landType: "Island" }
+          },
+          appliesTo: { kind: "object", object: { id: "obj-conditional", zcc: 0 } },
+          effect: { kind: "set_controller", payload: { playerId: "p2" } }
+        }
+      ]
+    };
+
+    const next = advanceStepWithEvents(state, new Rng(state.rngSeed));
+    const removedEvents = next.events.filter(
+      (event): event is (typeof next.events)[number] & { type: "CONTINUOUS_EFFECT_REMOVED" } =>
+        event.type === "CONTINUOUS_EFFECT_REMOVED"
+    );
+
+    expect(next.state.continuousEffects).toEqual([]);
+    expect(removedEvents.map((event) => event.effectId)).toEqual(["effect-as-long-as"]);
+  });
+
   it("resets pass flags when entering a new priority step", () => {
     const base = createInitialGameState("p1", "p2", {
       id: "kernel-priority-reset",

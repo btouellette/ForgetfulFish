@@ -344,4 +344,53 @@ describe("engine/sba", () => {
     expect(result.events.map((event) => event.type)).toEqual(["CONTINUOUS_EFFECT_REMOVED"]);
     expect(() => assertStateInvariants(result.state)).not.toThrow();
   });
+
+  it("removes as_long_as effects when no defender-controlled Island remains", () => {
+    cardRegistry.set(grizzlyDefinition.id, grizzlyDefinition);
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "sba-remove-as-long-as-without-sba",
+      rngSeed: "seed-sba-remove-as-long-as-without-sba"
+    });
+    putOnBattlefield(state, "obj-grizzly", grizzlyDefinition.id, "p1");
+    putOnBattlefield(state, "obj-island", "island", "p2");
+
+    const island = state.objectPool.get("obj-island");
+    if (island === undefined) {
+      throw new Error("Expected Island to be on the battlefield");
+    }
+
+    const battlefieldKey = zoneKey(island.zone);
+    const graveyardZone = state.mode.resolveZone(state, "graveyard", island.owner);
+    const graveyardKey = zoneKey(graveyardZone);
+    state.zones.set(
+      battlefieldKey,
+      (state.zones.get(battlefieldKey) ?? []).filter((objectId) => objectId !== "obj-island")
+    );
+    state.zones.set(graveyardKey, [...(state.zones.get(graveyardKey) ?? []), "obj-island"]);
+    state.objectPool.set("obj-island", {
+      ...island,
+      zone: graveyardZone,
+      zcc: 1
+    });
+
+    const withEffect = addContinuousEffect(state, {
+      id: "effect-as-long-as",
+      source: { id: "obj-grizzly", zcc: 0 },
+      layer: LAYERS.CONTROL,
+      timestamp: 1,
+      duration: {
+        kind: "as_long_as",
+        condition: { kind: "defender_controls_land_type", landType: "Island" }
+      },
+      appliesTo: { kind: "object", object: { id: "obj-grizzly", zcc: 0 } },
+      effect: { kind: "set_controller", payload: { playerId: "p2" } }
+    });
+
+    const result = runSBALoop(withEffect);
+
+    expect(result.state.continuousEffects).toEqual([]);
+    expect(result.events.map((event) => event.type)).toEqual(["CONTINUOUS_EFFECT_REMOVED"]);
+    expect(() => assertStateInvariants(result.state)).not.toThrow();
+  });
 });
