@@ -305,7 +305,7 @@ function createCounterAdjustmentEffect(
 }
 
 function isSyntheticCounterAdjustmentEffect(effect: Readonly<ContinuousEffect>): boolean {
-  return effect.id.startsWith(COUNTER_ADJUSTMENT_EFFECT_ID_PREFIX);
+  return effect.effect.kind === "apply_counters";
 }
 
 function findDefendingPlayerId(
