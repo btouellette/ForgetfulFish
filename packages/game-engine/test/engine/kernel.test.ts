@@ -249,6 +249,36 @@ describe("engine/kernel", () => {
     expect(removedEvent).toMatchObject({ effectId: "effect-expired" });
   });
 
+  it("cleanup also removes until_cleanup effects", () => {
+    const base = createInitialGameState("p1", "p2", {
+      id: "kernel-cleanup-until-cleanup",
+      rngSeed: "seed-kernel-cleanup-until-cleanup"
+    });
+    const state: GameState = {
+      ...withStep(base, "CLEANUP"),
+      continuousEffects: [
+        {
+          id: "effect-cleanup",
+          source: { id: "source-cleanup", zcc: 0 },
+          layer: LAYERS.CONTROL,
+          timestamp: 1,
+          duration: "until_cleanup",
+          appliesTo: { kind: "object", object: { id: "obj-cleanup", zcc: 0 } },
+          effect: { kind: "set_controller", payload: { playerId: "p2" } }
+        }
+      ]
+    };
+
+    const next = advanceStepWithEvents(state, new Rng(state.rngSeed));
+    const removedEvents = next.events.filter(
+      (event): event is (typeof next.events)[number] & { type: "CONTINUOUS_EFFECT_REMOVED" } =>
+        event.type === "CONTINUOUS_EFFECT_REMOVED"
+    );
+
+    expect(next.state.continuousEffects).toEqual([]);
+    expect(removedEvents.map((event) => event.effectId)).toEqual(["effect-cleanup"]);
+  });
+
   it("resets pass flags when entering a new priority step", () => {
     const base = createInitialGameState("p1", "p2", {
       id: "kernel-priority-reset",
