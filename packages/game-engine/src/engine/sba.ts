@@ -1,6 +1,6 @@
 import { cardRegistry } from "../cards";
 import type { StaticAbilityAst } from "../cards/abilityAst";
-import { removeSourceGoneEffects } from "../effects/continuous/duration";
+import { removeAsLongAsEffects, removeSourceGoneEffects } from "../effects/continuous/duration";
 import { computeGameObject } from "../effects/continuous/layers";
 import { createEvent, type GameEvent } from "../events/event";
 import type { GameState } from "../state/gameState";
@@ -249,22 +249,24 @@ export function runSBALoop(state: Readonly<GameState>): { state: GameState; even
   const allEvents: GameEvent[] = [];
 
   for (let iteration = 0; iteration < 20; iteration += 1) {
-    const sbas = checkSBAs(currentState);
     const sourceCleanup = removeSourceGoneEffects(currentState);
+    const asLongAsCleanup = removeAsLongAsEffects(sourceCleanup.state);
+    const cleanedState = asLongAsCleanup.state;
+    const cleanupEvents = [...sourceCleanup.events, ...asLongAsCleanup.events];
+    const sbas = checkSBAs(cleanedState);
     if (sbas.length === 0) {
-      if (sourceCleanup.events.length === 0) {
-        return { state: currentState, events: allEvents };
+      if (cleanupEvents.length === 0) {
+        return { state: cleanedState, events: allEvents };
       }
 
-      currentState = sourceCleanup.state;
-      allEvents.push(...sourceCleanup.events);
+      currentState = cleanedState;
+      allEvents.push(...cleanupEvents);
       continue;
     }
 
-    const applied = applySBAs(currentState, sbas);
-    const postSbaCleanup = removeSourceGoneEffects(applied.state);
-    currentState = postSbaCleanup.state;
-    allEvents.push(...applied.events, ...postSbaCleanup.events);
+    const applied = applySBAs(cleanedState, sbas);
+    currentState = applied.state;
+    allEvents.push(...cleanupEvents, ...applied.events);
   }
 
   throw new Error("SBA loop did not converge within 20 iterations");

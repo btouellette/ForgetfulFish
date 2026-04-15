@@ -1,10 +1,28 @@
 import { createEvent, type EventEnvelope, type GameEvent } from "../../events/event";
+import { computeGameObject, conditionAppliesToView, matchesEffectTarget } from "./layers";
 import type { GameState } from "../../state/gameState";
 
 type CleanupExpiredEffectsResult = {
   state: GameState;
   events: GameEvent[];
 };
+
+function getCandidateObjectIdsForAsLongAs(
+  state: Readonly<GameState>,
+  effect: Readonly<GameState["continuousEffects"][number]>
+): string[] {
+  switch (effect.appliesTo.kind) {
+    case "object":
+      return state.objectPool.has(effect.appliesTo.object.id) ? [effect.appliesTo.object.id] : [];
+    case "all":
+    case "controller":
+      return [...state.objectPool.keys()];
+    default: {
+      const neverTarget: never = effect.appliesTo;
+      return neverTarget;
+    }
+  }
+}
 
 function createRemovalResult(
   state: Readonly<GameState>,
@@ -61,6 +79,38 @@ export function cleanupUntilCleanupEffects(
       .filter((effect) => effect.duration === "until_cleanup")
       .map((effect) => effect.id)
   );
+}
+
+export function removeAsLongAsEffects(state: Readonly<GameState>): CleanupExpiredEffectsResult {
+  const removedEffectIds = state.continuousEffects
+    .filter((effect) => {
+      if (typeof effect.duration === "string" || effect.duration.kind !== "as_long_as") {
+        return false;
+      }
+
+      const stateWithoutEffect: GameState = {
+        ...state,
+        continuousEffects: state.continuousEffects.filter(
+          (candidateEffect) => candidateEffect.id !== effect.id
+        )
+      };
+
+      for (const objectId of getCandidateObjectIdsForAsLongAs(stateWithoutEffect, effect)) {
+        const view = computeGameObject(objectId, stateWithoutEffect);
+        if (!matchesEffectTarget(effect.appliesTo, view, stateWithoutEffect)) {
+          continue;
+        }
+
+        if (conditionAppliesToView(effect.duration.condition, view, stateWithoutEffect)) {
+          return false;
+        }
+      }
+
+      return true;
+    })
+    .map((effect) => effect.id);
+
+  return createRemovalResult(state, removedEffectIds);
 }
 
 export function removeSourceGoneEffects(state: Readonly<GameState>): CleanupExpiredEffectsResult {
