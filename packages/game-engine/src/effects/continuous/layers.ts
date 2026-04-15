@@ -270,7 +270,7 @@ function findDefendingPlayerId(
   return defender?.id ?? null;
 }
 
-function conditionAppliesToView(
+export function conditionAppliesToView(
   condition: ConditionAst | undefined,
   view: Readonly<DerivedGameObjectView>,
   state: Readonly<GameState>

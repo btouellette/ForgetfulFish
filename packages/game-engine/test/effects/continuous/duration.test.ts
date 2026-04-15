@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  removeAsLongAsEffects,
   cleanupUntilCleanupEffects,
   cleanupExpiredEffects,
   removeSourceGoneEffects
 } from "../../../src/effects/continuous/duration";
 import { LAYERS, type ContinuousEffect } from "../../../src/effects/continuous/layers";
 import type { GameEvent } from "../../../src/events/event";
+import type { GameObject } from "../../../src/state/gameObject";
 import { createInitialGameState } from "../../../src/state/gameState";
+import { zoneKey } from "../../../src/state/zones";
 
 function isContinuousEffectRemovedEvent(
   event: GameEvent
@@ -29,6 +32,15 @@ function makeEffect(
     appliesTo: { kind: "object", object: { id: "obj-a", zcc: 0 } },
     effect: { kind: "set_controller", payload: { playerId: "p2" } }
   };
+}
+
+function putOnBattlefield(
+  state: ReturnType<typeof createInitialGameState>,
+  object: GameObject
+): void {
+  const battlefieldKey = zoneKey(object.zone);
+  state.objectPool.set(object.id, object);
+  state.zones.set(battlefieldKey, [...(state.zones.get(battlefieldKey) ?? []), object.id]);
 }
 
 describe("effects/continuous/duration", () => {
@@ -195,6 +207,96 @@ describe("effects/continuous/duration", () => {
       "effect-cleanup"
     ]);
     expect(afterCleanupStep.state.continuousEffects).toEqual([]);
+  });
+
+  it("removes as_long_as effects when their condition becomes false", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "duration-as-long-as-false",
+      rngSeed: "seed"
+    });
+    putOnBattlefield(state, {
+      id: "obj-a",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "battlefield", scope: "shared" }
+    });
+    state.continuousEffects = [
+      makeEffect(
+        "effect-as-long-as",
+        {
+          kind: "as_long_as",
+          condition: { kind: "defender_controls_land_type", landType: "Island" }
+        },
+        1
+      )
+    ];
+
+    const result = removeAsLongAsEffects(state);
+
+    expect(result.state.continuousEffects).toEqual([]);
+    expect(result.events.map((event) => event.type)).toEqual(["CONTINUOUS_EFFECT_REMOVED"]);
+    const removedEvent = result.events.find(isContinuousEffectRemovedEvent);
+    expect(removedEvent?.effectId).toBe("effect-as-long-as");
+  });
+
+  it("preserves as_long_as effects while their condition remains true", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "duration-as-long-as-true",
+      rngSeed: "seed"
+    });
+    putOnBattlefield(state, {
+      id: "obj-a",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "battlefield", scope: "shared" }
+    });
+    putOnBattlefield(state, {
+      id: "obj-defender-island",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p2",
+      controller: "p2",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "battlefield", scope: "shared" }
+    });
+    state.continuousEffects = [
+      makeEffect(
+        "effect-as-long-as",
+        {
+          kind: "as_long_as",
+          condition: { kind: "defender_controls_land_type", landType: "Island" }
+        },
+        1
+      )
+    ];
+
+    const result = removeAsLongAsEffects(state);
+
+    expect(result.state.continuousEffects.map((effect) => effect.id)).toEqual([
+      "effect-as-long-as"
+    ]);
+    expect(result.events).toEqual([]);
   });
 
   it("removes while_source_on_battlefield effects when the source leaves the battlefield", () => {
