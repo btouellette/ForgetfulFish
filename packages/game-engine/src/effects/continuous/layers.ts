@@ -55,6 +55,8 @@ export type ContinuousEffect = {
   condition?: ConditionAst;
 };
 
+const COUNTER_ADJUSTMENT_EFFECT_ID_PREFIX = "__counter_adjustment__";
+
 function cloneDerivedView(view: Readonly<DerivedGameObjectView>): DerivedGameObjectView {
   return {
     ...view,
@@ -190,6 +192,10 @@ function applyEffectToView(
     }
   }
 
+  if (effect.layer === LAYERS.PT_ADJUST && effect.effect.kind === "apply_counters") {
+    return applyCounterAdjustments(view);
+  }
+
   if (effect.layer === LAYERS.CONTROL && effect.effect.kind === "set_controller") {
     const playerId = effect.effect.payload?.playerId;
     if (typeof playerId === "string") {
@@ -259,7 +265,7 @@ function hasKeywordAbility(
 
 function applyCounterAdjustments(view: Readonly<DerivedGameObjectView>): DerivedGameObjectView {
   if (view.power === null || view.toughness === null) {
-    return cloneDerivedView(view);
+    return view;
   }
 
   const plusOneCounters = view.counters.get("+1/+1") ?? 0;
@@ -267,14 +273,39 @@ function applyCounterAdjustments(view: Readonly<DerivedGameObjectView>): Derived
   const netAdjustment = plusOneCounters - minusOneCounters;
 
   if (netAdjustment === 0) {
-    return cloneDerivedView(view);
+    return view;
   }
 
   return {
-    ...cloneDerivedView(view),
+    ...view,
     power: view.power + netAdjustment,
     toughness: view.toughness + netAdjustment
   };
+}
+
+function createCounterAdjustmentEffect(
+  objectId: string,
+  state: Readonly<GameState>
+): ContinuousEffect | null {
+  const object = state.objectPool.get(objectId);
+  if (object === undefined || object.counters.size === 0) {
+    return null;
+  }
+
+  return {
+    id: `${COUNTER_ADJUSTMENT_EFFECT_ID_PREFIX}${object.id}:${object.zcc}`,
+    source: { id: object.id, zcc: object.zcc },
+    layer: LAYERS.PT_ADJUST,
+    sublayer: LAYERS.PT_ADJUST,
+    timestamp: Number.MAX_SAFE_INTEGER,
+    duration: "permanent",
+    appliesTo: { kind: "object", object: { id: object.id, zcc: object.zcc } },
+    effect: { kind: "apply_counters" }
+  };
+}
+
+function isSyntheticCounterAdjustmentEffect(effect: Readonly<ContinuousEffect>): boolean {
+  return effect.id.startsWith(COUNTER_ADJUSTMENT_EFFECT_ID_PREFIX);
 }
 
 function findDefendingPlayerId(
@@ -366,7 +397,12 @@ function resolveContinuousEffects(
   view: DerivedGameObjectView;
   appliedEffects: ContinuousEffect[];
 } {
-  const sortedEffects = orderEffectsForApplication(state.continuousEffects);
+  const syntheticCounterEffect = createCounterAdjustmentEffect(objectId, state);
+  const sortedEffects = orderEffectsForApplication(
+    syntheticCounterEffect === null
+      ? state.continuousEffects
+      : [...state.continuousEffects, syntheticCounterEffect]
+  );
   const appliedEffects: ContinuousEffect[] = [];
 
   let view = cloneDerivedView(requireBaseObject(objectId, state));
@@ -379,11 +415,11 @@ function resolveContinuousEffects(
       continue;
     }
 
-    appliedEffects.push(effect);
+    if (!isSyntheticCounterAdjustmentEffect(effect)) {
+      appliedEffects.push(effect);
+    }
     view = applyEffectToView(view, effect);
   }
-
-  view = applyCounterAdjustments(view);
 
   if (view.summoningSick && hasKeywordAbility(view, "haste")) {
     view = {

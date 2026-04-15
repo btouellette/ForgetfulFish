@@ -184,6 +184,43 @@ describe("effects/continuous/compute", () => {
     expect(computed.toughness).toBe(6);
   });
 
+  it("applies -1/-1 counters in Layer 7b", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "compute-negative-counter-adjust-test",
+      rngSeed: "compute-negative-counter-adjust-seed"
+    });
+    state.objectPool.set("obj-a", {
+      ...makeObject("obj-a", "dandan"),
+      counters: new Map([["-1/-1", 1]])
+    });
+
+    const withSetPt = addContinuousEffect(state, makeSetPtEffect("effect-set-pt", 1, 4, 4));
+    const computed = computeGameObject("obj-a", withSetPt);
+
+    expect(computed.power).toBe(3);
+    expect(computed.toughness).toBe(3);
+  });
+
+  it("nets +1/+1 and -1/-1 counters before later Layer 7c work", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "compute-net-counter-adjust-test",
+      rngSeed: "compute-net-counter-adjust-seed"
+    });
+    state.objectPool.set("obj-a", {
+      ...makeObject("obj-a", "dandan"),
+      counters: new Map([
+        ["+1/+1", 2],
+        ["-1/-1", 2]
+      ])
+    });
+
+    const withSetPt = addContinuousEffect(state, makeSetPtEffect("effect-set-pt", 1, 4, 4));
+    const computed = computeGameObject("obj-a", withSetPt);
+
+    expect(computed.power).toBe(4);
+    expect(computed.toughness).toBe(4);
+  });
+
   it("applies same-layer dependencies before timestamp ordering", () => {
     const state = createInitialGameState("p1", "p2", {
       id: "compute-dependency-test",
