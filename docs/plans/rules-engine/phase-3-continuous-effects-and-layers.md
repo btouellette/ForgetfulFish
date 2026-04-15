@@ -319,7 +319,7 @@ Acceptance: Effects expire at correct times.
 - `until_cleanup` effects now expire during the cleanup step via the same duration helper path used for other removal events, so cleanup-step expiration no longer relies on inline turn logic.
 - `as_long_as` effects now expire through the shared duration helper path as soon as their condition stops holding, both during cleanup-step processing and during SBA-loop convergence after battlefield changes.
 
-### [ ] P3.4 — Layer 2: control-changing effects
+### [x] P3.4 — Layer 2: control-changing effects
 
 **Files**: `effects/continuous/controlChange.ts`
 
@@ -342,6 +342,10 @@ Test: **Write tests FIRST**, then implement.
 5. Control change triggers priority update for activated abilities.
 6. `assertStateInvariants` passes after control modification.
 Acceptance: Control changes work through the layer system.
+
+**Current status / intended next direction**
+- Layer 2 control changes already ship through the shared continuous-effect engine: `SET_CONTROL` creates `set_controller` effects, `computeGameObject` applies them in timestamp order, cleanup removes `until_end_of_turn` control changes, and derived activated-ability legality respects the current controller.
+- Dedicated Layer 2 unit coverage now exists alongside the existing Ray of Command integration tests, so the remaining unchecked Phase 3 work can move on to the next real engine gaps rather than revisiting control-change foundations.
 
 ### [ ] P3.5 — Layer 3: text-changing effects with dependency ordering
 
