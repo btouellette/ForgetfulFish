@@ -22,7 +22,7 @@ Tasks within a phase are ordered by dependency — earlier tasks unblock later o
 - Test file paths are relative to `packages/game-engine/test/`.
 - "§N" references a section in `docs/architecture/rules-engine-architecture.md`.
 - `<!-- TODO: ... -->` marks items needing further clarification before implementation.
-- "Cards:" lists which of the 23 unique cards a task unblocks.
+- "Cards:" lists which of the 24 unique cards a task unblocks.
 - "Depends:" lists prerequisite tasks.
 - "Test:" describes the test file(s), what to test, and the expected behavior — **written BEFORE implementation code**.
 - "Acceptance:" describes the concrete success condition beyond tests.
@@ -82,7 +82,7 @@ Current candidate fixtures from popular fan alternates:
 Every card implementation is validated against this 7-category harness, but enforcement is phase-gated:
 
 - During the card's implementation phase, cover all categories that are supported by currently implemented engine subsystems.
-- If a category depends on a later subsystem (for example, layer/replacement interactions before those phases exist), mark it deferred in the card test file with the exact note `Deferred: P7.2 — <category> blocked by <task-id>` and mirror the same entry in the Phase 7 coverage tracker.
+- If a category depends on a later subsystem (for example, layer/replacement interactions before those phases exist), mark it deferred in the card test file with the exact note `Deferred: P7.2 -- <category> blocked by <task-id>` and mirror the same entry in the Phase 7 coverage tracker.
 - By Phase 7 (`P7.2`), every card must pass all 7 categories with no deferrals.
 
 The single source of truth for deferred harness coverage is `docs/plans/rules-engine/phase-7-testing-and-polish.md#p72-coverage-tracker`.
@@ -100,7 +100,7 @@ Harness categories:
 ### New Card PR Checklist
 - [ ] Test file exists in `test/cards/`
 - [ ] All currently unblocked harness categories are covered now
-- [ ] Any blocked categories are explicitly marked with `Deferred: P7.2 — <category> blocked by <task-id>` in the test file
+- [ ] Any blocked categories are explicitly marked with `Deferred: P7.2 -- <category> blocked by <task-id>` in the test file
 - [ ] Any blocked categories are copied into the Phase 7 coverage tracker with the same task reference
 - [ ] Minimum 8 test cases implemented
 - [ ] `assertStateInvariants` called in every test

@@ -22,14 +22,14 @@ Acceptance: 100% determinism over 1000 randomized games.
 ### [ ] P7.2 — Per-card sanity tests
 
 Per test strategy (adapted from SabberStone):
-- For each of 23 unique cards: load definition, create game state, cast in harness, resolve
+- For each of 24 unique cards: load definition, create game state, cast in harness, resolve
 - Assert: no crash, expected zone changes, card-specific invariants
 
 #### P7.2 coverage tracker
 
 This section is the canonical tracker for any blocked harness coverage that is deferred during
 earlier card PRs. Earlier PRs must use the exact marker
-`Deferred: P7.2 — <category> blocked by <task-id>` in the test file and copy the same note here.
+`Deferred: P7.2 -- <category> blocked by <task-id>` in the test file and copy the same note here.
 The owner of `P7.2` is responsible for clearing every remaining deferred entry before this task is
 checked complete.
 
@@ -63,13 +63,13 @@ checked complete.
 **Test file**: `test/cards/sanity.test.ts`
 Depends: all card implementations
 Test: **Write tests FIRST**, then implement.
-1. Run the full 7-category Card Test Harness for ALL 23 unique cards.
+1. Run the full 7-category Card Test Harness for ALL 24 unique cards.
 2. Verify each card resolves without crashing the engine.
 3. Verify card-specific invariants (e.g., Dandan sacrifice) are met for all instances.
 4. Verify correct zone transitions for every card type (land, instant, sorcery, creature).
 5. Check for any memory leaks in card ability definitions.
 6. `assertStateInvariants` passes for every card's execution.
-Acceptance: All 23 cards pass full harness sanity checks and the P7.2 coverage tracker has no remaining deferred entries.
+Acceptance: All 24 cards pass full harness sanity checks and the P7.2 coverage tracker has no remaining deferred entries.
 
 ### [ ] P7.3 — Scenario tests for complex interactions
 

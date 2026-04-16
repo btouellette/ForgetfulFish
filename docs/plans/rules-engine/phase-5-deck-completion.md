@@ -275,8 +275,8 @@ Test: **Write tests FIRST**, then implement.
 4. (Mystic Retrieval) Verify flashback cost and exile replacement.
 5. (Cycling) Cycle multiple lands in a single turn and verify library depletion.
 6. `assertStateInvariants(state)` called after every resolution.
-7. Every one of the 23 unique cards loads, casts, resolves, and behaves correctly.
-Acceptance: Every one of the 23 unique cards loads, casts, resolves, and behaves correctly.
+7. Every one of the 24 unique cards loads, casts, resolves, and behaves correctly.
+Acceptance: Every one of the 24 unique cards loads, casts, resolves, and behaves correctly.
 
 ### [ ] P5.13 — Deck bootstrap API + deck-driven smoke tests
 
