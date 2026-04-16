@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AbilityAst } from "../../../src/cards/abilityAst";
+import { applyTextChangeToAbilities } from "../../../src/effects/continuous/textChange";
 import {
   LAYERS,
   addContinuousEffect,
@@ -50,6 +51,29 @@ function makeTextChangeEffect(
 }
 
 describe("effects/continuous/text", () => {
+  it("returns the original abilities array when a text change does not rewrite anything", () => {
+    const abilities: AbilityAst[] = [{ kind: "keyword", keyword: "landwalk", landType: "Island" }];
+
+    expect(
+      applyTextChangeToAbilities(abilities, { fromLandType: "Swamp", toLandType: "Mountain" })
+    ).toBe(abilities);
+  });
+
+  it("reuses the cached abilities array for repeated identical text changes", () => {
+    const abilities: AbilityAst[] = [{ kind: "keyword", keyword: "landwalk", landType: "Island" }];
+
+    const firstRewrite = applyTextChangeToAbilities(abilities, {
+      fromLandType: "Island",
+      toLandType: "Swamp"
+    });
+    const secondRewrite = applyTextChangeToAbilities(abilities, {
+      fromLandType: "Island",
+      toLandType: "Swamp"
+    });
+
+    expect(firstRewrite).toBe(secondRewrite);
+  });
+
   it("returns the base ability AST when no Layer 3 effects apply", () => {
     const state = createInitialGameState("p1", "p2", {
       id: "text-no-effects-test",
@@ -197,6 +221,37 @@ describe("effects/continuous/text", () => {
       getApplicableContinuousEffects("obj-a", withDependency).map((effect) => effect.id)
     ).toEqual(["effect-b", "effect-a"]);
     expect(computeGameObject("obj-a", withDependency).abilities).toContainEqual({
+      kind: "keyword",
+      keyword: "landwalk",
+      landType: "Mountain"
+    });
+  });
+
+  it("infers dependency ordering when a later text change makes an earlier one applicable", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "text-inferred-dependency-order-test",
+      rngSeed: "text-inferred-dependency-order-seed"
+    });
+    state.objectPool.set(
+      "obj-a",
+      makeObject("obj-a", "memory-lapse", [
+        { kind: "keyword", keyword: "landwalk", landType: "Island" }
+      ])
+    );
+
+    const withEarlierDependent = addContinuousEffect(
+      state,
+      makeTextChangeEffect("effect-a", 1, { fromLandType: "Swamp", toLandType: "Mountain" })
+    );
+    const withLaterDependency = addContinuousEffect(
+      withEarlierDependent,
+      makeTextChangeEffect("effect-b", 2, { fromLandType: "Island", toLandType: "Swamp" })
+    );
+
+    expect(
+      getApplicableContinuousEffects("obj-a", withLaterDependency).map((effect) => effect.id)
+    ).toEqual(["effect-b", "effect-a"]);
+    expect(computeGameObject("obj-a", withLaterDependency).abilities).toContainEqual({
       kind: "keyword",
       keyword: "landwalk",
       landType: "Mountain"

@@ -17,6 +17,20 @@ export const BASIC_LAND_TYPE_VALUES: readonly BasicLandType[] = [
 
 const BASIC_LAND_TYPES = new Set<BasicLandType>(BASIC_LAND_TYPE_VALUES);
 
+// Small stable string key for a text-change payload to use in memoization
+function payloadKey(payload: Readonly<TextChangePayload>): string {
+  const instance = payload.instanceId ?? "";
+  const from = payload.fromLandType ?? "";
+  const to = payload.toLandType ?? "";
+  return `${instance}|${from}->${to}`;
+}
+
+// Cache rewritten AbilityAst nodes per original ability object and payload key.
+const abilityRewriteCache = new WeakMap<Readonly<AbilityAst>, Map<string, AbilityAst>>();
+
+// Cache results for whole abilities arrays keyed by the source array reference and payload key.
+const abilitiesArrayCache = new WeakMap<AbilityAst[], Map<string, AbilityAst[]>>();
+
 export type TextChangePayload = {
   fromLandType?: BasicLandType;
   toLandType?: BasicLandType;
@@ -116,9 +130,14 @@ function rewriteCondition(
   condition: Readonly<ConditionAst>,
   payload: Readonly<TextChangePayload>
 ): ConditionAst {
+  const landType = rewriteLandType(condition.landType, payload);
+  if (landType === condition.landType) {
+    return condition;
+  }
+
   return {
     ...condition,
-    landType: rewriteLandType(condition.landType, payload)
+    landType
   };
 }
 
@@ -127,9 +146,14 @@ function rewriteKeywordAbility(
   payload: Readonly<TextChangePayload>
 ): KeywordAbilityAst {
   if (ability.keyword === "landwalk") {
+    const landType = rewriteLandType(ability.landType, payload);
+    if (landType === ability.landType) {
+      return ability;
+    }
+
     return {
       ...ability,
-      landType: rewriteLandType(ability.landType, payload)
+      landType
     };
   }
 
@@ -141,16 +165,28 @@ function rewriteStaticAbility(
   payload: Readonly<TextChangePayload>
 ): StaticAbilityAst {
   switch (ability.staticKind) {
-    case "cant_attack_unless":
+    case "cant_attack_unless": {
+      const condition = rewriteCondition(ability.condition, payload);
+      if (condition === ability.condition) {
+        return ability;
+      }
+
       return {
         ...ability,
-        condition: rewriteCondition(ability.condition, payload)
+        condition
       };
-    case "when_no_islands_sacrifice":
+    }
+    case "when_no_islands_sacrifice": {
+      const landType = rewriteLandType(ability.landType, payload);
+      if (landType === ability.landType) {
+        return ability;
+      }
+
       return {
         ...ability,
-        landType: rewriteLandType(ability.landType, payload)
+        landType
       };
+    }
   }
 }
 
@@ -158,13 +194,18 @@ function rewriteTriggerAbility(
   ability: Readonly<TriggerDefinitionAst>,
   payload: Readonly<TextChangePayload>
 ): TriggerDefinitionAst {
+  if (ability.condition === undefined) {
+    return ability;
+  }
+
+  const condition = rewriteCondition(ability.condition, payload);
+  if (condition === ability.condition) {
+    return ability;
+  }
+
   return {
     ...ability,
-    ...(ability.condition === undefined
-      ? {}
-      : {
-          condition: rewriteCondition(ability.condition, payload)
-        })
+    condition
   };
 }
 
@@ -172,16 +213,37 @@ export function applyTextChangeToAbility(
   ability: Readonly<AbilityAst>,
   payload: Readonly<TextChangePayload>
 ): AbilityAst {
+  const key = payloadKey(payload);
+  let cacheForAbility = abilityRewriteCache.get(ability);
+  if (cacheForAbility !== undefined) {
+    const cached = cacheForAbility.get(key);
+    if (cached !== undefined) {
+      return cached;
+    }
+  }
+
+  let rewritten: AbilityAst;
   switch (ability.kind) {
     case "keyword":
-      return rewriteKeywordAbility(ability, payload);
+      rewritten = rewriteKeywordAbility(ability, payload);
+      break;
     case "static":
-      return rewriteStaticAbility(ability, payload);
+      rewritten = rewriteStaticAbility(ability, payload);
+      break;
     case "trigger":
-      return rewriteTriggerAbility(ability, payload);
+      rewritten = rewriteTriggerAbility(ability, payload);
+      break;
     case "activated":
-      return ability;
+      rewritten = ability;
+      break;
   }
+
+  if (cacheForAbility === undefined) {
+    cacheForAbility = new Map<string, AbilityAst>();
+    abilityRewriteCache.set(ability, cacheForAbility);
+  }
+  cacheForAbility.set(key, rewritten);
+  return rewritten;
 }
 
 export function isTextChangePayload(payload: unknown): payload is TextChangePayload {
@@ -199,12 +261,22 @@ export function isTextChangePayload(payload: unknown): payload is TextChangePayl
 }
 
 export function applyTextChangeToAbilities(
-  abilities: readonly Readonly<AbilityAst>[],
+  abilities: AbilityAst[],
   payload: Readonly<TextChangePayload>
 ): AbilityAst[] {
-  const semanticOccurrences = new Map<string, number>();
+  const key = payloadKey(payload);
+  const cacheForArray = abilitiesArrayCache.get(abilities);
+  if (cacheForArray !== undefined) {
+    const cached = cacheForArray.get(key);
+    if (cached !== undefined) {
+      return cached;
+    }
+  }
 
-  return abilities.map((ability) => {
+  const semanticOccurrences = new Map<string, number>();
+  let result: AbilityAst[] | null = null;
+
+  for (const [index, ability] of abilities.entries()) {
     const semanticKey = instanceSemanticKey(ability);
     const occurrenceIndex = semanticKey === null ? 0 : (semanticOccurrences.get(semanticKey) ?? 0);
 
@@ -215,12 +287,35 @@ export function applyTextChangeToAbilities(
     if (payload.instanceId !== undefined) {
       const instance = landTypeTextInstanceForAbility(ability, occurrenceIndex);
       if (instance?.id !== payload.instanceId) {
-        return ability;
+        if (result !== null) {
+          result.push(ability);
+        }
+        continue;
       }
     }
 
-    return applyTextChangeToAbility(ability, payload);
-  });
+    const rewrittenAbility = applyTextChangeToAbility(ability, payload);
+    if (result === null) {
+      if (rewrittenAbility === ability) {
+        continue;
+      }
+
+      result = abilities.slice(0, index);
+    }
+
+    result.push(rewrittenAbility);
+  }
+
+  const rewrittenAbilities = result ?? abilities;
+
+  let mapForArray = cacheForArray;
+  if (mapForArray === undefined) {
+    mapForArray = new Map<string, AbilityAst[]>();
+    abilitiesArrayCache.set(abilities, mapForArray);
+  }
+  mapForArray.set(key, rewrittenAbilities);
+
+  return rewrittenAbilities;
 }
 
 export function listLandTypesInAbilities(
