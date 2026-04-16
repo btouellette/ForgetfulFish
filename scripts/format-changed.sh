@@ -48,7 +48,10 @@ resolve_diff_range() {
 
 diff_range="$(resolve_diff_range)"
 
-mapfile -t changed_files < <(git diff --name-only --diff-filter=ACMR "$diff_range")
+changed_files=()
+while IFS= read -r file; do
+  changed_files+=("$file")
+done < <(git diff --name-only --diff-filter=ACMR "$diff_range")
 
 if [[ ${#changed_files[@]} -eq 0 ]]; then
   printf 'No changed files to format-check (%s).\n' "$diff_range"
