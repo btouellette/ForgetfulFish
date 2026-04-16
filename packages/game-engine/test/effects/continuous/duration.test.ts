@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   removeAsLongAsEffects,
@@ -6,6 +6,7 @@ import {
   cleanupExpiredEffects,
   removeSourceGoneEffects
 } from "../../../src/effects/continuous/duration";
+import * as layers from "../../../src/effects/continuous/layers";
 import { LAYERS, type ContinuousEffect } from "../../../src/effects/continuous/layers";
 import type { GameEvent } from "../../../src/events/event";
 import type { GameObject } from "../../../src/state/gameObject";
@@ -44,6 +45,10 @@ function putOnBattlefield(
 }
 
 describe("effects/continuous/duration", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("removes until-end-of-turn effects", () => {
     const state = createInitialGameState("p1", "p2", { id: "duration-remove", rngSeed: "seed" });
     state.continuousEffects = [
@@ -297,6 +302,123 @@ describe("effects/continuous/duration", () => {
       "effect-as-long-as"
     ]);
     expect(result.events).toEqual([]);
+  });
+
+  it("only recomputes the targeted object for object-scoped as_long_as effects", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "duration-as-long-as-object-only",
+      rngSeed: "seed"
+    });
+    putOnBattlefield(state, {
+      id: "obj-a",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "battlefield", scope: "shared" }
+    });
+    putOnBattlefield(state, {
+      id: "obj-extra",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p2",
+      controller: "p2",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "battlefield", scope: "shared" }
+    });
+    state.continuousEffects = [
+      makeEffect(
+        "effect-as-long-as-object-only",
+        {
+          kind: "as_long_as",
+          condition: { kind: "defender_controls_land_type", landType: "Island" }
+        },
+        1
+      )
+    ];
+
+    const computeSpy = vi.spyOn(layers, "computeGameObject");
+
+    removeAsLongAsEffects(state);
+
+    expect(computeSpy).toHaveBeenCalledTimes(1);
+    expect(computeSpy).toHaveBeenCalledWith(
+      "obj-a",
+      expect.objectContaining({
+        continuousEffects: []
+      })
+    );
+  });
+
+  it("skips non-battlefield objects when evaluating broad as_long_as effects", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "duration-as-long-as-battlefield-only",
+      rngSeed: "seed"
+    });
+    putOnBattlefield(state, {
+      id: "obj-a",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p1",
+      controller: "p1",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "battlefield", scope: "shared" }
+    });
+    state.objectPool.set("obj-graveyard", {
+      id: "obj-graveyard",
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p2",
+      controller: "p2",
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: [],
+      zone: { kind: "graveyard", scope: "shared" }
+    });
+    state.continuousEffects = [
+      {
+        ...makeEffect(
+          "effect-as-long-as-controller",
+          {
+            kind: "as_long_as",
+            condition: { kind: "defender_controls_land_type", landType: "Island" }
+          },
+          1
+        ),
+        appliesTo: { kind: "controller", playerId: "p1" }
+      }
+    ];
+
+    const computeSpy = vi.spyOn(layers, "computeGameObject");
+
+    removeAsLongAsEffects(state);
+
+    expect(computeSpy).toHaveBeenCalledTimes(1);
+    expect(computeSpy).toHaveBeenCalledWith(
+      "obj-a",
+      expect.objectContaining({
+        continuousEffects: []
+      })
+    );
   });
 
   it("removes while_source_on_battlefield effects when the source leaves the battlefield", () => {

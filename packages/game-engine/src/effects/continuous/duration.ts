@@ -16,7 +16,9 @@ function getCandidateObjectIdsForAsLongAs(
       return state.objectPool.has(effect.appliesTo.object.id) ? [effect.appliesTo.object.id] : [];
     case "all":
     case "controller":
-      return [...state.objectPool.keys()];
+      return [...state.zones.entries()]
+        .filter(([zone]) => zone === "shared:battlefield" || zone.endsWith(":battlefield"))
+        .flatMap(([, objectIds]) => objectIds);
     default: {
       const neverTarget: never = effect.appliesTo;
       return neverTarget;
@@ -83,16 +85,17 @@ export function cleanupUntilCleanupEffects(
 
 export function removeAsLongAsEffects(state: Readonly<GameState>): CleanupExpiredEffectsResult {
   const removedEffectIds = state.continuousEffects
-    .filter((effect) => {
+    .filter((effect, effectIndex) => {
       if (typeof effect.duration === "string" || effect.duration.kind !== "as_long_as") {
         return false;
       }
 
+      const continuousEffectsWithoutEffect = state.continuousEffects.filter(
+        (_candidateEffect, candidateIndex) => candidateIndex !== effectIndex
+      );
       const stateWithoutEffect: GameState = {
         ...state,
-        continuousEffects: state.continuousEffects.filter(
-          (candidateEffect) => candidateEffect.id !== effect.id
-        )
+        continuousEffects: continuousEffectsWithoutEffect
       };
 
       for (const objectId of getCandidateObjectIdsForAsLongAs(stateWithoutEffect, effect)) {
