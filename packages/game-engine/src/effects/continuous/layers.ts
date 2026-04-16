@@ -58,15 +58,6 @@ export type ContinuousEffect = {
 const COUNTER_ADJUSTMENT_EFFECT_ID_PREFIX = "__counter_adjustment__";
 const LAST_SYNTHETIC_COUNTER_TIMESTAMP = Number.MAX_SAFE_INTEGER;
 
-function cloneDerivedView(view: Readonly<DerivedGameObjectView>): DerivedGameObjectView {
-  return {
-    ...view,
-    counters: new Map(view.counters),
-    attachments: [...view.attachments],
-    abilities: [...view.abilities]
-  };
-}
-
 function layerSortKey(layer: Readonly<Layer>): number {
   switch (layer) {
     case LAYERS.COPY:
@@ -177,13 +168,6 @@ function orderEffectsForApplication(
     .flatMap(([, layerEffects]) => orderEffectsWithinLayer(layerEffects));
 }
 
-function abilitiesEqual(
-  left: readonly Readonly<DerivedGameObjectView["abilities"][number]>[],
-  right: readonly Readonly<DerivedGameObjectView["abilities"][number]>[]
-): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
 function isTextLayerEffect(effect: Readonly<ContinuousEffect>): boolean {
   return effect.layer === LAYERS.TEXT && effect.effect.kind === "text_change";
 }
@@ -193,8 +177,8 @@ function inferTextDependenciesForObject(
   state: Readonly<GameState>,
   baseView: Readonly<DerivedGameObjectView>
 ): ContinuousEffect[] {
-  const effects = [...state.continuousEffects];
-  const textEffects = effects.filter(
+  void objectId; // parameter intentionally unused in this helper — keep signature for future use
+  const textEffects = state.continuousEffects.filter(
     (effect) =>
       isTextLayerEffect(effect) &&
       isTextChangePayload(effect.effect.payload) &&
@@ -203,17 +187,23 @@ function inferTextDependenciesForObject(
   );
 
   if (textEffects.length < 2) {
-    return effects;
+    return state.continuousEffects;
   }
 
   const baseAbilities = baseView.abilities;
   const inferredDependencies = new Map<string, Set<string>>();
+  const abilitiesAfterEffect = new Map<string, DerivedGameObjectView["abilities"]>();
 
   for (const effect of textEffects) {
     inferredDependencies.set(
       effect.id,
       new Set((effect.dependsOn ?? []).map((dependency) => dependency.effectId))
     );
+
+    const effectPayload = effect.effect.payload;
+    if (isTextChangePayload(effectPayload)) {
+      abilitiesAfterEffect.set(effect.id, applyTextChangeToAbilities(baseAbilities, effectPayload));
+    }
   }
 
   for (const effect of textEffects) {
@@ -222,10 +212,12 @@ function inferTextDependenciesForObject(
       continue;
     }
 
-    const appliesWithoutDependency = !abilitiesEqual(
-      applyTextChangeToAbilities(baseAbilities, effectPayload),
-      baseAbilities
-    );
+    const abilitiesWithoutDependency = abilitiesAfterEffect.get(effect.id);
+    if (abilitiesWithoutDependency === undefined) {
+      continue;
+    }
+
+    const appliesWithoutDependency = abilitiesWithoutDependency !== baseAbilities;
 
     for (const candidateDependency of textEffects) {
       if (candidateDependency.id === effect.id) {
@@ -237,19 +229,24 @@ function inferTextDependenciesForObject(
         continue;
       }
 
-      const afterDependency = applyTextChangeToAbilities(baseAbilities, dependencyPayload);
-      const appliesAfterDependency = !abilitiesEqual(
-        applyTextChangeToAbilities(afterDependency, effectPayload),
-        afterDependency
-      );
+      const afterDependency = abilitiesAfterEffect.get(candidateDependency.id);
+      if (afterDependency === undefined) {
+        continue;
+      }
+
+      const appliesAfterDependency =
+        applyTextChangeToAbilities(afterDependency, effectPayload) !== afterDependency;
 
       if (!appliesWithoutDependency && appliesAfterDependency) {
-        inferredDependencies.get(effect.id)?.add(candidateDependency.id);
+        const set = inferredDependencies.get(effect.id);
+        if (set !== undefined) {
+          set.add(candidateDependency.id);
+        }
       }
     }
   }
 
-  return effects.map((effect) => {
+  return state.continuousEffects.map((effect) => {
     const dependencies = inferredDependencies.get(effect.id);
     if (dependencies === undefined) {
       return effect;
@@ -497,7 +494,22 @@ function resolveContinuousEffects(
   appliedEffects: ContinuousEffect[];
 } {
   const syntheticCounterEffect = createCounterAdjustmentEffect(objectId, state);
-  const baseView = cloneDerivedView(requireBaseObject(objectId, state));
+  // Fast path: if there are no continuous effects and no synthetic counter effect, return
+  // the base derived view immediately without allocating clones or doing sorting.
+  if (state.continuousEffects.length === 0 && syntheticCounterEffect === null) {
+    const base = requireBaseObject(objectId, state);
+    const finalView =
+      base.summoningSick && hasKeywordAbility(base, "haste")
+        ? { ...base, summoningSick: false }
+        : base;
+
+    return {
+      view: finalView,
+      appliedEffects: []
+    };
+  }
+
+  const baseView = requireBaseObject(objectId, state);
   const effectsWithInferredTextDependencies = inferTextDependenciesForObject(
     objectId,
     state,
