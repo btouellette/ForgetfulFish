@@ -32,6 +32,10 @@ describe("card image library CI safeguards", () => {
   it("allows sync outside CI", () => {
     expect(shouldSkipImageLibrarySync({ CI: "false", GITHUB_ACTIONS: "false" })).toBe(false);
   });
+
+  it("allows sync when CI markers are absent", () => {
+    expect(shouldSkipImageLibrarySync({})).toBe(false);
+  });
 });
 
 describe("card image library generated outputs", () => {
