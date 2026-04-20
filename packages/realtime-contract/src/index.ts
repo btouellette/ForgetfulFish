@@ -70,6 +70,27 @@ export const wsInboundPingMessageSchema = z.object({
 const playerIdSchema = z.string().min(1);
 const objectIdSchema = z.string().min(1);
 
+const subtypeAtomSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      kind: z.literal("basic_land_type"),
+      value: z.enum(["Plains", "Island", "Swamp", "Mountain", "Forest"])
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("creature_type"),
+      value: z.string().min(1)
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("other"),
+      value: z.string().min(1)
+    })
+    .strict()
+]);
+
 export const objectRefSchema = z
   .object({
     id: objectIdSchema,
@@ -296,6 +317,8 @@ export const gameObjectViewSchema = z
     rulesText: z.string().optional(),
     owner: playerIdSchema,
     controller: playerIdSchema,
+    typeLine: z.array(z.string().min(1)).optional(),
+    subtypes: z.array(subtypeAtomSchema).optional(),
     counters: z.record(z.string(), z.number().int()),
     power: z.number().int().nullable().optional(),
     toughness: z.number().int().nullable().optional(),
