@@ -227,6 +227,61 @@ describe("engine/sba", () => {
     expect(checkSBAs(withControlEffect)).toEqual([]);
   });
 
+  it("sacrifices Dandan when a continuous type change removes the controller's Island subtype", () => {
+    cardRegistry.set(dandanCardDefinition.id, dandanCardDefinition);
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "sba-dandan-derived-no-island",
+      rngSeed: "seed-sba-dandan-derived-no-island"
+    });
+    putOnBattlefield(state, "obj-dandan", dandanCardDefinition.id, "p1");
+    putOnBattlefield(state, "obj-island", "island", "p1");
+
+    const withTypeChange = addContinuousEffect(state, {
+      id: "effect-remove-island-subtype",
+      source: { id: "obj-dandan", zcc: 0 },
+      layer: LAYERS.TYPE,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", object: { id: "obj-island", zcc: 0 } },
+      effect: {
+        kind: "type_change",
+        payload: { typeLine: ["Land"], subtypes: [{ kind: "other", value: "Desert" }] }
+      }
+    });
+
+    expect(checkSBAs(withTypeChange)).toContainEqual({
+      type: "SACRIFICE_WHEN_NO_LAND_TYPE",
+      objectId: "obj-dandan",
+      landType: "Island"
+    });
+  });
+
+  it("does not apply zero-toughness SBA after a type change removes creature type", () => {
+    cardRegistry.set(nulllingDefinition.id, nulllingDefinition);
+
+    const state = createInitialGameState("p1", "p2", {
+      id: "sba-derived-noncreature-zero-toughness",
+      rngSeed: "seed-sba-derived-noncreature-zero-toughness"
+    });
+    putOnBattlefield(state, "obj-nullling", nulllingDefinition.id, "p1");
+
+    const withTypeChange = addContinuousEffect(state, {
+      id: "effect-remove-creature-type",
+      source: { id: "obj-nullling", zcc: 0 },
+      layer: LAYERS.TYPE,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", object: { id: "obj-nullling", zcc: 0 } },
+      effect: {
+        kind: "type_change",
+        payload: { typeLine: ["Artifact"], subtypes: [{ kind: "other", value: "Relic" }] }
+      }
+    });
+
+    expect(checkSBAs(withTypeChange)).toEqual([]);
+  });
+
   it("uses derived toughness when a Layer 7a effect sets a creature to zero toughness", () => {
     cardRegistry.set(grizzlyDefinition.id, grizzlyDefinition);
 
