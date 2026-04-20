@@ -555,11 +555,11 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after cantrip draw.
 Acceptance: Single-instance text change works, cantrip draws.
 
-### [ ] P3.13 — Card: Dance of the Skywise
+### [x] P3.13 — Card: Dance of the Skywise
 
 **Files**: `cards/dance-of-the-skywise.ts`
 
-Cards: **Dance of the Skywise** (target creature becomes 4/4 Dragon with flying until EOT)
+Cards: **Dance of the Skywise** (target creature you control becomes a blue Dragon Illusion with base power and toughness 4/4, loses all abilities, and gains flying until EOT)
 
 Implement:
 - CardDefinition: instant, {1}{U}, `onResolve`:
