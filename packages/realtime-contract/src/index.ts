@@ -315,6 +315,7 @@ export const gameObjectViewSchema = z
     name: z.string().min(1).optional(),
     manaCost: manaCostSchema.optional(),
     rulesText: z.string().optional(),
+    color: z.array(z.enum(["white", "blue", "black", "red", "green"])).optional(),
     owner: playerIdSchema,
     controller: playerIdSchema,
     typeLine: z.array(z.string().min(1)).optional(),

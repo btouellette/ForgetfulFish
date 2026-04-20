@@ -4,7 +4,7 @@ import type { DerivedGameObjectView } from "../state/gameObject";
 import type { ManaPool, TurnPhase } from "../state/gameState";
 import type { ObjectId, ObjectRef, PlayerId } from "../state/objectRef";
 import type { ZoneRef } from "../state/zones";
-import type { ManaAmount } from "../cards/abilityAst";
+import type { Color, ManaAmount } from "../cards/abilityAst";
 
 export type ActionModeView = {
   id: string;
@@ -45,7 +45,8 @@ export type LegalActionsView = {
   hasOtherBlockingActions: boolean;
 };
 
-export type GameObjectView = Omit<DerivedGameObjectView, "abilities" | "counters"> & {
+export type GameObjectView = Omit<DerivedGameObjectView, "abilities" | "counters" | "color"> & {
+  color?: Color[];
   power?: number | null;
   toughness?: number | null;
   name?: string;
