@@ -81,11 +81,8 @@ describe("effects/continuous/layers", () => {
   it("appliesTo filter can identify valid targets", () => {
     const state = createStateWithObjects();
     const effect = createEffect("effect-targeting");
-    const objectA = state.objectPool.get("obj-a");
-    const objectB = state.objectPool.get("obj-b");
-    if (objectA === undefined || objectB === undefined) {
-      throw new Error("expected test objects to exist");
-    }
+    const objectA = computeGameObject("obj-a", state);
+    const objectB = computeGameObject("obj-b", state);
 
     expect(matchesEffectTarget(effect.appliesTo, objectA, state)).toBe(true);
     expect(matchesEffectTarget(effect.appliesTo, objectB, state)).toBe(false);
@@ -116,6 +113,8 @@ describe("effects/continuous/layers", () => {
 
     expect(computeGameObject("obj-a", state)).toEqual({
       ...state.objectPool.get("obj-a"),
+      typeLine: ["Land"],
+      subtypes: [{ kind: "basic_land_type", value: "Island" }],
       power: null,
       toughness: null,
       abilities: [

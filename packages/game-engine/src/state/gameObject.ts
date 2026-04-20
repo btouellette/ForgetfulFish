@@ -1,4 +1,4 @@
-import type { AbilityAst } from "../cards/abilityAst";
+import type { AbilityAst, SubtypeAtom } from "../cards/abilityAst";
 import type { ObjectId, PlayerId } from "./objectRef";
 import type { ZoneRef } from "./zones";
 
@@ -18,6 +18,8 @@ export type GameObjectBase = {
 };
 
 export type DerivedGameObjectView = GameObjectBase & {
+  typeLine: string[];
+  subtypes: SubtypeAtom[];
   power: number | null;
   toughness: number | null;
 };

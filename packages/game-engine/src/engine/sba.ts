@@ -1,4 +1,3 @@
-import { cardRegistry } from "../cards";
 import type { StaticAbilityAst } from "../cards/abilityAst";
 import { removeAsLongAsEffects, removeSourceGoneEffects } from "../effects/continuous/duration";
 import { computeGameObject } from "../effects/continuous/layers";
@@ -20,12 +19,11 @@ export function checkSBAs(state: Readonly<GameState>): SBAResult[] {
       continue;
     }
 
-    const cardDefinition = cardRegistry.get(object.cardDefId);
-    if (cardDefinition === undefined || !cardDefinition.typeLine.includes("Creature")) {
+    const computedObject = computeGameObject(objectId, state);
+    if (!computedObject.typeLine.includes("Creature")) {
       continue;
     }
 
-    const computedObject = computeGameObject(objectId, state);
     const toughness = computedObject.toughness;
     if (toughness === null) {
       continue;
@@ -229,16 +227,11 @@ function controllerControlsLandType(
 
   return battlefield.some((objectId) => {
     const object = computeGameObject(objectId, state);
-    if (object === undefined || object.controller !== playerId) {
+    if (object.controller !== playerId) {
       return false;
     }
 
-    const definition = cardRegistry.get(object.cardDefId);
-    if (definition === undefined) {
-      return false;
-    }
-
-    return definition.subtypes.some(
+    return object.subtypes.some(
       (subtype) => subtype.kind === "basic_land_type" && subtype.value === landType
     );
   });

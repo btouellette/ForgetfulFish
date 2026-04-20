@@ -3,7 +3,8 @@ import type {
   BasicLandType,
   ConditionAst,
   Duration,
-  KeywordAbilityAst
+  KeywordAbilityAst,
+  SubtypeAtom
 } from "../../cards/abilityAst";
 import type { DerivedGameObjectView } from "../../state/gameObject";
 import type { GameState } from "../../state/gameState";
@@ -263,6 +264,18 @@ function applyEffectToView(
   view: Readonly<DerivedGameObjectView>,
   effect: Readonly<ContinuousEffect>
 ): DerivedGameObjectView {
+  if (effect.layer === LAYERS.TYPE && effect.effect.kind === "type_change") {
+    const typeLine = effect.effect.payload?.typeLine;
+    const subtypes = effect.effect.payload?.subtypes;
+    if (isTypeLine(typeLine) && isSubtypeAtomArray(subtypes)) {
+      return {
+        ...view,
+        typeLine: [...typeLine],
+        subtypes: [...subtypes]
+      };
+    }
+  }
+
   if (effect.layer === LAYERS.PT_SET && effect.effect.kind === "set_pt") {
     const power = effect.effect.payload?.power;
     const toughness = effect.effect.payload?.toughness;
@@ -335,6 +348,35 @@ function toGrantedKeywordAbility(
 
 function isBasicLandType(value: unknown): value is BasicLandType {
   return BASIC_LAND_TYPE_VALUES.includes(value as BasicLandType);
+}
+
+function isTypeLine(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
+function isSubtypeAtom(value: unknown): value is SubtypeAtom {
+  if (value === null || typeof value !== "object") {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  if (typeof record.value !== "string") {
+    return false;
+  }
+
+  switch (record.kind) {
+    case "basic_land_type":
+      return isBasicLandType(record.value);
+    case "creature_type":
+    case "other":
+      return true;
+    default:
+      return false;
+  }
+}
+
+function isSubtypeAtomArray(value: unknown): value is SubtypeAtom[] {
+  return Array.isArray(value) && value.every((entry) => isSubtypeAtom(entry));
 }
 
 function hasKeywordAbility(
@@ -474,6 +516,8 @@ function requireBaseObject(objectId: string, state: Readonly<GameState>): Derive
 
   return {
     ...baseObject,
+    typeLine: [...(definition?.typeLine ?? [])],
+    subtypes: [...(definition?.subtypes ?? [])],
     power: definition?.power ?? null,
     toughness: definition?.toughness ?? null,
     abilities: [
