@@ -17,6 +17,7 @@ function cloneGameObjectShape<T extends GameObjectBase | DerivedGameObjectView>(
     counters: new Map(object.counters),
     attachments: [...object.attachments],
     abilities: [...object.abilities],
+    ...(typeView.color === undefined ? {} : { color: [...typeView.color] }),
     ...(typeView.typeLine === undefined ? {} : { typeLine: [...typeView.typeLine] }),
     ...(typeView.subtypes === undefined ? {} : { subtypes: [...typeView.subtypes] })
   };
