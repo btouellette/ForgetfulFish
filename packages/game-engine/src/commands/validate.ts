@@ -66,37 +66,20 @@ function objectMustAttackIfAble(state: Readonly<GameState>, objectId: string): b
 export function getRequiredAttackerIds(state: Readonly<GameState>, playerId: string): string[] {
   const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
   const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
-  const cardDefinitionCache = new Map<string, CardDefinition | undefined>();
-  const definitionFor = (cardDefId: string): CardDefinition | undefined => {
-    if (cardDefinitionCache.has(cardDefId)) {
-      return cardDefinitionCache.get(cardDefId);
-    }
-
-    const definition = cardRegistry.get(cardDefId);
-    cardDefinitionCache.set(cardDefId, definition);
-    return definition;
-  };
 
   return battlefield.filter(
     (objectId) =>
-      canObjectAttack(state, objectId, playerId, definitionFor) &&
-      objectMustAttackIfAble(state, objectId)
+      canObjectAttack(state, objectId, playerId) && objectMustAttackIfAble(state, objectId)
   );
 }
 
-function canObjectAttack(
-  state: Readonly<GameState>,
-  objectId: string,
-  playerId: string,
-  definitionFor: (cardDefId: string) => CardDefinition | undefined
-): boolean {
+function canObjectAttack(state: Readonly<GameState>, objectId: string, playerId: string): boolean {
   const object = getEffectiveObject(state, objectId);
   if (object === undefined || object.controller !== playerId) {
     return false;
   }
 
-  const definition = definitionFor(object.cardDefId);
-  if (definition === undefined || !definition.typeLine.includes("Creature")) {
+  if (!object.typeLine.includes("Creature")) {
     return false;
   }
 
@@ -106,8 +89,7 @@ function canObjectAttack(
   );
   if (
     attackRestrictions.some(
-      (ability) =>
-        !defendingPlayerControlsLandType(state, playerId, ability.condition.landType, definitionFor)
+      (ability) => !defendingPlayerControlsLandType(state, playerId, ability.condition.landType)
     )
   ) {
     return false;
@@ -119,8 +101,7 @@ function canObjectAttack(
 function defendingPlayerControlsLandType(
   state: Readonly<GameState>,
   attackingPlayerId: string,
-  landType: BasicLandType,
-  definitionFor: (cardDefId: string) => CardDefinition | undefined
+  landType: BasicLandType
 ): boolean {
   const defendingPlayer = state.players.find((player) => player.id !== attackingPlayerId);
   if (defendingPlayer === undefined) {
@@ -136,30 +117,19 @@ function defendingPlayerControlsLandType(
       return false;
     }
 
-    const definition = definitionFor(object.cardDefId);
-    if (definition === undefined) {
-      return false;
-    }
-
-    return definition.subtypes.some(
+    return object.subtypes.some(
       (subtype) => subtype.kind === "basic_land_type" && subtype.value === landType
     );
   });
 }
 
-function canObjectBlock(
-  state: Readonly<GameState>,
-  objectId: string,
-  playerId: string,
-  definitionFor: (cardDefId: string) => CardDefinition | undefined
-): boolean {
+function canObjectBlock(state: Readonly<GameState>, objectId: string, playerId: string): boolean {
   const object = getEffectiveObject(state, objectId);
   if (object === undefined || object.controller !== playerId) {
     return false;
   }
 
-  const definition = definitionFor(object.cardDefId);
-  if (definition === undefined || !definition.typeLine.includes("Creature")) {
+  if (!object.typeLine.includes("Creature")) {
     return false;
   }
 
@@ -409,16 +379,6 @@ export function validateDeclareAttackers(
 
   const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
   const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
-  const cardDefinitionCache = new Map<string, CardDefinition | undefined>();
-  const definitionFor = (cardDefId: string): CardDefinition | undefined => {
-    if (cardDefinitionCache.has(cardDefId)) {
-      return cardDefinitionCache.get(cardDefId);
-    }
-
-    const definition = cardRegistry.get(cardDefId);
-    cardDefinitionCache.set(cardDefId, definition);
-    return definition;
-  };
 
   const seenAttackers = new Set<string>();
   for (const attackerId of command.attackers) {
@@ -431,7 +391,7 @@ export function validateDeclareAttackers(
       throw new Error("declared attackers must be permanents on the battlefield");
     }
 
-    if (!canObjectAttack(state, attackerId, playerId, definitionFor)) {
+    if (!canObjectAttack(state, attackerId, playerId)) {
       throw new Error("declared attackers must be legal attackers");
     }
   }
@@ -590,10 +550,10 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
   const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
 
   const controlsLegalAttacker = () =>
-    battlefield.some((objectId) => canObjectAttack(state, objectId, playerId, definitionFor));
+    battlefield.some((objectId) => canObjectAttack(state, objectId, playerId));
 
   const controlsLegalBlocker = () =>
-    battlefield.some((objectId) => canObjectBlock(state, objectId, playerId, definitionFor));
+    battlefield.some((objectId) => canObjectBlock(state, objectId, playerId));
 
   for (const cardId of hand) {
     const cardObject = state.objectPool.get(cardId);

@@ -319,6 +319,76 @@ describe("commands/legal", () => {
     expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(true);
   });
 
+  it("does not include DECLARE_ATTACKERS when a continuous type change removes creature type", () => {
+    cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
+
+    const attackersState = createInitialGameState("p1", "p2", {
+      id: "legal-derived-noncreature-attacker",
+      rngSeed: "seed-legal-derived-noncreature-attacker"
+    });
+    attackersState.turnState.phase = "DECLARE_ATTACKERS";
+    attackersState.turnState.step = "DECLARE_ATTACKERS";
+    attackersState.turnState.activePlayerId = "p1";
+    setPriority(attackersState, "p1");
+    putOnBattlefield(attackersState, "p1", {
+      id: "obj-animated-attacker",
+      cardDefId: testCreatureDefinition.id
+    });
+
+    const withTypeChange = addContinuousEffect(attackersState, {
+      id: "effect-remove-creature-type",
+      source: { id: "obj-animated-attacker", zcc: 0 },
+      layer: LAYERS.TYPE,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", object: { id: "obj-animated-attacker", zcc: 0 } },
+      effect: {
+        kind: "type_change",
+        payload: { typeLine: ["Artifact"], subtypes: [{ kind: "other", value: "Relic" }] }
+      }
+    });
+
+    const attackersCommands = getLegalCommands(withTypeChange);
+    expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(false);
+  });
+
+  it("does not include DECLARE_ATTACKERS when a type change removes the defender's Island subtype", () => {
+    cardRegistry.set(dandanCardDefinition.id, dandanCardDefinition);
+
+    const attackersState = createInitialGameState("p1", "p2", {
+      id: "legal-dandan-derived-no-island",
+      rngSeed: "seed-legal-dandan-derived-no-island"
+    });
+    attackersState.turnState.phase = "DECLARE_ATTACKERS";
+    attackersState.turnState.step = "DECLARE_ATTACKERS";
+    attackersState.turnState.activePlayerId = "p1";
+    setPriority(attackersState, "p1");
+    putOnBattlefield(attackersState, "p1", {
+      id: "obj-dandan",
+      cardDefId: dandanCardDefinition.id
+    });
+    putOnBattlefield(attackersState, "p2", {
+      id: "obj-island",
+      cardDefId: "island"
+    });
+
+    const withTypeChange = addContinuousEffect(attackersState, {
+      id: "effect-remove-island-subtype",
+      source: { id: "obj-dandan", zcc: 0 },
+      layer: LAYERS.TYPE,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", object: { id: "obj-island", zcc: 0 } },
+      effect: {
+        kind: "type_change",
+        payload: { typeLine: ["Land"], subtypes: [{ kind: "other", value: "Desert" }] }
+      }
+    });
+
+    const attackersCommands = getLegalCommands(withTypeChange);
+    expect(attackersCommands.some((command) => command.type === "DECLARE_ATTACKERS")).toBe(false);
+  });
+
   it("includes required attackers in DECLARE_ATTACKERS when a creature must attack", () => {
     cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
 
