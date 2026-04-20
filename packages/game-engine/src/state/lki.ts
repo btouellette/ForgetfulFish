@@ -10,11 +10,15 @@ export type LKISnapshot = {
 };
 
 function cloneGameObjectShape<T extends GameObjectBase | DerivedGameObjectView>(object: T): T {
+  const typeView = object as Partial<DerivedGameObjectView>;
+
   return {
     ...object,
     counters: new Map(object.counters),
     attachments: [...object.attachments],
-    abilities: [...object.abilities]
+    abilities: [...object.abilities],
+    ...(typeView.typeLine === undefined ? {} : { typeLine: [...typeView.typeLine] }),
+    ...(typeView.subtypes === undefined ? {} : { subtypes: [...typeView.subtypes] })
   };
 }
 
