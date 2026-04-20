@@ -2,6 +2,7 @@ import { cardRegistry } from "../../cards";
 import type {
   BasicLandType,
   ConditionAst,
+  Color,
   Duration,
   KeywordAbilityAst,
   SubtypeAtom
@@ -267,11 +268,23 @@ function applyEffectToView(
   if (effect.layer === LAYERS.TYPE && effect.effect.kind === "type_change") {
     const typeLine = effect.effect.payload?.typeLine;
     const subtypes = effect.effect.payload?.subtypes;
-    if (isTypeLine(typeLine) && isSubtypeAtomArray(subtypes)) {
+    const nextTypeLine = isTypeLine(typeLine) ? [...typeLine] : view.typeLine;
+    const nextSubtypes = isSubtypeAtomArray(subtypes) ? [...subtypes] : view.subtypes;
+    if (nextTypeLine !== view.typeLine || nextSubtypes !== view.subtypes) {
       return {
         ...view,
-        typeLine: [...typeLine],
-        subtypes: [...subtypes]
+        typeLine: nextTypeLine,
+        subtypes: nextSubtypes
+      };
+    }
+  }
+
+  if (effect.layer === LAYERS.COLOR && effect.effect.kind === "set_color") {
+    const color = effect.effect.payload?.color;
+    if (isColorArray(color)) {
+      return {
+        ...view,
+        color: [...color]
       };
     }
   }
@@ -303,6 +316,13 @@ function applyEffectToView(
   }
 
   if (effect.layer === LAYERS.ABILITY) {
+    if (effect.effect.kind === "remove_all_abilities") {
+      return {
+        ...view,
+        abilities: []
+      };
+    }
+
     const keywordAbility = toGrantedKeywordAbility(effect.effect);
     if (keywordAbility !== null) {
       return {
@@ -348,6 +368,20 @@ function toGrantedKeywordAbility(
 
 function isBasicLandType(value: unknown): value is BasicLandType {
   return BASIC_LAND_TYPE_VALUES.includes(value as BasicLandType);
+}
+
+function isColor(value: unknown): value is Color {
+  return (
+    value === "white" ||
+    value === "blue" ||
+    value === "black" ||
+    value === "red" ||
+    value === "green"
+  );
+}
+
+function isColorArray(value: unknown): value is Color[] {
+  return Array.isArray(value) && value.every((entry) => isColor(entry));
 }
 
 function isTypeLine(value: unknown): value is string[] {
@@ -516,6 +550,7 @@ function requireBaseObject(objectId: string, state: Readonly<GameState>): Derive
 
   return {
     ...baseObject,
+    color: [...(definition?.color ?? [])],
     typeLine: [...(definition?.typeLine ?? [])],
     subtypes: [...(definition?.subtypes ?? [])],
     power: definition?.power ?? null,
