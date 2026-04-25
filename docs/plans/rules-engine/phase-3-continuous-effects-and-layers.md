@@ -379,7 +379,7 @@ Acceptance: Layer 3 with dependency ordering works for Mind Bend + Crystal Spray
 **Unblock plan — Layer 3 color-word modeling gap**
 - Confirmed gap in current code:
   - `cards/abilityAst.ts` exposes `fromColor` / `toColor` on `TextChangeEffect`, but the active `AbilityAst` / `ConditionAst` surface does not yet provide real color-word-bearing nodes for Layer 3 rewriting.
-  - `effects/continuous/textChange.ts` currently enumerates, rewrites, validates, and instances only `BasicLandType` tokens.
+  - `effects/continuous/textChange.ts` currently enumerates, rewrites, validates, and instantiates only `BasicLandType` tokens.
   - `cards/mind-bend.ts` and `cards/crystal-spray.ts` currently only offer basic-land-type selection/replacement even though the cards also need color-word support.
 - Current implementation decision:
   - Do not implement speculative color-word rewriting now.
