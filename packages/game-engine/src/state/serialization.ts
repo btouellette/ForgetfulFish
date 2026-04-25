@@ -31,8 +31,16 @@ export type SerializedGameObjectBase = Omit<GameObjectBase, "counters"> & {
   counters: NumberMap;
 };
 
-export type SerializedGameObjectView = Omit<DerivedGameObjectView, "counters"> & {
+export type SerializedGameObjectView = Omit<
+  DerivedGameObjectView,
+  "counters" | "color" | "typeLine" | "subtypes" | "power" | "toughness"
+> & {
   counters: NumberMap;
+  color?: DerivedGameObjectView["color"];
+  typeLine?: DerivedGameObjectView["typeLine"];
+  subtypes?: DerivedGameObjectView["subtypes"];
+  power?: DerivedGameObjectView["power"];
+  toughness?: DerivedGameObjectView["toughness"];
 };
 
 export type SerializedGameObject = Omit<GameObject, "counters"> & {
@@ -111,6 +119,11 @@ function deserializeSnapshot(snapshot: SerializedLKISnapshot): LKISnapshot {
     },
     derived: {
       ...snapshot.derived,
+      color: snapshot.derived.color ?? [],
+      typeLine: snapshot.derived.typeLine ?? [],
+      subtypes: snapshot.derived.subtypes ?? [],
+      power: snapshot.derived.power ?? null,
+      toughness: snapshot.derived.toughness ?? null,
       counters: recordToNumberMap(snapshot.derived.counters)
     }
   };

@@ -113,6 +113,7 @@ describe("effects/continuous/layers", () => {
 
     expect(computeGameObject("obj-a", state)).toEqual({
       ...state.objectPool.get("obj-a"),
+      color: [],
       typeLine: ["Land"],
       subtypes: [{ kind: "basic_land_type", value: "Island" }],
       power: null,

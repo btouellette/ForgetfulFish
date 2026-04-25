@@ -99,7 +99,18 @@ describe("state/serialization", () => {
     state.objectPool.set(object.id, object);
     state.lkiStore.set(
       "obj-1:0",
-      captureSnapshot(object, { ...object }, { kind: "library", scope: "shared" })
+      captureSnapshot(
+        object,
+        {
+          ...object,
+          color: [],
+          typeLine: [],
+          subtypes: [],
+          power: null,
+          toughness: null
+        },
+        { kind: "library", scope: "shared" }
+      )
     );
 
     const libraryKey = zoneKey({ kind: "library", scope: "shared" });
@@ -163,14 +174,18 @@ describe("state/serialization", () => {
           life: 20,
           manaPool: { white: 0, blue: 1, black: 0, red: 0, green: 0, colorless: 0 },
           hand: ["obj-1"],
-          priority: true
+          priority: true,
+          hasLost: false,
+          attemptedDrawFromEmptyLibrary: false
         },
         {
           id: "p2",
           life: 20,
           manaPool: { white: 0, blue: 0, black: 0, red: 0, green: 0, colorless: 0 },
           hand: [],
-          priority: false
+          priority: false,
+          hasLost: false,
+          attemptedDrawFromEmptyLibrary: false
         }
       ],
       zones: {
@@ -267,6 +282,11 @@ describe("state/serialization", () => {
     expect(state.lkiStore).toBeInstanceOf(Map);
     expect(state.objectPool.get("obj-1")?.counters).toBeInstanceOf(Map);
     expect(state.objectPool.get("obj-1")?.counters.get("charge")).toBe(1);
+    expect(state.lkiStore.get("obj-1:0")?.derived.color).toEqual([]);
+    expect(state.lkiStore.get("obj-1:0")?.derived.typeLine).toEqual([]);
+    expect(state.lkiStore.get("obj-1:0")?.derived.subtypes).toEqual([]);
+    expect(state.lkiStore.get("obj-1:0")?.derived.power).toBeNull();
+    expect(state.lkiStore.get("obj-1:0")?.derived.toughness).toBeNull();
   });
 
   it("preserves state through serialize/deserialize round trip", () => {

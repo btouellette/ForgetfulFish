@@ -2,6 +2,7 @@ import type { CardDefinition } from "./cardDefinition";
 import { accumulatedKnowledgeCardDefinition } from "./accumulated-knowledge";
 import { brainstormCardDefinition } from "./brainstorm";
 import { crystalSprayCardDefinition } from "./crystal-spray";
+import { danceOfTheSkywiseCardDefinition } from "./dance-of-the-skywise";
 import { dandanCardDefinition } from "./dandan";
 import { islandCardDefinition } from "./island";
 import { memoryLapseCardDefinition } from "./memory-lapse";
@@ -14,6 +15,7 @@ export const cardRegistry: Map<string, CardDefinition> = new Map([
   [accumulatedKnowledgeCardDefinition.id, accumulatedKnowledgeCardDefinition],
   [brainstormCardDefinition.id, brainstormCardDefinition],
   [crystalSprayCardDefinition.id, crystalSprayCardDefinition],
+  [danceOfTheSkywiseCardDefinition.id, danceOfTheSkywiseCardDefinition],
   [dandanCardDefinition.id, dandanCardDefinition],
   [islandCardDefinition.id, islandCardDefinition],
   [memoryLapseCardDefinition.id, memoryLapseCardDefinition],
@@ -26,6 +28,7 @@ export const cardRegistry: Map<string, CardDefinition> = new Map([
 export { accumulatedKnowledgeCardDefinition };
 export { brainstormCardDefinition };
 export { crystalSprayCardDefinition };
+export { danceOfTheSkywiseCardDefinition };
 export { dandanCardDefinition };
 export { islandCardDefinition };
 export { memoryLapseCardDefinition };
