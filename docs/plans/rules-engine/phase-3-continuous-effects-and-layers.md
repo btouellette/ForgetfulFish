@@ -355,7 +355,7 @@ Implement per §8:
 - `TextChangeEffect` application:
   - Walk the ability AST of the affected object
   - Substitute `BasicLandType` tokens (fromLandType → toLandType)
-  - Substitute `Color` tokens (fromColor → toColor)
+  - Substitute `Color` tokens (fromColor → toColor) once a future card adds a structured permanent-text color surface worth modeling in Layer 3
 - Dependency ordering for Layer 3:
   - Build dependency graph: effect A depends on B if B's output changes A's applicability
   - Topological sort; break cycles with timestamp per CR 613.8
@@ -374,7 +374,34 @@ Acceptance: Layer 3 with dependency ordering works for Mind Bend + Crystal Spray
 
 **Current status / intended next direction**
 - Layer 3 now infers per-object dependency ordering for text-change effects when one rewrite makes another effect newly applicable, reusing the existing topological sort and timestamp cycle fallback in the shared continuous-effect engine.
-- The remaining P3.5 work is still open: `Color` token substitution is not implemented yet, so the next text-change slice should cover color-word rewriting and any card-level coverage that depends on it.
+- The remaining P3.5 work is still open: `Color` token substitution is not implemented yet, but the current deck also has no live structured permanent-text color-word surface for Layer 3 to rewrite end to end.
+
+**Unblock plan — Layer 3 color-word modeling gap**
+- Confirmed gap in current code:
+  - `cards/abilityAst.ts` exposes `fromColor` / `toColor` on `TextChangeEffect`, but the active `AbilityAst` / `ConditionAst` surface does not yet provide real color-word-bearing nodes for Layer 3 rewriting.
+  - `effects/continuous/textChange.ts` currently enumerates, rewrites, validates, and instantiates only `BasicLandType` tokens.
+  - `cards/mind-bend.ts` and `cards/crystal-spray.ts` currently only offer basic-land-type selection/replacement even though the cards also need color-word support.
+- Current implementation decision:
+  - Do not implement speculative color-word rewriting now.
+  - Keep the shipped land-type AST/model intact and defer the color-word slice until a future card introduces a real structured permanent-text color surface that Layer 3 must rewrite.
+  - When that card arrives, generalize the Layer 3 text-change pipeline locally rather than broadening the entire AST preemptively.
+- Scope the unblock work as one explicit sub-plan before closing the remaining Layer 3/card tasks:
+  1. Add a canonical rewritable-text token model for Layer 3 so the engine can represent both land-type words and color words through one path instead of leaving `fromColor` / `toColor` as dead surface area.
+  2. Extend the relevant AST nodes and any nested condition/effect payload types that can actually contain color words for the shipped card set, keeping the first pass minimal and limited to real card/rules text that Phase 3 needs.
+  3. Generalize `textChange.ts` so payload validation, token enumeration, instance listing, memoization keys, and AST walking all work for both token kinds, including Crystal Spray's single-instance targeting.
+  4. Extend the resolve-choice plumbing for Mind Bend and Crystal Spray so players can choose whether they are changing a land-type word or a color word, then choose from the matching available words/instances on the target.
+  5. Add the missing regression coverage in `test/effects/continuous/text.test.ts`, `test/cards/mindBend.test.ts`, `test/cards/crystalSpray.test.ts`, `test/cards/dandan.test.ts`, and `test/integration/layer-interactions.test.ts` before attempting final task closure.
+- Execution order for that unblock slice:
+  1. Write failing Layer 3 engine tests for color-word enumeration and substitution.
+  2. Land the minimal AST/model change required to make color words representable.
+  3. Land engine rewriting + instance-selection support for both token kinds.
+  4. Upgrade Mind Bend and Crystal Spray choice/resolution flows to expose the new capability.
+  5. Re-run Dandan and layer-interaction coverage, then close `P3.5`, `P3.11`, `P3.12`, `P3.9`, and `P3.14` only if the end-to-end color-word path is green.
+- Acceptance for the unblock slice:
+  - There is one canonical Layer 3 text-token model for both basic land types and color words.
+  - Mind Bend can permanently rewrite either token kind when the target actually contains that word.
+  - Crystal Spray can rewrite exactly one chosen instance of either token kind until end of turn.
+  - The remaining Phase 3 text-change tasks are no longer blocked on missing color-word representation.
 
 ### [x] P3.6 — Layer 4: type-changing effects
 
@@ -525,11 +552,11 @@ Acceptance: Control change + untap resolve correctly, duration tracked.
 
 **Files**: `cards/mind-bend.ts`
 
-Cards: **Mind Bend** (change one basic land type word or color word permanently)
+Cards: **Mind Bend** (land-type support already shipped; remaining unchecked scope is deferred color-word support once a future card adds a real structured permanent-text color surface)
 
 Implement:
 - CardDefinition: instant, {U}, `onResolve`:
-  - Step 0: Emit choices for which word to change and what to change it to
+  - Step 0: Emit choices for which basic land type word to change and what to change it to
   - Step 1: Create `TextChangeEffect` continuous effect with `duration: 'permanent'` in Layer 3
 
 **Test file**: `test/cards/mindBend.test.ts`
@@ -537,23 +564,23 @@ Depends: P0.11, P2.1, P2.2, P3.5
 Test: **Write tests FIRST**, then implement.
 1. (Definition) Loads as 1-mana blue instant.
 2. (Casting) Targets any permanent on the battlefield.
-3. (Resolution) Player chooses a word kind (BasicLandType) and the target replacement.
+3. (Resolution) Player chooses a basic land type word on the target and a basic land type replacement.
 4. (Resolution) A Layer 3 `TextChangeEffect` is added with `permanent` duration.
 5. (Interaction) On Dandan, changing "Island" to "Swamp" updates all occurrences.
 6. (Interaction) Multiple Mind Bends can stack on the same permanent.
 7. (Shared-deck) Text change correctly impacts shared-deck interactions (e.g., islandwalk).
 8. (State) `assertStateInvariants` passes after permanent effect creation.
-Acceptance: Permanent text change works on all instances.
+Acceptance: Permanent text change works on all supported instances; color-word support remains explicitly deferred until a future structured permanent-text color surface exists.
 
 ### [ ] P3.12 — Card: Crystal Spray
 
 **Files**: `cards/crystal-spray.ts`
 
-Cards: **Crystal Spray** (change one instance of a basic land type or color word until EOT, draw a card)
+Cards: **Crystal Spray** (land-type instance support already shipped; remaining unchecked scope is deferred color-word instance support once a future card adds a real structured permanent-text color surface)
 
 Implement:
 - CardDefinition: instant, {2}{U}, `onResolve`:
-  - Step 0: Choose which instance and what to change
+  - Step 0: Choose which basic land type instance and what to change it to
   - Step 1: Create `TextChangeEffect` with `duration: 'until_end_of_turn'`
   - Step 2: `DRAW` action (cantrip)
 
@@ -563,14 +590,14 @@ Implement:
 Depends: P0.11, P2.1, P2.2, P3.5
 Test: **Write tests FIRST**, then implement.
 1. (Definition) Loads as 3-mana blue instant.
-2. (Resolution) Player picks one specific instance of a type/color word on a permanent.
+2. (Resolution) Player picks one specific basic land type word instance on a permanent.
 3. (Resolution) A Layer 3 effect is created only for that specific instance.
 4. (Resolution) Player draws 1 card from the shared library.
 5. (Interaction) On Dandan, changing only the first "Island" word works as expected.
 6. (Interaction) The effect correctly expires at end of turn.
 7. (Edge case) Selecting a non-existent instance (if possible) is rejected.
 8. (State) `assertStateInvariants` passes after cantrip draw.
-Acceptance: Single-instance text change works, cantrip draws.
+Acceptance: Single-instance text change works for all currently modeled supported instances, cantrip draws, and color-word support remains explicitly deferred until a future structured permanent-text color surface exists.
 
 ### [x] P3.13 — Card: Dance of the Skywise
 

@@ -460,9 +460,9 @@ needs the *current* view of an object:
 |-------|---------------|---------------------|
 | 1 | Copy effects | Supplant Form (copy aspect) |
 | 2 | Control-changing effects | Ray of Command |
-| 3 | Text-changing effects | Mind Bend, Crystal Spray |
+| 3 | Text-changing effects | Mind Bend, Crystal Spray (land-type rewriting shipped; color-word rewriting deferred until a future card adds a structured permanent-text color surface) |
 | 4 | Type-changing effects | Dance of the Skywise |
-| 5 | Color-changing effects | Crystal Spray (if targeting color) |
+| 5 | Color-changing effects | Dance of the Skywise; any future true color-changing effects |
 | 6 | Ability-adding/removing | Dandan keywords, general grants |
 | 7a | Power/toughness setting | Dance of the Skywise (sets P/T) |
 | 7b | P/T adjustments (counters, +N/+N effects) | — |
