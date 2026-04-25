@@ -394,7 +394,7 @@ Implement:
 Depends: P3.1, P3.2
 Test: **Write tests FIRST**, then implement.
 1. Dance of the Skywise on a creature preserves the creature card type while replacing its subtypes with `Dragon` (and any other effect-defined creature subtypes).
-2. Existing creature subtypes are replaced by the Dragon type set (unless specified otherwise).
+2. Existing creature subtypes are replaced by the effect-defined creature subtype set, such as `Dragon` (unless specified otherwise).
 3. The effect correctly expires at the end of the turn.
 4. Type change application occurs before Layer 6 and Layer 7.
 5. Multiple type changes combine or overwrite based on timestamp.
