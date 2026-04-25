@@ -103,6 +103,10 @@ function createDandanState(): GameState {
       }
     )
   );
+  putOnBattlefield(
+    state,
+    makeCard("obj-support-island", "island", "p1", { kind: "battlefield", scope: "shared" })
+  );
 
   expect(() => assertStateInvariants(state)).not.toThrow();
   return state;
@@ -204,7 +208,7 @@ describe("integration/layer-interactions", () => {
     );
     const withTypeChange = addEffect(
       withCrystalSpray,
-      makeTargetEffect("dance-type", 4, 3, {
+      makeTargetEffect("dance-type", LAYERS.TYPE, 3, {
         kind: "type_change",
         payload: {
           subtypes: [
@@ -216,18 +220,18 @@ describe("integration/layer-interactions", () => {
     );
     const withColorChange = addEffect(
       withTypeChange,
-      makeTargetEffect("dance-color", 5, 4, {
+      makeTargetEffect("dance-color", LAYERS.COLOR, 4, {
         kind: "set_color",
         payload: { color: ["blue"] }
       })
     );
     const withRemoveAbilities = addEffect(
       withColorChange,
-      makeTargetEffect("dance-remove", 6, 5, { kind: "remove_all_abilities" })
+      makeTargetEffect("dance-remove", LAYERS.ABILITY, 5, { kind: "remove_all_abilities" })
     );
     const withFlying = addEffect(
       withRemoveAbilities,
-      makeTargetEffect("dance-flying", 6, 6, {
+      makeTargetEffect("dance-flying", LAYERS.ABILITY, 6, {
         kind: "grant_keyword",
         payload: { keyword: "flying" }
       })
@@ -258,7 +262,7 @@ describe("integration/layer-interactions", () => {
       expect.objectContaining({
         id: "mind-bend",
         duration: "permanent",
-        layer: 3,
+        layer: LAYERS.TEXT,
         effect: expect.objectContaining({ kind: "text_change" })
       })
     ]);
