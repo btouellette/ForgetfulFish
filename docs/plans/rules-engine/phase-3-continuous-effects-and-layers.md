@@ -406,9 +406,9 @@ Acceptance: Type changing works for Layer 4 subtype replacement and combines cor
 - Dedicated Layer 4 coverage exists in `test/effects/continuous/type.test.ts`, including timestamp ordering, explicit dependency ordering, and sequencing ahead of later-layer ability grants.
 - `Dance of the Skywise` also verifies the end-to-end Layer 4 path in `test/cards/danceOfTheSkywise.test.ts`, including cleanup expiration and interaction with Layer 7a/7b power-toughness handling.
 
-### [ ] P3.7 — Layer 6: ability adding/removing
+### [x] P3.7 — Layer 6: ability adding/removing
 
-**Files**: `effects/continuous/abilityChange.ts`
+**Files**: `effects/continuous/layers.ts`
 
 Cards: **Dandan** (has keywords — islandwalk, via Layer 6 application from static definition)
 
@@ -429,6 +429,11 @@ Test: **Write tests FIRST**, then implement.
 5. Effects that grant an ability "as long as" a condition is met work.
 6. `assertStateInvariants` holds during ability computation.
 Acceptance: Keyword abilities appear/disappear correctly in derived views.
+
+**Closure notes**
+- Layer 6 ability handling now lives in `effects/continuous/layers.ts`, where `computeGameObject` starts from card-definition keywords/static abilities and then applies `grant_keyword` and `remove_all_abilities` continuous effects in layer order.
+- Dedicated Layer 6 coverage now exists in `test/effects/continuous/ability.test.ts`, covering Dandan's native islandwalk, ability removal, multiple keyword grants, post-text/post-type sequencing, conditional grants, and invariant checks.
+- Existing card/integration coverage in `test/cards/dandan.test.ts` and `test/cards/danceOfTheSkywise.test.ts` continues to exercise the shipped Layer 6 behavior from both native and temporary effect sources.
 
 ### [ ] P3.8 — Layer 7: P/T modifications
 
