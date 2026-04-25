@@ -378,9 +378,9 @@ Acceptance: Layer 3 with dependency ordering works for Mind Bend + Crystal Spray
 - Layer 3 now infers per-object dependency ordering for text-change effects when one rewrite makes another effect newly applicable, reusing the existing topological sort and timestamp cycle fallback in the shared continuous-effect engine.
 - The remaining P3.5 work is still open: `Color` token substitution is not implemented yet, so the next text-change slice should cover color-word rewriting and any card-level coverage that depends on it.
 
-### [ ] P3.6 — Layer 4: type-changing effects
+### [x] P3.6 — Layer 4: type-changing effects
 
-**Files**: `effects/continuous/typeChange.ts`
+**Files**: `effects/continuous/layers.ts`
 
 Cards: **Dance of the Skywise**
 
@@ -393,13 +393,18 @@ Implement:
 **Test file**: `test/effects/continuous/type.test.ts`
 Depends: P3.1, P3.2
 Test: **Write tests FIRST**, then implement.
-1. Dance of the Skywise on a creature changes its `typeLine` to `['Dragon']`.
-2. Existing subtypes are replaced by the Dragon type (unless specified otherwise).
+1. Dance of the Skywise on a creature preserves the creature card type while replacing its subtypes with `Dragon` (and any other effect-defined creature subtypes).
+2. Existing creature subtypes are replaced by the effect-defined creature subtype set, such as `Dragon` (unless specified otherwise).
 3. The effect correctly expires at the end of the turn.
 4. Type change application occurs before Layer 6 and Layer 7.
 5. Multiple type changes combine or overwrite based on timestamp.
-6. `computeGameObject` reflects the new types in the derived view.
-Acceptance: Type changing works, combined with P/T setting for Dance.
+6. `computeGameObject` reflects the updated type/subtype view in the derived object.
+Acceptance: Type changing works for Layer 4 subtype replacement and combines correctly with P/T setting for Dance.
+
+**Closure notes**
+- `computeGameObject` now applies Layer 4 `type_change` effects to the derived view while preserving noncreature card types and replacing subtypes from the effect payload.
+- Dedicated Layer 4 coverage exists in `test/effects/continuous/type.test.ts`, including timestamp ordering, explicit dependency ordering, and sequencing ahead of later-layer ability grants.
+- `Dance of the Skywise` also verifies the end-to-end Layer 4 path in `test/cards/danceOfTheSkywise.test.ts`, including cleanup expiration and interaction with Layer 7a/7b power-toughness handling.
 
 ### [ ] P3.7 — Layer 6: ability adding/removing
 
