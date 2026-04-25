@@ -502,7 +502,7 @@ Implement:
 - CardDefinition: instant, {3}{U}, `onResolve`:
   - Step 0: `SET_CONTROL` action (target creature → controller becomes caster)
   - Step 1: `UNTAP` action on the creature
-  - Step 2: Add continuous effect: "must attack this turn" (duration: until_end_of_turn)
+  - Step 2: Add continuous effects: grant haste and "must attack this turn" (duration: until_end_of_turn)
 - Creates Layer 2 continuous effect for control change
 
 **Test file**: `test/cards/rayOfCommand.test.ts`
@@ -512,7 +512,7 @@ Test: **Write tests FIRST**, then implement.
 2. (Casting) Targets a creature controlled by any player.
 3. (Resolution) Caster gains control of the creature until end of turn.
 4. (Resolution) The targeted creature becomes untapped.
-5. (Resolution) A "must attack" continuous effect is applied to the creature.
+5. (Resolution) The targeted creature gains haste and a "must attack" continuous effect.
 6. (Shared-deck) Control change works for permanents owned by the shared deck.
 7. (Interaction) The creature reverts to its previous controller at the cleanup step.
 8. (State) `assertStateInvariants` holds throughout control duration.
@@ -521,7 +521,7 @@ Acceptance: Control change + untap resolve correctly, duration tracked.
 **Closure notes**
 - `cards/ray-of-command.ts` now resolves through the shared primitive effect pipeline: it sets control until end of turn, untaps the target, grants haste, and adds the until-end-of-turn `must_attack` effect on the same object.
 - `test/cards/rayOfCommand.test.ts` covers the listed acceptance surface, including definition/casting, derived control, untap, required-attack enforcement, shared-deck ownership, cleanup-step reversion, and invariant preservation.
-- The supporting Layer 2/Layer 6 behavior remains covered by the dedicated continuous-effect suites, so the card-level slice now has both focused unit coverage and end-to-end resolution coverage.
+- Supporting continuous-effect behavior is covered across multiple test layers: the dedicated continuous-effect suites cover the shared layer machinery, while `must_attack` enforcement for this card is exercised through the command/legal and card-level tests above.
 
 ### [ ] P3.11 — Card: Mind Bend
 
