@@ -257,7 +257,7 @@ Test: **Write tests FIRST**, then implement.
 6. `addContinuousEffect` does not mutate the original `GameState`.
 Acceptance: CRUD for continuous effects works.
 
-### [ ] P3.2 — computeGameObject (layer application engine)
+### [x] P3.2 — computeGameObject (layer application engine)
 
 **Files**: `effects/continuous/layers.ts` (extend)
 
@@ -282,12 +282,10 @@ Test: **Write tests FIRST**, then implement.
 6. Dependency ordering (if any) overrides timestamp ordering within a layer.
 Acceptance: Layer system produces correct derived views.
 
-**Current status / intended next direction**
-- The current implementation now covers the first meaningful P3.2 increments: dependency-aware same-layer ordering, deterministic cycle fallback, and condition-aware effect filtering for the currently supported `ConditionAst` surface.
-- Derived views now also carry base card-definition power/toughness and support Layer 7a `set_pt` overrides, so zero-toughness SBA checks can read the computed view instead of stale printed toughness.
-- The next intended P3.2 work is to broaden per-layer application beyond the current control/ability subset, starting with the next effect kinds actually needed by deck/card growth.
-- When additional layer kinds land, `computeGameObject` should keep the same sequencing model already established here: layer order first, dependency-aware ordering within a layer, then stable timestamp/insertion fallback.
-- `ConditionAst` support in continuous effects is intentionally conservative for now. If future conditions require richer context than `(view, state)`, they should introduce an explicit continuous-effect evaluation context rather than ad-hoc branching inside individual layer handlers.
+**Closure notes**
+- `effects/continuous/layers.ts` now implements the full `computeGameObject` path around a shared `resolveContinuousEffects` helper: it starts from the base object/card-definition view, gathers applicable continuous effects, orders them by layer and dependency, applies them in sequence, and returns the derived `GameObjectView`.
+- `test/effects/continuous/compute.test.ts` covers the task’s acceptance surface and beyond, including base-view identity, Layer 7a power/toughness setting, same-layer timestamp ordering, dependency overrides, conditioned effects, deterministic cycle fallback, and applied-effect ordering via `getApplicableContinuousEffects`.
+- Later Phase 3 slices now exercise the same engine path across Layer 2, Layer 3, Layer 4, Layer 6, and Layer 7 behavior, so `computeGameObject` is no longer just groundwork; it is the active shared derivation engine for the shipped continuous-effect system.
 
 ### [x] P3.3 — Duration tracking and cleanup
 
