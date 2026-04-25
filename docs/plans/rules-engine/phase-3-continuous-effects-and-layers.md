@@ -437,7 +437,7 @@ Acceptance: Keyword abilities appear/disappear correctly in derived views.
 
 ### [x] P3.8 — Layer 7: P/T modifications
 
-**Files**: `effects/continuous/ptChange.ts`
+**Files**: `effects/continuous/layers.ts`
 
 Implement all sublayers:
 - Layer 7a: characteristic-defining abilities and P/T setting effects (Dance of the Skywise sets to 4/4)
