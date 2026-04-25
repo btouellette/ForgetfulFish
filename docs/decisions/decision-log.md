@@ -93,6 +93,7 @@
   - **GameMode hooks**: formalized shared-deck variant as a `GameMode` interface for resolving "your library"/"your graveyard" references.
   - **ETB lookahead**: data structures support CR 614.12 hypothetical state evaluation; implementation deferred until a deck card requires it.
 - Implementation phases expanded from 5 to 7, front-loading identity/LKI and the action modifier pipeline.
+- Follow-up clarification after Phase 3 text-change work: land-type Layer 3 rewriting shipped first, but color-word Layer 3 rewriting is explicitly deferred until the deck contains a real structured permanent-text color surface to rewrite. Dormant `fromColor` / `toColor` shape alone is not enough to justify speculative engine work.
 
 ## 2026-03-04 Rules Engine Plan Portability Guardrail
 
