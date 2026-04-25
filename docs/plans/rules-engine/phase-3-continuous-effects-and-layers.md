@@ -396,7 +396,7 @@ Acceptance: Layer 3 with dependency ordering works for Mind Bend + Crystal Spray
   2. Land the minimal AST/model change required to make color words representable.
   3. Land engine rewriting + instance-selection support for both token kinds.
   4. Upgrade Mind Bend and Crystal Spray choice/resolution flows to expose the new capability.
-  5. Re-run Dandan and layer-interaction coverage, then close `P3.5`, `P3.11`, `P3.12`, `P3.9`, and `P3.14` only if the end-to-end color-word path is green.
+  5. Re-run Dandan and layer-interaction coverage, then close the remaining color-word-blocked Layer 3 work (`P3.5`, plus any still-open card follow-ons) only if the end-to-end color-word path is green.
 - Acceptance for the unblock slice:
   - There is one canonical Layer 3 text-token model for both basic land types and color words.
   - Mind Bend can permanently rewrite either token kind when the target actually contains that word.
@@ -488,7 +488,7 @@ Acceptance: P/T math is correct through all sublayers.
 - Dedicated Layer 7 coverage now lives in `test/effects/continuous/pt.test.ts`, covering exact P/T setting, generalized adjustments, sublayer sequencing, switching, cumulative adjustments, and negative-value results.
 - Existing `compute.test.ts` and `danceOfTheSkywise.test.ts` coverage continues to verify the shipped card-facing 7a/7b paths alongside the new dedicated unit coverage for the remaining 7b/7c engine behavior.
 
-### [ ] P3.9 — Card: Dandan (full implementation)
+### [x] P3.9 — Card: Dandan (full implementation)
 
 **Files**: `cards/dandan.ts`
 
@@ -516,6 +516,11 @@ Test: **Write tests FIRST**, then implement.
 7. (Edge case) Casting Dandan into an empty battlefield (no Islands) results in immediate sacrifice trigger (Phase 4).
 8. (State) `assertStateInvariants` passes on all Dandan operations.
 Acceptance: Dandan's full ability structure is Layer-3-rewritable.
+
+**Closure notes**
+- `cards/dandan.ts` now defines Dandan as a blue 4/1 creature with structured `landwalk`, `cant_attack_unless`, and `when_no_islands_sacrifice` abilities that flow through the shared computed-view layer system.
+- `test/cards/dandan.test.ts` covers the definition/casting surface plus the Layer 3 interaction points for Mind Bend and Crystal Spray, proving all three structured land-type tokens are rewritable.
+- `test/integration/layer-interactions.test.ts` now also exercises Dandan as the shared object for combined permanent and temporary Layer 3/4/6/7 interactions.
 
 ### [x] P3.10 — Card: Ray of Command
 
@@ -548,7 +553,7 @@ Acceptance: Control change + untap resolve correctly, duration tracked.
 - `test/cards/rayOfCommand.test.ts` covers the listed acceptance surface, including definition/casting, derived control, untap, required-attack enforcement, shared-deck ownership, cleanup-step reversion, and invariant preservation.
 - Supporting continuous-effect behavior is covered across multiple test layers: the dedicated continuous-effect suites cover the shared layer machinery, while `must_attack` enforcement for this card is exercised through the command/legal and card-level tests above.
 
-### [ ] P3.11 — Card: Mind Bend
+### [x] P3.11 — Card: Mind Bend
 
 **Files**: `cards/mind-bend.ts`
 
@@ -572,7 +577,12 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after permanent effect creation.
 Acceptance: Permanent text change works on all supported instances; color-word support remains explicitly deferred until a future structured permanent-text color surface exists.
 
-### [ ] P3.12 — Card: Crystal Spray
+**Closure notes**
+- `cards/mind-bend.ts` now resolves through the primitive choice pipeline: it chooses a supported land-type word on the target, chooses a replacement land type, and creates a permanent Layer 3 `text_change` effect.
+- `test/cards/mindBend.test.ts` covers definition/casting, both choice prompts, permanent-effect creation, target-scoped rewriting, trigger-condition rewriting, and the no-supported-word no-op case.
+- The remaining color-word capability stays intentionally deferred, and `test/effects/continuous/text.test.ts` continues to document that unsupported payloads are ignored until a real structured permanent-text color surface exists.
+
+### [x] P3.12 — Card: Crystal Spray
 
 **Files**: `cards/crystal-spray.ts`
 
@@ -598,6 +608,11 @@ Test: **Write tests FIRST**, then implement.
 7. (Edge case) Selecting a non-existent instance (if possible) is rejected.
 8. (State) `assertStateInvariants` passes after cantrip draw.
 Acceptance: Single-instance text change works for all currently modeled supported instances, cantrip draws, and color-word support remains explicitly deferred until a future structured permanent-text color surface exists.
+
+**Closure notes**
+- `cards/crystal-spray.ts` now resolves through the primitive choice pipeline: it chooses a specific supported land-type instance, chooses a replacement land type, creates an until-end-of-turn Layer 3 `text_change` effect for only that instance, and then draws a card.
+- `test/cards/crystalSpray.test.ts` covers definition/casting, instance selection, replacement-word choice, single-instance rewriting, cantrip draw, cleanup expiry, no-supported-instance fallback, and trigger-condition targeting.
+- `test/integration/layer-interactions.test.ts` now verifies Crystal Spray's single-instance rewrite composes correctly with a permanent Mind Bend-style rewrite on the same Dandan object.
 
 ### [x] P3.13 — Card: Dance of the Skywise
 
@@ -626,7 +641,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes before and after effect application.
 Acceptance: Multi-layer effects (4 + 6 + 7a) all apply and expire together.
 
-### [ ] P3.14 — Integration test: layer interactions
+### [x] P3.14 — Integration test: layer interactions
 
 Wire together:
 - Mind Bend on Dandan (Layer 3 rewriting all tokens)
@@ -645,5 +660,10 @@ Test: **Write tests FIRST**, then implement.
 6. All duration-based removals happen at the correct phase (cleanup).
 7. `computeGameObject` result is consistent with MTG layer rules.
 Acceptance: All layer interactions produce correct derived views.
+
+**Closure notes**
+- `test/integration/layer-interactions.test.ts` now covers the missing cross-layer composition surface using Dandan as the shared object under test.
+- The suite verifies Mind Bend-style permanent Layer 3 rewriting, Crystal Spray-style single-instance Layer 3 rewriting on top of that permanent rewrite, Dance of the Skywise-style temporary Layer 4/5/6/7 layering, invariant preservation after each state transition, and cleanup-step expiry restoring only the temporary layers.
+- Together with the dedicated card and continuous-effect unit suites, Phase 3 now has explicit integration coverage for the main shipped layer interactions called out in this plan.
 
 ---
