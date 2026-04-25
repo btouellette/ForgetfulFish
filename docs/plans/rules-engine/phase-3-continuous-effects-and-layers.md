@@ -492,7 +492,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes on all Dandan operations.
 Acceptance: Dandan's full ability structure is Layer-3-rewritable.
 
-### [ ] P3.10 — Card: Ray of Command
+### [x] P3.10 — Card: Ray of Command
 
 **Files**: `cards/ray-of-command.ts`
 
@@ -517,6 +517,11 @@ Test: **Write tests FIRST**, then implement.
 7. (Interaction) The creature reverts to its previous controller at the cleanup step.
 8. (State) `assertStateInvariants` holds throughout control duration.
 Acceptance: Control change + untap resolve correctly, duration tracked.
+
+**Closure notes**
+- `cards/ray-of-command.ts` now resolves through the shared primitive effect pipeline: it sets control until end of turn, untaps the target, grants haste, and adds the until-end-of-turn `must_attack` effect on the same object.
+- `test/cards/rayOfCommand.test.ts` covers the listed acceptance surface, including definition/casting, derived control, untap, required-attack enforcement, shared-deck ownership, cleanup-step reversion, and invariant preservation.
+- The supporting Layer 2/Layer 6 behavior remains covered by the dedicated continuous-effect suites, so the card-level slice now has both focused unit coverage and end-to-end resolution coverage.
 
 ### [ ] P3.11 — Card: Mind Bend
 
