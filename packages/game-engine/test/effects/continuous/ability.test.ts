@@ -8,7 +8,6 @@ import {
   LAYERS,
   addContinuousEffect,
   computeGameObject,
-  removeContinuousEffect,
   type ContinuousEffect
 } from "../../../src/effects/continuous/layers";
 
@@ -184,18 +183,18 @@ describe("effects/continuous/ability", () => {
       expect.arrayContaining([{ kind: "keyword", keyword: "first_strike" }])
     );
 
-    const withoutIsland = removeContinuousEffect(
-      {
-        ...withConditionalGrant,
-        objectPool: new Map(
-          [...withConditionalGrant.objectPool.entries()].filter(
-            ([objectId]) => objectId !== "obj-island"
-          )
-        ),
-        zones: new Map([[zoneKey({ kind: "battlefield", scope: "shared" }), ["obj-a"]]])
-      },
-      "missing-effect-id"
-    );
+    const withoutIsland = {
+      ...withConditionalGrant,
+      objectPool: new Map(
+        [...withConditionalGrant.objectPool.entries()].filter(
+          ([objectId]) => objectId !== "obj-island"
+        )
+      ),
+      zones: new Map(withConditionalGrant.zones).set(
+        zoneKey({ kind: "battlefield", scope: "shared" }),
+        ["obj-a"]
+      )
+    };
 
     expect(computeGameObject("obj-a", withoutIsland).abilities).not.toContainEqual({
       kind: "keyword",
