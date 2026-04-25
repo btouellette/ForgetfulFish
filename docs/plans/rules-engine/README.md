@@ -160,18 +160,19 @@ Collected from the phase files below — items needing clarification before or d
 13. **P2.9** — Brainstorm put-back: one choice or two choices
 14. **P2.10** — Mystical Tutor resolution order (search → shuffle → put on top)
 15. **P3.12** — Crystal Spray: instance selection mechanism for UI/choice
-16. **P3.13** — Dance of the Skywise: "becomes" effect — does it remove existing abilities?
-17. **P4.1** — Dandan attack legality: check Layer 3-rewritten condition at declaration time
-18. **P4.7** — Mystic Sanctuary: "3+ other Islands" — self doesn't count
-19. **P4.9** — Scry choice type (CHOOSE_YES_NO vs CHOOSE_CARDS)
-20. **P5.1** — Diminishing Returns: confirm shared-deck handling for "shuffle hand/graveyard into library", "exile top ten", and "draw up to seven"
-21. **P5.4** — Metamorphose: actual Oracle text vs architecture doc characterization
-22. **P5.6** — Vision Charm phase out: minimal scope needed
-23. **P5.7** — Flashback subsystem design (alternative cost + exile replacement)
-24. **P5.10** — ETB lookahead: review if any card needs CR 614.12
-25. **P5.11** — Cross-layer dependency scenarios enumeration
-26. **P6.3** — Event-stream replication: game-engine vs server scope boundary
-27. **P6.4** — Reconnect protocol: game-engine vs server scope boundary
-28. **P7.4** — Property-testing library selection (fast-check recommended)
-29. **P0.14** — State Invariant Checker: ensure all objectPool entries have valid zone references
-30. **P0.15** — Property-Based Test Utilities: generate diverse but internally consistent GameStates
+16. **P3.5 / P3.11 / P3.12** — Layer 3 color-word rewriting is a known deferred capability gap: the current deck has no live structured permanent-text color surface to rewrite, so implementation is postponed until a future card actually needs it
+17. **P3.13** — Dance of the Skywise: "becomes" effect — does it remove existing abilities?
+18. **P4.1** — Dandan attack legality: check Layer 3-rewritten condition at declaration time
+19. **P4.7** — Mystic Sanctuary: "3+ other Islands" — self doesn't count
+20. **P4.9** — Scry choice type (CHOOSE_YES_NO vs CHOOSE_CARDS)
+21. **P5.1** — Diminishing Returns: confirm shared-deck handling for "shuffle hand/graveyard into library", "exile top ten", and "draw up to seven"
+22. **P5.4** — Metamorphose: actual Oracle text vs architecture doc characterization
+23. **P5.6** — Vision Charm phase out: minimal scope needed
+24. **P5.7** — Flashback subsystem design (alternative cost + exile replacement)
+25. **P5.10** — ETB lookahead: review if any card needs CR 614.12
+26. **P5.11** — Cross-layer dependency scenarios enumeration
+27. **P6.3** — Event-stream replication: game-engine vs server scope boundary
+28. **P6.4** — Reconnect protocol: game-engine vs server scope boundary
+29. **P7.4** — Property-testing library selection (fast-check recommended)
+30. **P0.14** — State Invariant Checker: ensure all objectPool entries have valid zone references
+31. **P0.15** — Property-Based Test Utilities: generate diverse but internally consistent GameStates
