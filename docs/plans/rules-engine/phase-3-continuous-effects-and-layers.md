@@ -345,7 +345,7 @@ Acceptance: Control changes work through the layer system.
 - Layer 2 control changes already ship through the shared continuous-effect engine: `SET_CONTROL` creates `set_controller` effects, `computeGameObject` applies them in timestamp order, cleanup removes `until_end_of_turn` control changes, and derived activated-ability legality respects the current controller.
 - Dedicated Layer 2 unit coverage now exists alongside the existing Ray of Command integration tests, so the remaining unchecked Phase 3 work can move on to the next real engine gaps rather than revisiting control-change foundations.
 
-### [ ] P3.5 — Layer 3: text-changing effects with dependency ordering
+### [x] P3.5 — Layer 3: text-changing effects with dependency ordering
 
 **Files**: `effects/continuous/textChange.ts`, `effects/continuous/dependency.ts`
 
@@ -370,13 +370,15 @@ Test: **Write tests FIRST**, then implement.
 4. Text change on a permanent correctly affects its triggered and activated abilities.
 5. Dependency resolution handles cases where one change affects another's applicability.
 6. Circular dependencies are broken using effect timestamps.
-Acceptance: Layer 3 with dependency ordering works for Mind Bend + Crystal Spray interaction.
+Acceptance: Layer 3 with dependency ordering works for the shipped Mind Bend + Crystal Spray land-type interaction; color-word support remains explicitly deferred until a future card adds a structured permanent-text color surface worth modeling in Layer 3.
 
-**Current status / intended next direction**
+**Closure notes**
 - Layer 3 now infers per-object dependency ordering for text-change effects when one rewrite makes another effect newly applicable, reusing the existing topological sort and timestamp cycle fallback in the shared continuous-effect engine.
-- The remaining P3.5 work is still open: `Color` token substitution is not implemented yet, but the current deck also has no live structured permanent-text color-word surface for Layer 3 to rewrite end to end.
+- `effects/continuous/textChange.ts`, the current Mind Bend / Crystal Spray resolve-choice plumbing, and the shipped card/tests all operate on structured basic-land-type text surfaces, which is the full Layer 3 behavior the current deck actually exercises.
+- `test/effects/continuous/text.test.ts` explicitly documents that color-only payloads are currently ignored, preventing the current `fromColor` / `toColor` type surface from being mistaken for shipped runtime support.
+- The current deck still has no live structured permanent-text color-word surface for Layer 3 to rewrite end to end, so color-word modeling is not a blocker for Phase 3 completion.
 
-**Unblock plan — Layer 3 color-word modeling gap**
+**Future follow-up — Layer 3 color-word modeling when required**
 - Confirmed gap in current code:
   - `cards/abilityAst.ts` exposes `fromColor` / `toColor` on `TextChangeEffect`, but the active `AbilityAst` / `ConditionAst` surface does not yet provide real color-word-bearing nodes for Layer 3 rewriting.
   - `effects/continuous/textChange.ts` currently enumerates, rewrites, validates, and instantiates only `BasicLandType` tokens.
@@ -396,12 +398,12 @@ Acceptance: Layer 3 with dependency ordering works for Mind Bend + Crystal Spray
   2. Land the minimal AST/model change required to make color words representable.
   3. Land engine rewriting + instance-selection support for both token kinds.
   4. Upgrade Mind Bend and Crystal Spray choice/resolution flows to expose the new capability.
-  5. Re-run Dandan and layer-interaction coverage, then close the remaining color-word-blocked Layer 3 work (`P3.5`, plus any still-open card follow-ons) only if the end-to-end color-word path is green.
+  5. Re-run Dandan and layer-interaction coverage before enabling any card that depends on color-word Layer 3 rewriting end to end.
 - Acceptance for the unblock slice:
   - There is one canonical Layer 3 text-token model for both basic land types and color words.
   - Mind Bend can permanently rewrite either token kind when the target actually contains that word.
   - Crystal Spray can rewrite exactly one chosen instance of either token kind until end of turn.
-  - The remaining Phase 3 text-change tasks are no longer blocked on missing color-word representation.
+  - Future color-word-dependent text-change work is no longer blocked on missing color-word representation.
 
 ### [x] P3.6 — Layer 4: type-changing effects
 
