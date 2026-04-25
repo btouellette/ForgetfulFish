@@ -45,10 +45,13 @@ export type LegalActionsView = {
   hasOtherBlockingActions: boolean;
 };
 
-export type GameObjectView = Omit<DerivedGameObjectView, "abilities" | "counters" | "color"> & {
+export type GameObjectView = Omit<
+  DerivedGameObjectView,
+  "abilities" | "counters" | "color" | "power" | "toughness"
+> & {
   color?: Color[];
-  power?: number | null;
-  toughness?: number | null;
+  power?: DerivedGameObjectView["power"];
+  toughness?: DerivedGameObjectView["toughness"];
   name?: string;
   manaCost?: ManaCost;
   rulesText?: string;
