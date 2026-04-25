@@ -301,8 +301,35 @@ function applyEffectToView(
     }
   }
 
+  if (effect.layer === LAYERS.PT_ADJUST && effect.effect.kind === "adjust_pt") {
+    const powerDelta = effect.effect.payload?.powerDelta;
+    const toughnessDelta = effect.effect.payload?.toughnessDelta;
+    if (
+      typeof powerDelta === "number" &&
+      typeof toughnessDelta === "number" &&
+      view.power !== null &&
+      view.toughness !== null
+    ) {
+      return {
+        ...view,
+        power: view.power + powerDelta,
+        toughness: view.toughness + toughnessDelta
+      };
+    }
+  }
+
   if (effect.layer === LAYERS.PT_ADJUST && isSyntheticCounterAdjustmentEffect(effect)) {
     return applyCounterAdjustments(view);
+  }
+
+  if (effect.layer === LAYERS.PT_SWITCH && effect.effect.kind === "switch_pt") {
+    if (view.power !== null && view.toughness !== null) {
+      return {
+        ...view,
+        power: view.toughness,
+        toughness: view.power
+      };
+    }
   }
 
   if (effect.layer === LAYERS.CONTROL && effect.effect.kind === "set_controller") {

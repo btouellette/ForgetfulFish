@@ -435,9 +435,9 @@ Acceptance: Keyword abilities appear/disappear correctly in derived views.
 - Dedicated Layer 6 coverage now exists in `test/effects/continuous/ability.test.ts`, covering Dandan's native islandwalk, ability removal, multiple keyword grants, post-text/post-type sequencing, conditional grants, and invariant checks.
 - Existing card/integration coverage in `test/cards/dandan.test.ts` and `test/cards/danceOfTheSkywise.test.ts` continues to exercise the shipped Layer 6 behavior from both native and temporary effect sources.
 
-### [ ] P3.8 — Layer 7: P/T modifications
+### [x] P3.8 — Layer 7: P/T modifications
 
-**Files**: `effects/continuous/ptChange.ts`
+**Files**: `effects/continuous/layers.ts`
 
 Implement all sublayers:
 - Layer 7a: characteristic-defining abilities and P/T setting effects (Dance of the Skywise sets to 4/4)
@@ -457,7 +457,11 @@ Acceptance: P/T math is correct through all sublayers.
 
 **Current status / intended next direction**
 - Layer 7a `set_pt` effects already apply through `computeGameObject`, and Layer 7b now also adjusts derived power/toughness for `+1/+1` and `-1/-1` counters on the computed view.
-- The remaining P3.8 work is still open: generalized +N/+N continuous-effect adjustments, Layer 7c switching, and broader negative/stacked P/T interaction coverage still need dedicated implementation and tests.
+
+**Closure notes**
+- `computeGameObject` now supports the full Layer 7 sublayer sequence in the shared continuous-effect engine: `set_pt` in 7a, generalized `adjust_pt` effects plus synthetic counter adjustments in 7b, and `switch_pt` effects in 7c.
+- Dedicated Layer 7 coverage now lives in `test/effects/continuous/pt.test.ts`, covering exact P/T setting, generalized adjustments, sublayer sequencing, switching, cumulative adjustments, and negative-value results.
+- Existing `compute.test.ts` and `danceOfTheSkywise.test.ts` coverage continues to verify the shipped card-facing 7a/7b paths alongside the new dedicated unit coverage for the remaining 7b/7c engine behavior.
 
 ### [ ] P3.9 — Card: Dandan (full implementation)
 
