@@ -303,12 +303,25 @@ function handleDeclareBlockersCommand(state: Readonly<GameState>, command: Comma
 
   validateDeclareBlockers(state, command);
 
+  const activePlayerId = state.turnState.activePlayerId;
+
   return {
     state: {
       ...state,
       version: state.version + 1,
+      players: [
+        {
+          ...state.players[0],
+          priority: state.players[0].id === activePlayerId
+        },
+        {
+          ...state.players[1],
+          priority: state.players[1].id === activePlayerId
+        }
+      ],
       turnState: {
         ...state.turnState,
+        priorityState: createInitialPriorityState(activePlayerId),
         blockers: command.assignments.flatMap((assignment) =>
           assignment.blockerIds.map((blockerId) => ({
             attackerId: assignment.attackerId,

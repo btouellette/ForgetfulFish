@@ -106,7 +106,67 @@ export function canObjectBlock(
     return false;
   }
 
+  if (object.zone.kind !== "battlefield") {
+    return false;
+  }
+
   return !object.tapped;
+}
+
+function hasKeyword(
+  object: NonNullable<ReturnType<typeof getComputedObjectView>>,
+  keyword: "flying" | "reach"
+): boolean {
+  return object.abilities.some((ability) => ability.kind === "keyword" && ability.keyword === keyword);
+}
+
+function attackerHasLandwalk(
+  attacker: NonNullable<ReturnType<typeof getComputedObjectView>>,
+  defendingPlayerId: string,
+  state: Readonly<GameState>
+): boolean {
+  return attacker.abilities.some(
+    (ability) =>
+      ability.kind === "keyword" &&
+      ability.keyword === "landwalk" &&
+      defendingPlayerControlsLandType(state, attacker.controller, ability.landType) &&
+      defendingPlayerId !== attacker.controller
+  );
+}
+
+export function canBlockAttacker(
+  state: Readonly<GameState>,
+  blockerId: string,
+  attackerId: string,
+  playerId: string
+): boolean {
+  if (!state.turnState.attackers.includes(attackerId)) {
+    return false;
+  }
+
+  if (!canObjectBlock(state, blockerId, playerId)) {
+    return false;
+  }
+
+  const attacker = getComputedObjectView(state, attackerId);
+  const blocker = getComputedObjectView(state, blockerId);
+  if (attacker === undefined || blocker === undefined) {
+    return false;
+  }
+
+  if (!attacker.typeLine.includes("Creature")) {
+    return false;
+  }
+
+  if (attackerHasLandwalk(attacker, playerId, state)) {
+    return false;
+  }
+
+  if (hasKeyword(attacker, "flying")) {
+    return hasKeyword(blocker, "flying") || hasKeyword(blocker, "reach");
+  }
+
+  return true;
 }
 
 export function hasAttackersDeclared(state: Readonly<GameState>): boolean {
@@ -171,7 +231,29 @@ export function validateDeclareBlockers(
     throw new Error("cannot declare blockers without declared attackers");
   }
 
-  if (command.assignments.length > 0) {
-    throw new Error("declaring specific blockers is not implemented yet");
+  const defendingPlayerId = playerId;
+  const seenAttackers = new Set<string>();
+  const seenBlockers = new Set<string>();
+
+  for (const assignment of command.assignments) {
+    if (seenAttackers.has(assignment.attackerId)) {
+      throw new Error("block assignments must be unique per attacker");
+    }
+    seenAttackers.add(assignment.attackerId);
+
+    if (!state.turnState.attackers.includes(assignment.attackerId)) {
+      throw new Error("block assignments must reference declared attackers");
+    }
+
+    for (const blockerId of assignment.blockerIds) {
+      if (seenBlockers.has(blockerId)) {
+        throw new Error("a blocker cannot be assigned to multiple attackers");
+      }
+      seenBlockers.add(blockerId);
+
+      if (!canBlockAttacker(state, blockerId, assignment.attackerId, defendingPlayerId)) {
+        throw new Error("declared blockers must be legal blockers for their attackers");
+      }
+    }
   }
 }
