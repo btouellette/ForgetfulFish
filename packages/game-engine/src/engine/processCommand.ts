@@ -268,17 +268,17 @@ function handleDeclareAttackersCommand(
     players: [
       {
         ...state.players[0],
-        priority: state.players[0].id === defendingPlayerId
+        priority: state.players[0].id === activePlayerId
       },
       {
         ...state.players[1],
-        priority: state.players[1].id === defendingPlayerId
+        priority: state.players[1].id === activePlayerId
       }
     ],
     turnState: {
       ...state.turnState,
       attackers: command.attackers,
-      priorityState: createInitialPriorityState(defendingPlayerId)
+      priorityState: createInitialPriorityState(activePlayerId)
     }
   };
 

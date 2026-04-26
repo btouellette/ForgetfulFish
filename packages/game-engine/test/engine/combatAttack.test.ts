@@ -255,7 +255,7 @@ describe("engine/combatAttack", () => {
     ).toThrow("must-attack creatures that are able to attack must be declared as attackers");
   });
 
-  it("emits a dedicated declare-attackers event and passes priority to the defending player", () => {
+  it("emits a dedicated declare-attackers event and resets priority to the active player", () => {
     const state = createAttackState();
     putOnBattlefield(
       state,
@@ -275,9 +275,9 @@ describe("engine/combatAttack", () => {
         attackers: [{ id: "obj-attacker", zcc: 0 }]
       })
     );
-    expect(result.nextState.turnState.priorityState.playerWithPriority).toBe("p2");
-    expect(result.nextState.players[0]?.priority).toBe(false);
-    expect(result.nextState.players[1]?.priority).toBe(true);
+    expect(result.nextState.turnState.priorityState.playerWithPriority).toBe("p1");
+    expect(result.nextState.players[0]?.priority).toBe(true);
+    expect(result.nextState.players[1]?.priority).toBe(false);
   });
 
   it("preserves state invariants after attackers are declared", () => {
