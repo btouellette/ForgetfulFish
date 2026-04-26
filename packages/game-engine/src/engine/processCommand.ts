@@ -243,13 +243,7 @@ function handleDeclareAttackersCommand(
   validateDeclareAttackers(state, command);
 
   const activePlayerId = state.turnState.activePlayerId;
-  const defendingPlayerId =
-    state.players[0].id === activePlayerId
-      ? state.players[1].id
-      : state.players[1].id === activePlayerId
-        ? state.players[0].id
-        : undefined;
-  if (defendingPlayerId === undefined) {
+  if (state.players[0].id !== activePlayerId && state.players[1].id !== activePlayerId) {
     throw new Error("declare attackers requires an active player in state.players");
   }
 
