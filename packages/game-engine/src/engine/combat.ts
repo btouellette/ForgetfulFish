@@ -1,7 +1,4 @@
-import type {
-  DeclareAttackersCommand,
-  DeclareBlockersCommand
-} from "../commands/command";
+import type { DeclareAttackersCommand, DeclareBlockersCommand } from "../commands/command";
 import type { ActivatedAbilityAst, BasicLandType, StaticAbilityAst } from "../cards/abilityAst";
 import { getApplicableEffectsForObject, getComputedObjectView } from "../effects/continuous/access";
 import type { GameState } from "../state/gameState";

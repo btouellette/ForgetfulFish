@@ -392,7 +392,7 @@ describe("engine/processCommand", () => {
                           new Rng(declareBlockersState.rngSeed)
                         );
                       })()
-                  : processCommand(state, command, rng)
+                    : processCommand(state, command, rng)
     );
 
     expect(outputs).toHaveLength(8);

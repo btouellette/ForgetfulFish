@@ -4,11 +4,7 @@ import {
   validateDeclareAttackers,
   validateDeclareBlockers
 } from "./combat";
-import {
-  validateActivateAbility,
-  validateCastSpell,
-  validatePlayLand
-} from "../commands/validate";
+import { validateActivateAbility, validateCastSpell, validatePlayLand } from "../commands/validate";
 import { resumeChoiceResolution } from "../choices/resume";
 import { advanceStepWithEvents, passPriority, tapForMana } from "../engine/kernel";
 import { createEvent } from "../events/event";

@@ -262,13 +262,13 @@ function inferTextDependenciesForObject(
   void objectId; // parameter intentionally unused in this helper — keep signature for future use
   const textEffects: Array<ContinuousEffect & { effect: TextChangeContinuousEffectPayload }> =
     state.continuousEffects
-    .filter(isTextLayerEffect)
-    .filter(
-      (effect) =>
-        isTextChangePayload(effect.effect.payload) &&
-        matchesEffectTarget(effect.appliesTo, baseView, state) &&
-        conditionAppliesToView(effect.condition, baseView, state)
-    );
+      .filter(isTextLayerEffect)
+      .filter(
+        (effect) =>
+          isTextChangePayload(effect.effect.payload) &&
+          matchesEffectTarget(effect.appliesTo, baseView, state) &&
+          conditionAppliesToView(effect.condition, baseView, state)
+      );
 
   if (textEffects.length < 2) {
     return state.continuousEffects;
