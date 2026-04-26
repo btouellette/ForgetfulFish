@@ -1,6 +1,6 @@
 import type { StaticAbilityAst } from "../cards/abilityAst";
 import { removeAsLongAsEffects, removeSourceGoneEffects } from "../effects/continuous/duration";
-import { computeGameObject } from "../effects/continuous/layers";
+import { getComputedObjectView } from "../effects/continuous/access";
 import { createEvent, type GameEvent } from "../events/event";
 import type { GameState } from "../state/gameState";
 import { type ObjectId, type PlayerId } from "../state/objectRef";
@@ -19,7 +19,10 @@ export function checkSBAs(state: Readonly<GameState>): SBAResult[] {
       continue;
     }
 
-    const computedObject = computeGameObject(objectId, state);
+    const computedObject = getComputedObjectView(state, objectId);
+    if (computedObject === undefined) {
+      continue;
+    }
     if (!computedObject.typeLine.includes("Creature")) {
       continue;
     }
@@ -226,7 +229,11 @@ function controllerControlsLandType(
   const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
 
   return battlefield.some((objectId) => {
-    const object = computeGameObject(objectId, state);
+    const object = getComputedObjectView(state, objectId);
+    if (object === undefined) {
+      return false;
+    }
+
     if (object.controller !== playerId) {
       return false;
     }

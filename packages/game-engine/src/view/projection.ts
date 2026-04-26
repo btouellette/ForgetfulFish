@@ -2,7 +2,7 @@ import { cardRegistry } from "../cards";
 import { OnResolveRegistry } from "../stack/onResolveRegistry";
 import type { ActivatedAbilityAst, ManaAmount } from "../cards/abilityAst";
 import { getLegalCommands } from "../commands/validate";
-import { computeGameObject } from "../effects/continuous/layers";
+import { getComputedObjectView } from "../effects/continuous/access";
 import type { DerivedGameObjectView, GameObject } from "../state/gameObject";
 import type { GameState, ManaPool, PlayerInfo } from "../state/gameState";
 import type { ObjectId, PlayerId } from "../state/objectRef";
@@ -109,7 +109,12 @@ function requireComputedObject(
   objectId: ObjectId
 ): DerivedGameObjectView {
   requireObject(state, objectId);
-  return computeGameObject(objectId, state);
+  const computed = getComputedObjectView(state, objectId);
+  if (computed === undefined) {
+    throw new Error(`object '${objectId}' is missing from state '${state.id}'`);
+  }
+
+  return computed;
 }
 
 function spellRequiresTargets(cardDefId: string): boolean {
@@ -136,7 +141,7 @@ function getActivatedAbility(
     return undefined;
   }
 
-  return computeGameObject(sourceId, state).abilities.filter(
+  return requireComputedObject(state, sourceId).abilities.filter(
     (ability): ability is ActivatedAbilityAst => ability.kind === "activated"
   )[abilityIndex];
 }
@@ -415,7 +420,7 @@ export function projectPlayerView(
 
   for (const [objectId, object] of state.objectPool.entries()) {
     if (isVisibleZone(object.zone, viewerPlayerId)) {
-      objectPool[objectId] = toGameObjectView(computeGameObject(objectId, state));
+      objectPool[objectId] = toGameObjectView(requireComputedObject(state, objectId));
     }
   }
 
