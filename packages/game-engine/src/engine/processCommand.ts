@@ -304,6 +304,9 @@ function handleDeclareBlockersCommand(state: Readonly<GameState>, command: Comma
   validateDeclareBlockers(state, command);
 
   const activePlayerId = state.turnState.activePlayerId;
+  if (state.players[0].id !== activePlayerId && state.players[1].id !== activePlayerId) {
+    throw new Error("declare blockers requires an active player in state.players");
+  }
 
   return {
     state: {

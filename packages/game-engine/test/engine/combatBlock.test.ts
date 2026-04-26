@@ -240,6 +240,36 @@ describe("engine/combatBlock", () => {
     ).toThrow();
   });
 
+  it("rejects DECLARE_BLOCKERS when the attacker is no longer on the battlefield", () => {
+    const state = createBlockState();
+    state.objectPool.set(
+      "obj-attacker",
+      makeCard("obj-attacker", testCreatureDefinition.id, "p1", {
+        kind: "graveyard",
+        scope: "shared"
+      })
+    );
+    putOnBattlefield(
+      state,
+      makeCard("obj-blocker", testCreatureDefinition.id, "p2", {
+        kind: "battlefield",
+        scope: "shared"
+      })
+    );
+    state.turnState.attackers = ["obj-attacker"];
+
+    expect(() =>
+      processCommand(
+        state,
+        {
+          type: "DECLARE_BLOCKERS",
+          assignments: [{ attackerId: "obj-attacker", blockerIds: ["obj-blocker"] }]
+        },
+        new Rng(state.rngSeed)
+      )
+    ).toThrow();
+  });
+
   it("enforces islandwalk so Dandan cannot be blocked when the defender controls an Island", () => {
     const state = createBlockState();
     putOnBattlefield(

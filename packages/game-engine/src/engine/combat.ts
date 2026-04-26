@@ -160,6 +160,10 @@ export function canBlockAttacker(
     return false;
   }
 
+  if (attacker.zone.kind !== "battlefield") {
+    return false;
+  }
+
   if (attackerHasLandwalk(attacker, playerId, state)) {
     return false;
   }

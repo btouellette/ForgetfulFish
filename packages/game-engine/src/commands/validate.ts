@@ -15,7 +15,6 @@ import { zoneKey } from "../state/zones";
 import {
   canObjectAttack,
   canBlockAttacker,
-  canObjectBlock,
   getRequiredAttackerIds,
   hasAttackersDeclared
 } from "../engine/combat";
@@ -414,11 +413,7 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
 
   const controlsLegalBlocker = () =>
     state.turnState.attackers.some((attackerId) =>
-      battlefield.some(
-        (objectId) =>
-          canObjectBlock(state, objectId, playerId) &&
-          canBlockAttacker(state, objectId, attackerId, playerId)
-      )
+      battlefield.some((objectId) => canBlockAttacker(state, objectId, attackerId, playerId))
     );
 
   for (const cardId of hand) {
