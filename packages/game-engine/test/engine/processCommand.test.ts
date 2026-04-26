@@ -399,25 +399,39 @@ describe("engine/processCommand", () => {
                           id: "game-6g",
                           rngSeed: "seed-6g"
                         });
-                        cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
-                        declareBlockersState.turnState.phase = "DECLARE_BLOCKERS";
-                        declareBlockersState.turnState.step = "DECLARE_BLOCKERS";
-                        declareBlockersState.turnState.activePlayerId = "p1";
-                        const attacker = createBattlefieldCreature("obj-attacker", "p1");
-                        declareBlockersState.objectPool.set(attacker.id, attacker);
-                        declareBlockersState.zones
-                          .get(zoneKey({ kind: "battlefield", scope: "shared" }))
-                          ?.push(attacker.id);
-                        declareBlockersState.turnState.attackers = [attacker.id];
-                        declareBlockersState.turnState.priorityState =
-                          createInitialPriorityState("p2");
-                        declareBlockersState.players[0].priority = false;
-                        declareBlockersState.players[1].priority = true;
-                        return processCommand(
-                          declareBlockersState,
-                          command,
-                          new Rng(declareBlockersState.rngSeed)
+                        const previousTestCreatureDefinition = cardRegistry.get(
+                          testCreatureDefinition.id
                         );
+                        cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
+                        try {
+                          declareBlockersState.turnState.phase = "DECLARE_BLOCKERS";
+                          declareBlockersState.turnState.step = "DECLARE_BLOCKERS";
+                          declareBlockersState.turnState.activePlayerId = "p1";
+                          const attacker = createBattlefieldCreature("obj-attacker", "p1");
+                          declareBlockersState.objectPool.set(attacker.id, attacker);
+                          declareBlockersState.zones
+                            .get(zoneKey({ kind: "battlefield", scope: "shared" }))
+                            ?.push(attacker.id);
+                          declareBlockersState.turnState.attackers = [attacker.id];
+                          declareBlockersState.turnState.priorityState =
+                            createInitialPriorityState("p2");
+                          declareBlockersState.players[0].priority = false;
+                          declareBlockersState.players[1].priority = true;
+                          return processCommand(
+                            declareBlockersState,
+                            command,
+                            new Rng(declareBlockersState.rngSeed)
+                          );
+                        } finally {
+                          if (previousTestCreatureDefinition === undefined) {
+                            cardRegistry.delete(testCreatureDefinition.id);
+                          } else {
+                            cardRegistry.set(
+                              testCreatureDefinition.id,
+                              previousTestCreatureDefinition
+                            );
+                          }
+                        }
                       })()
                     : processCommand(state, command, rng)
     );
