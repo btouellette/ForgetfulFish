@@ -1,5 +1,5 @@
 import type { TriggerDefinitionAst } from "../cards/abilityAst";
-import { computeGameObject } from "../effects/continuous/layers";
+import { getComputedObjectView } from "../effects/continuous/access";
 import type { GameEvent } from "./event";
 import type { GameState, TriggeredAbility } from "../state/gameState";
 
@@ -22,7 +22,7 @@ function collectTriggeredAbilities(
 
     triggeredAbilitiesByObjectId.set(
       object.id,
-      computeGameObject(object.id, state).abilities.filter(
+      (getComputedObjectView(state, object.id)?.abilities ?? []).filter(
         (ability): ability is TriggerDefinitionAst => ability.kind === "trigger"
       )
     );

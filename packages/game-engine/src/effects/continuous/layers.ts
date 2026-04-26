@@ -11,7 +11,11 @@ import type { DerivedGameObjectView } from "../../state/gameObject";
 import type { GameState } from "../../state/gameState";
 import type { ObjectRef } from "../../state/objectRef";
 import { zoneKey } from "../../state/zones";
-import { applyTextChangeToAbilities, isTextChangePayload } from "./textChange";
+import {
+  applyTextChangeToAbilities,
+  isTextChangePayload,
+  type TextChangePayload
+} from "./textChange";
 import { BASIC_LAND_TYPE_VALUES } from "./textChange";
 
 export const LAYERS = {
@@ -35,10 +39,84 @@ export type EffectTarget =
   | { kind: "object"; object: ObjectRef }
   | { kind: "controller"; playerId: string };
 
-export type ContinuousEffectPayload = {
-  kind: string;
-  payload?: Record<string, unknown>;
+export type TypeChangeEffectPayload = {
+  kind: "type_change";
+  payload: {
+    typeLine?: string[];
+    subtypes?: SubtypeAtom[];
+  };
 };
+
+export type SetColorEffectPayload = {
+  kind: "set_color";
+  payload: {
+    color: Color[];
+  };
+};
+
+export type SetPtEffectPayload = {
+  kind: "set_pt";
+  payload: {
+    power: number;
+    toughness: number;
+  };
+};
+
+export type AdjustPtEffectPayload = {
+  kind: "adjust_pt";
+  payload: {
+    powerDelta: number;
+    toughnessDelta: number;
+  };
+};
+
+export type SwitchPtEffectPayload = {
+  kind: "switch_pt";
+};
+
+export type SetControllerEffectPayload = {
+  kind: "set_controller";
+  payload: {
+    playerId: string;
+  };
+};
+
+export type RemoveAllAbilitiesEffectPayload = {
+  kind: "remove_all_abilities";
+};
+
+export type GrantKeywordEffectPayload = {
+  kind: "grant_keyword";
+  payload:
+    | { keyword: "flying" | "first_strike" | "haste" }
+    | { keyword: "landwalk"; landType: BasicLandType };
+};
+
+export type MustAttackEffectPayload = {
+  kind: "must_attack";
+};
+
+export type TextChangeContinuousEffectPayload = {
+  kind: "text_change";
+  payload: TextChangePayload;
+};
+
+export type ApplyCountersEffectPayload = {
+  kind: "apply_counters";
+};
+
+export type ContinuousEffectPayload =
+  | TypeChangeEffectPayload
+  | SetColorEffectPayload
+  | SetPtEffectPayload
+  | AdjustPtEffectPayload
+  | SwitchPtEffectPayload
+  | SetControllerEffectPayload
+  | RemoveAllAbilitiesEffectPayload
+  | GrantKeywordEffectPayload
+  | MustAttackEffectPayload
+  | TextChangeContinuousEffectPayload
+  | ApplyCountersEffectPayload;
 
 export type EffectDependency = {
   effectId: string;
@@ -170,7 +248,9 @@ function orderEffectsForApplication(
     .flatMap(([, layerEffects]) => orderEffectsWithinLayer(layerEffects));
 }
 
-function isTextLayerEffect(effect: Readonly<ContinuousEffect>): boolean {
+function isTextLayerEffect(
+  effect: Readonly<ContinuousEffect>
+): effect is ContinuousEffect & { effect: TextChangeContinuousEffectPayload } {
   return effect.layer === LAYERS.TEXT && effect.effect.kind === "text_change";
 }
 
@@ -180,13 +260,15 @@ function inferTextDependenciesForObject(
   baseView: Readonly<DerivedGameObjectView>
 ): ContinuousEffect[] {
   void objectId; // parameter intentionally unused in this helper — keep signature for future use
-  const textEffects = state.continuousEffects.filter(
-    (effect) =>
-      isTextLayerEffect(effect) &&
-      isTextChangePayload(effect.effect.payload) &&
-      matchesEffectTarget(effect.appliesTo, baseView, state) &&
-      conditionAppliesToView(effect.condition, baseView, state)
-  );
+  const textEffects: Array<ContinuousEffect & { effect: TextChangeContinuousEffectPayload }> =
+    state.continuousEffects
+      .filter(isTextLayerEffect)
+      .filter(
+        (effect) =>
+          isTextChangePayload(effect.effect.payload) &&
+          matchesEffectTarget(effect.appliesTo, baseView, state) &&
+          conditionAppliesToView(effect.condition, baseView, state)
+      );
 
   if (textEffects.length < 2) {
     return state.continuousEffects;
@@ -203,16 +285,11 @@ function inferTextDependenciesForObject(
     );
 
     const effectPayload = effect.effect.payload;
-    if (isTextChangePayload(effectPayload)) {
-      abilitiesAfterEffect.set(effect.id, applyTextChangeToAbilities(baseAbilities, effectPayload));
-    }
+    abilitiesAfterEffect.set(effect.id, applyTextChangeToAbilities(baseAbilities, effectPayload));
   }
 
   for (const effect of textEffects) {
     const effectPayload = effect.effect.payload;
-    if (!isTextChangePayload(effectPayload)) {
-      continue;
-    }
 
     const abilitiesWithoutDependency = abilitiesAfterEffect.get(effect.id);
     if (abilitiesWithoutDependency === undefined) {
@@ -223,11 +300,6 @@ function inferTextDependenciesForObject(
 
     for (const candidateDependency of textEffects) {
       if (candidateDependency.id === effect.id) {
-        continue;
-      }
-
-      const dependencyPayload = candidateDependency.effect.payload;
-      if (!isTextChangePayload(dependencyPayload)) {
         continue;
       }
 
@@ -266,8 +338,7 @@ function applyEffectToView(
   effect: Readonly<ContinuousEffect>
 ): DerivedGameObjectView {
   if (effect.layer === LAYERS.TYPE && effect.effect.kind === "type_change") {
-    const typeLine = effect.effect.payload?.typeLine;
-    const subtypes = effect.effect.payload?.subtypes;
+    const { typeLine, subtypes } = effect.effect.payload;
     const nextTypeLine = isTypeLine(typeLine) ? [...typeLine] : view.typeLine;
     const nextSubtypes = isSubtypeAtomArray(subtypes) ? [...subtypes] : view.subtypes;
     if (nextTypeLine !== view.typeLine || nextSubtypes !== view.subtypes) {
@@ -280,7 +351,7 @@ function applyEffectToView(
   }
 
   if (effect.layer === LAYERS.COLOR && effect.effect.kind === "set_color") {
-    const color = effect.effect.payload?.color;
+    const { color } = effect.effect.payload;
     if (isColorArray(color)) {
       return {
         ...view,
@@ -290,8 +361,7 @@ function applyEffectToView(
   }
 
   if (effect.layer === LAYERS.PT_SET && effect.effect.kind === "set_pt") {
-    const power = effect.effect.payload?.power;
-    const toughness = effect.effect.payload?.toughness;
+    const { power, toughness } = effect.effect.payload;
     if (typeof power === "number" && typeof toughness === "number") {
       return {
         ...view,
@@ -302,8 +372,7 @@ function applyEffectToView(
   }
 
   if (effect.layer === LAYERS.PT_ADJUST && effect.effect.kind === "adjust_pt") {
-    const powerDelta = effect.effect.payload?.powerDelta;
-    const toughnessDelta = effect.effect.payload?.toughnessDelta;
+    const { powerDelta, toughnessDelta } = effect.effect.payload;
     if (
       typeof powerDelta === "number" &&
       typeof toughnessDelta === "number" &&
@@ -333,7 +402,7 @@ function applyEffectToView(
   }
 
   if (effect.layer === LAYERS.CONTROL && effect.effect.kind === "set_controller") {
-    const playerId = effect.effect.payload?.playerId;
+    const { playerId } = effect.effect.payload;
     if (typeof playerId === "string") {
       return {
         ...view,
@@ -378,13 +447,13 @@ function toGrantedKeywordAbility(
     return null;
   }
 
-  const keyword = payload.payload?.keyword;
+  const { keyword } = payload.payload;
   if (keyword === "flying" || keyword === "first_strike" || keyword === "haste") {
     return { kind: "keyword", keyword };
   }
 
   if (keyword === "landwalk") {
-    const landType = payload.payload?.landType;
+    const { landType } = payload.payload;
     if (isBasicLandType(landType)) {
       return { kind: "keyword", keyword: "landwalk", landType };
     }
@@ -655,6 +724,20 @@ function resolveContinuousEffects(
     view,
     appliedEffects
   };
+}
+
+export function getComputedObjectAccess(
+  objectId: string,
+  state: Readonly<GameState>
+): {
+  view: DerivedGameObjectView;
+  appliedEffects: readonly ContinuousEffect[];
+} | null {
+  if (!state.objectPool.has(objectId)) {
+    return null;
+  }
+
+  return resolveContinuousEffects(objectId, state);
 }
 
 export function computeGameObject(

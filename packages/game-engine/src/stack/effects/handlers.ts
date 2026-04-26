@@ -33,7 +33,8 @@ import type {
   UntapTargetSpec
 } from "../../cards/resolveEffect";
 import type { ChoicePayload } from "../../commands/command";
-import { computeGameObject, LAYERS } from "../../effects/continuous/layers";
+import { getComputedObjectView } from "../../effects/continuous/access";
+import { LAYERS } from "../../effects/continuous/layers";
 import {
   BASIC_LAND_TYPE_VALUES,
   isTextChangePayload,
@@ -226,7 +227,7 @@ function resolveModes(spec: ChooseModeSpec, context: ResolveEffectHandlerContext
       }
 
       return listLandTypesInAbilities(
-        computeGameObject(target.object.id, context.state).abilities
+        getComputedObjectView(context.state, target.object.id)?.abilities ?? []
       ).map((landType) => ({ id: landType, label: landType }));
     }
     case "target_land_type_instances": {
@@ -236,7 +237,7 @@ function resolveModes(spec: ChooseModeSpec, context: ResolveEffectHandlerContext
       }
 
       return listLandTypeInstancesInAbilities(
-        computeGameObject(target.object.id, context.state).abilities
+        getComputedObjectView(context.state, target.object.id)?.abilities ?? []
       ).map((instance) => ({ id: instance.id, label: instance.label }));
     }
     case "basic_land_types": {
@@ -502,7 +503,7 @@ function resolveChooseMode(
       target === undefined
         ? null
         : listLandTypeInstancesInAbilities(
-            computeGameObject(target.object.id, context.state).abilities
+            getComputedObjectView(context.state, target.object.id)?.abilities ?? []
           ).find((instance) => instance.id === payload.mode.id);
 
     context.writeScratch({
@@ -686,7 +687,9 @@ function resolveAddContinuousEffectToTarget(
 
   const effectSuffix =
     spec.effect.kind === "grant_keyword"
-      ? `${spec.kind}:${String(spec.effect.payload?.keyword ?? "keyword")}`
+      ? spec.effect.payload.keyword === "landwalk"
+        ? `${spec.kind}:${spec.effect.payload.keyword}:${spec.effect.payload.landType}`
+        : `${spec.kind}:${spec.effect.payload.keyword}`
       : `${spec.kind}:${spec.effect.kind}`;
 
   const effectAction: AddContinuousEffectAction = {

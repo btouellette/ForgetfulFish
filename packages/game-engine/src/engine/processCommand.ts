@@ -1,11 +1,10 @@
 import type { Command, MakeChoiceCommand, PlayLandCommand } from "../commands/command";
 import {
   getRequiredAttackerIds,
-  validateActivateAbility,
-  validateCastSpell,
   validateDeclareAttackers,
-  validatePlayLand
-} from "../commands/validate";
+  validateDeclareBlockers
+} from "./combat";
+import { validateActivateAbility, validateCastSpell, validatePlayLand } from "../commands/validate";
 import { resumeChoiceResolution } from "../choices/resume";
 import { advanceStepWithEvents, passPriority, tapForMana } from "../engine/kernel";
 import { createEvent } from "../events/event";
@@ -260,6 +259,8 @@ function handleDeclareBlockersCommand(state: Readonly<GameState>, command: Comma
   if (command.type !== "DECLARE_BLOCKERS") {
     throw new Error("invalid declare blockers command");
   }
+
+  validateDeclareBlockers(state, command);
 
   return {
     state: {

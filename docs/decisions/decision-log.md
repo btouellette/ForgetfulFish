@@ -114,11 +114,11 @@
 
 ## 2026-04-05 Phase 3 Resolve/Keyword Cutover
 
-- `CardDefinition.onResolve` now uses primitive `kind`-based resolve specs instead of monolithic bespoke resolve-effect IDs.
-- Stack resolution interprets those primitive specs directly and preserves the existing whiteboard/pause-resume model rather than compiling through a legacy adapter path.
-- Projection and web consumers query resolve capabilities through `OnResolveRegistry` instead of branching on raw resolve-effect IDs.
+- `CardDefinition.onResolve` now uses `kind`-based resolve specs and shipped consumers query resolve capabilities through `OnResolveRegistry` instead of branching on raw resolve-effect IDs.
+- Stack resolution still uses the central `ResolveEffectSpec` union plus `stack/effects/handlers.ts`; the broader composable `sequence` / `conditional` resolve-spec redesign remains deferred.
 - Haste is now modeled as a real keyword in the computed object view; granted haste uses keyword grants, and summoning-sickness legality derives from keyword presence rather than a haste-specific runtime toggle.
 - Creatures entering the battlefield become summoning sick through centralized battlefield-entry handling, with computed haste clearing that restriction in the derived view.
+- Attacker legality and must-attack enforcement already live on the computed-view combat path ahead of Phase 4, while blocker declaration remains scaffolding pending full combat implementation.
 
 ## Notes
 
