@@ -236,10 +236,10 @@ describe("engine/combatAttack", () => {
       state,
       makeCard("obj-defender-island", "island", "p2", { kind: "battlefield", scope: "shared" })
     );
-    state.continuousEffects.push({
+    const withMustAttack = addContinuousEffect(state, {
       id: "must-attack-effect",
       source: { id: "obj-attacker", zcc: 0 },
-      layer: 6,
+      layer: LAYERS.ABILITY,
       timestamp: 1,
       duration: "until_end_of_turn",
       appliesTo: { kind: "object", object: { id: "obj-attacker", zcc: 0 } },
@@ -247,7 +247,11 @@ describe("engine/combatAttack", () => {
     });
 
     expect(() =>
-      processCommand(state, { type: "DECLARE_ATTACKERS", attackers: [] }, new Rng(state.rngSeed))
+      processCommand(
+        withMustAttack,
+        { type: "DECLARE_ATTACKERS", attackers: [] },
+        new Rng(withMustAttack.rngSeed)
+      )
     ).toThrow("must-attack creatures that are able to attack must be declared as attackers");
   });
 

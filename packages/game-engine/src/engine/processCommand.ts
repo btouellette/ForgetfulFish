@@ -242,11 +242,15 @@ function handleDeclareAttackersCommand(
 
   validateDeclareAttackers(state, command);
 
-  const defendingPlayerId = state.players.find(
-    (player) => player.id !== state.turnState.activePlayerId
-  )?.id;
+  const activePlayerId = state.turnState.activePlayerId;
+  const defendingPlayerId =
+    state.players[0].id === activePlayerId
+      ? state.players[1].id
+      : state.players[1].id === activePlayerId
+        ? state.players[0].id
+        : undefined;
   if (defendingPlayerId === undefined) {
-    throw new Error("declare attackers requires a defending player");
+    throw new Error("declare attackers requires an active player in state.players");
   }
 
   const attackers = command.attackers.map((attackerId) => {
@@ -287,7 +291,7 @@ function handleDeclareAttackersCommand(
     nextState.version,
     {
       type: "DECLARE_ATTACKERS",
-      controller: state.turnState.activePlayerId,
+      controller: activePlayerId,
       attackers
     }
   );
