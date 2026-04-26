@@ -2,18 +2,19 @@
 
 Status: planned
 
+> Current engine status before Phase 4: attacker legality and must-attack enforcement already exist through shared combat helpers used by `commands/validate.ts` and `engine/processCommand.ts`, but attacker declaration still emits no dedicated combat event and blocker assignment/evasion legality are not implemented yet. `DECLARE_BLOCKERS` is scaffolding only and currently supports the no-assignment path, not real blocking rules.
+
 ### [ ] P4.1 — Declare attackers
 
-**Files**: `engine/combat.ts`
+**Files**: `engine/combat.ts`, `engine/processCommand.ts`
 
 Implement per §4:
-- `DECLARE_ATTACKERS` command handling:
-  - Validate: only creatures controlled by active player, not tapped, not summoning sick (unless haste)
-  - "Must attack" enforcement (for Dandan, Ray of Command's temporary effect)
+- Extend the existing attacker-legality helpers and `DECLARE_ATTACKERS` command handling:
+  - Keep validation sourced from the computed object view (control, tapped/summoning-sick, Dandan-style restrictions, must-attack)
   - Move to attackers declared → give priority
-- Emit events for attacker declaration
+  - Emit events for attacker declaration
 
-<!-- TODO: In two-player, there's only one possible defender. But Dandan has "can't attack unless defending player controls an Island" — this is checked at declaration time, not at resolution. Verify the attack legality check reads the computed (Layer 3-rewritten) condition, not the base card. -->
+<!-- Confirmed current legality checks already read the computed Layer 3-rewritten view; Phase 4 needs to preserve that when combat events and damage resolution are added. -->
 
 **Test file**: `test/engine/combat_attack.test.ts`
 Depends: P1.2, P3.2, P3.9
@@ -31,11 +32,11 @@ Acceptance: Attacker legality is correct including Dandan restrictions.
 **Files**: `engine/combat.ts` (extend)
 
 Implement:
-- `DECLARE_BLOCKERS` command handling:
+- Replace the current `DECLARE_BLOCKERS` scaffolding with full blocker declaration handling:
   - Validate: defender's untapped creatures can block, evasion checks (islandwalk, flying)
   - Islandwalk: can't be blocked if defending player controls an Island (again, Layer 3-rewritable)
   - Flying: can only be blocked by creatures with flying or reach
-- Block assignment (which blocker blocks which attacker)
+  - Block assignment (which blocker blocks which attacker)
 
 **Test file**: `test/engine/combat_block.test.ts`
 Depends: P4.1, P3.2, P3.7
@@ -78,10 +79,10 @@ Acceptance: Combat damage math is correct, SBAs fire after damage.
 Cards: **Dandan**, **Ray of Command** (temporary "must attack")
 
 Implement per §4:
-- During declare attackers step:
-  - Identify all creatures with "must attack" requirement (from ability AST or continuous effect)
-  - If player omits a "must attack" creature → invalid declaration
-  - If "must attack" creature can't legally attack (e.g., Dandan restriction) → not forced
+- Extend and verify the existing must-attack enforcement during the declare attackers step:
+  - Preserve current behavior where creatures with a continuous-effect or ability-based must-attack requirement are rejected if omitted while able to attack
+  - Keep the impossibility exception (e.g. Dandan restriction, tapping, summoning sickness)
+  - Add any missing combat events / coverage needed as full combat implementation lands
 
 **Test file**: `test/engine/combat_constraints.test.ts`
 Depends: P4.1, P3.2, P3.9, P3.10
@@ -92,7 +93,7 @@ Test: **Write tests FIRST**, then implement.
 4. Multiple "must attack" creatures must all be declared if legal.
 5. "Must attack" does not override tapping or summoning sickness.
 6. `assertStateInvariants` passes after enforcing requirements.
-Acceptance: "Must attack" enforcement accounts for impossibility exceptions.
+Acceptance: Existing must-attack enforcement remains correct as combat events/blockers/damage are added, and impossibility exceptions are still honored.
 
 ### [ ] P4.5 — Trigger batching with APNAP ordering
 

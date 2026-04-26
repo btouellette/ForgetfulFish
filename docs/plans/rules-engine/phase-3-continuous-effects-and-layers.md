@@ -2,6 +2,8 @@
 
 Status: complete
 
+> Closure note: the shipped code completed the Layer/keyword/combat-legality work and removed raw resolve-effect ID branching from shipped consumers, but it did **not** land the broader composable `sequence` / `conditional` resolve-spec redesign sketched below. The current runtime still uses a central `ResolveEffectSpec` union and `stack/effects/handlers.ts` switch interpreter.
+
 ## Phase 3 execution plan updates
 
 ### Resolve-spec composition refactor plan
@@ -224,17 +226,17 @@ Status: complete
 **Verification**
 - `lsp_diagnostics` clean on all changed files.
 - Relevant game-engine tests pass.
-- No dead monolithic resolve-spec paths remain.
+- No dead raw resolve-effect ID query paths remain.
 - No dead haste-specific compatibility branches remain.
 
 **Acceptance**
-- The engine uses only primitive resolve specs and keyword-driven haste behavior.
+- The engine uses keyword-driven haste behavior, and shipped consumers no longer depend on raw resolve-effect IDs.
 - The decision log records the new canonical architecture.
 
 **Closure notes**
-- Verified there are no remaining monolithic resolve-spec IDs in the codebase.
+- Verified there are no remaining raw resolve-effect ID queries in shipped consumers.
 - Verified there are no remaining `grant_haste` compatibility paths in the codebase.
-- Recorded the final primitive resolve-spec and keyword-driven haste architecture in `docs/decisions/decision-log.md`.
+- Recorded the shipped keyword-driven haste architecture and the current resolve-spec status in `docs/decisions/decision-log.md`.
 
 ### [x] P3.1 — ContinuousEffect type and registry
 
@@ -504,7 +506,7 @@ Implement:
   - `{ kind: 'when_no_islands_sacrifice', landType: 'Island' }` — state-triggered ability
 - All `BasicLandType` tokens are structured for Layer 3 rewriting (Mind Bend can change them)
 
-Note: The sacrifice trigger is a state-triggered ability (Phase 4, P4.6). The "must attack" enforcement is Phase 4 (P4.3). This task defines the card; combat/trigger behavior tested in Phase 4.
+Note: The sacrifice trigger remains a Phase 4 state-triggered ability concern (P4.6). Attacker legality and current must-attack enforcement already exist on the computed-view combat path; fuller combat events, blocker legality, and damage handling remain Phase 4 work.
 
 **Test file**: `test/cards/dandan.test.ts`
 Depends: P0.11, P0.12, P3.5 (so Mind Bend can rewrite tokens), P3.7
@@ -596,7 +598,7 @@ Implement:
   - Step 1: Create `TextChangeEffect` with `duration: 'until_end_of_turn'`
   - Step 2: `DRAW` action (cantrip)
 
-<!-- TODO: Crystal Spray targets "one" instance, not all. Need to define how the player selects which specific instance on the permanent to change. This requires enumerating the BasicLandType/Color tokens on the target's abilities and letting the player pick one. Define the UI/choice mechanism for this. -->
+<!-- Implemented for the currently modeled land-type text surfaces. Remaining deferred work is color-word instance support once the deck has a real structured permanent-text color surface to target. -->
 
 **Test file**: `test/cards/crystalSpray.test.ts`
 Depends: P0.11, P2.1, P2.2, P3.5
