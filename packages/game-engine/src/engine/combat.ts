@@ -1,5 +1,5 @@
 import type { DeclareAttackersCommand, DeclareBlockersCommand } from "../commands/command";
-import type { ActivatedAbilityAst, BasicLandType, StaticAbilityAst } from "../cards/abilityAst";
+import type { BasicLandType, StaticAbilityAst } from "../cards/abilityAst";
 import {
   getComputedObjectAccessForObject,
   getComputedObjectView
@@ -7,20 +7,6 @@ import {
 import type { ContinuousEffect } from "../effects/continuous/layers";
 import type { GameState } from "../state/gameState";
 import { zoneKey } from "../state/zones";
-
-export function getEffectiveActivatedAbilities(
-  state: Readonly<GameState>,
-  objectId: string
-): ActivatedAbilityAst[] {
-  const object = getComputedObjectView(state, objectId);
-  if (object === undefined) {
-    return [];
-  }
-
-  return object.abilities.filter(
-    (ability): ability is ActivatedAbilityAst => ability.kind === "activated"
-  );
-}
 
 function objectMustAttackIfAble(
   access: { appliedEffects: readonly ContinuousEffect[] } | null
