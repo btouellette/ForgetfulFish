@@ -34,7 +34,7 @@ import type {
 } from "../../cards/resolveEffect";
 import type { ChoicePayload } from "../../commands/command";
 import { getComputedObjectView } from "../../effects/continuous/access";
-import { computeGameObject, LAYERS } from "../../effects/continuous/layers";
+import { LAYERS } from "../../effects/continuous/layers";
 import {
   BASIC_LAND_TYPE_VALUES,
   isTextChangePayload,

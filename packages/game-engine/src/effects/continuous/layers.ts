@@ -303,8 +303,6 @@ function inferTextDependenciesForObject(
         continue;
       }
 
-      const dependencyPayload = candidateDependency.effect.payload;
-
       const afterDependency = abilitiesAfterEffect.get(candidateDependency.id);
       if (afterDependency === undefined) {
         continue;
