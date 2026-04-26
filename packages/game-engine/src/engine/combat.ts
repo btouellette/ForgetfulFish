@@ -1,6 +1,9 @@
 import type { DeclareAttackersCommand, DeclareBlockersCommand } from "../commands/command";
 import type { ActivatedAbilityAst, BasicLandType, StaticAbilityAst } from "../cards/abilityAst";
-import { getComputedObjectAccessForObject, getComputedObjectView } from "../effects/continuous/access";
+import {
+  getComputedObjectAccessForObject,
+  getComputedObjectView
+} from "../effects/continuous/access";
 import type { ContinuousEffect } from "../effects/continuous/layers";
 import type { GameState } from "../state/gameState";
 import { zoneKey } from "../state/zones";
@@ -22,9 +25,7 @@ export function getEffectiveActivatedAbilities(
 function objectMustAttackIfAble(
   access: { appliedEffects: readonly ContinuousEffect[] } | null
 ): boolean {
-  return (access?.appliedEffects ?? []).some(
-    (effect) => effect.effect.kind === "must_attack"
-  );
+  return (access?.appliedEffects ?? []).some((effect) => effect.effect.kind === "must_attack");
 }
 
 export function getRequiredAttackerIds(state: Readonly<GameState>, playerId: string): string[] {
