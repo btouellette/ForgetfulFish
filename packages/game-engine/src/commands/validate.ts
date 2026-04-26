@@ -14,7 +14,7 @@ import type { ManaPool } from "../state/gameState";
 import { zoneKey } from "../state/zones";
 import {
   canObjectAttack,
-  canObjectBlock,
+  canBlockAttacker,
   getRequiredAttackerIds,
   hasAttackersDeclared
 } from "../engine/combat";
@@ -412,7 +412,9 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
     battlefield.some((objectId) => canObjectAttack(state, objectId, playerId));
 
   const controlsLegalBlocker = () =>
-    battlefield.some((objectId) => canObjectBlock(state, objectId, playerId));
+    state.turnState.attackers.some((attackerId) =>
+      battlefield.some((objectId) => canBlockAttacker(state, objectId, attackerId, playerId))
+    );
 
   for (const cardId of hand) {
     const cardObject = state.objectPool.get(cardId);

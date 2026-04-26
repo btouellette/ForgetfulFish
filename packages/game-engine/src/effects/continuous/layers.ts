@@ -88,7 +88,7 @@ export type RemoveAllAbilitiesEffectPayload = {
 export type GrantKeywordEffectPayload = {
   kind: "grant_keyword";
   payload:
-    | { keyword: "flying" | "first_strike" | "haste" }
+    | { keyword: "flying" | "first_strike" | "haste" | "reach" }
     | { keyword: "landwalk"; landType: BasicLandType };
 };
 
@@ -448,7 +448,12 @@ function toGrantedKeywordAbility(
   }
 
   const { keyword } = payload.payload;
-  if (keyword === "flying" || keyword === "first_strike" || keyword === "haste") {
+  if (
+    keyword === "flying" ||
+    keyword === "first_strike" ||
+    keyword === "haste" ||
+    keyword === "reach"
+  ) {
     return { kind: "keyword", keyword };
   }
 

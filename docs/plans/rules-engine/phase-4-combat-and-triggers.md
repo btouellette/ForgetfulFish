@@ -54,7 +54,7 @@ Status: planned
 - Attacker declaration is eventful and still uses the shipped computed-view legality path.
 - Must-attack enforcement remains correct after the new event/priority flow lands.
 
-#### [ ] Slice B — Replace blocker scaffolding with real legality and assignment
+#### [x] Slice B — Replace blocker scaffolding with real legality and assignment
 
 **Goal**: turn `DECLARE_BLOCKERS` from an empty-scaffold path into full blocker declaration with assignment storage and computed-view evasion checks.
 
@@ -210,7 +210,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` passes after attackers are declared.
 Acceptance: Attacker legality is correct including Dandan restrictions.
 
-### [ ] P4.2 — Declare blockers
+### [x] P4.2 — Declare blockers
 
 **Files**: `engine/combat.ts` (extend)
 

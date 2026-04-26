@@ -785,6 +785,18 @@ describe("view/projection", () => {
       addObject(
         state,
         createObject(
+          "declared-attacker",
+          "p1",
+          { kind: "battlefield", scope: "shared" },
+          {
+            cardDefId: combatTestCreatureDefinition.id
+          }
+        )
+      );
+
+      addObject(
+        state,
+        createObject(
           "combat-blocker",
           "p2",
           { kind: "battlefield", scope: "shared" },
