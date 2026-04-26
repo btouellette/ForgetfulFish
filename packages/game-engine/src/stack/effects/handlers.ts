@@ -687,7 +687,9 @@ function resolveAddContinuousEffectToTarget(
 
   const effectSuffix =
     spec.effect.kind === "grant_keyword"
-      ? `${spec.kind}:${spec.effect.payload.keyword}`
+      ? spec.effect.payload.keyword === "landwalk"
+        ? `${spec.kind}:${spec.effect.payload.keyword}:${spec.effect.payload.landType}`
+        : `${spec.kind}:${spec.effect.payload.keyword}`
       : `${spec.kind}:${spec.effect.kind}`;
 
   const effectAction: AddContinuousEffectAction = {

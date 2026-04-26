@@ -28,47 +28,12 @@ function objectMustAttackIfAble(
   return (access?.appliedEffects ?? []).some((effect) => effect.effect.kind === "must_attack");
 }
 
-export function getRequiredAttackerIds(state: Readonly<GameState>, playerId: string): string[] {
-  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
-  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
-
-  return battlefield.filter((objectId) => {
-    const access = getComputedObjectAccessForObject(state, objectId);
-    if (access === null) {
-      return false;
-    }
-
-    const object = access.view;
-    if (object.controller !== playerId || !object.typeLine.includes("Creature")) {
-      return false;
-    }
-
-    const attackRestrictions = object.abilities.filter(
-      (ability): ability is Extract<StaticAbilityAst, { staticKind: "cant_attack_unless" }> =>
-        ability.kind === "static" && ability.staticKind === "cant_attack_unless"
-    );
-    if (
-      attackRestrictions.some(
-        (ability) => !defendingPlayerControlsLandType(state, playerId, ability.condition.landType)
-      )
-    ) {
-      return false;
-    }
-
-    if (object.tapped || object.summoningSick) {
-      return false;
-    }
-
-    return objectMustAttackIfAble(access);
-  });
-}
-
-export function canObjectAttack(
+function canObjectAttackWithAccess(
   state: Readonly<GameState>,
-  objectId: string,
-  playerId: string
+  playerId: string,
+  access: { view: ReturnType<typeof getComputedObjectView> } | null
 ): boolean {
-  const object = getComputedObjectView(state, objectId);
+  const object = access?.view;
   if (object === undefined || object.controller !== playerId) {
     return false;
   }
@@ -90,6 +55,30 @@ export function canObjectAttack(
   }
 
   return !object.tapped && !object.summoningSick;
+}
+
+export function getRequiredAttackerIds(state: Readonly<GameState>, playerId: string): string[] {
+  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
+  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
+
+  return battlefield.filter((objectId) => {
+    const access = getComputedObjectAccessForObject(state, objectId);
+    if (!canObjectAttackWithAccess(state, playerId, access)) {
+      return false;
+    }
+
+    return objectMustAttackIfAble(access);
+  });
+}
+
+export function canObjectAttack(
+  state: Readonly<GameState>,
+  objectId: string,
+  playerId: string
+): boolean {
+  return canObjectAttackWithAccess(state, playerId, {
+    view: getComputedObjectView(state, objectId)
+  });
 }
 
 function defendingPlayerControlsLandType(
