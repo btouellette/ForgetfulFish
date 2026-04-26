@@ -1,9 +1,12 @@
 import type { Command, MakeChoiceCommand, PlayLandCommand } from "../commands/command";
 import {
   getRequiredAttackerIds,
+  validateDeclareAttackers,
+  validateDeclareBlockers
+} from "./combat";
+import {
   validateActivateAbility,
   validateCastSpell,
-  validateDeclareAttackers,
   validatePlayLand
 } from "../commands/validate";
 import { resumeChoiceResolution } from "../choices/resume";
@@ -260,6 +263,8 @@ function handleDeclareBlockersCommand(state: Readonly<GameState>, command: Comma
   if (command.type !== "DECLARE_BLOCKERS") {
     throw new Error("invalid declare blockers command");
   }
+
+  validateDeclareBlockers(state, command);
 
   return {
     state: {

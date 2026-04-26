@@ -1,11 +1,9 @@
 import { cardRegistry } from "../cards";
-import { computeGameObject, getApplicableContinuousEffects } from "../effects/continuous/layers";
-import type { ActivatedAbilityAst, BasicLandType, StaticAbilityAst } from "../cards/abilityAst";
+import { getComputedObjectView } from "../effects/continuous/access";
 import type {
   ActivateAbilityCommand,
   CastSpellCommand,
   Command,
-  DeclareAttackersCommand,
   PlayLandCommand,
   Target
 } from "./command";
@@ -13,131 +11,20 @@ import type { CardDefinition } from "../cards/cardDefinition";
 import type { GameState } from "../state/gameState";
 import type { ManaPool } from "../state/gameState";
 import { zoneKey } from "../state/zones";
+import {
+  canObjectAttack,
+  canObjectBlock,
+  getEffectiveActivatedAbilities,
+  getRequiredAttackerIds,
+  hasAttackersDeclared
+} from "../engine/combat";
 
 function isMainPhase(state: Readonly<GameState>): boolean {
   return state.turnState.phase === "MAIN_1" || state.turnState.phase === "MAIN_2";
 }
 
-const effectiveObjectCache = new WeakMap<
-  Readonly<GameState>,
-  Map<string, ReturnType<typeof computeGameObject>>
->();
-
 function getEffectiveObject(state: Readonly<GameState>, objectId: string) {
-  if (!state.objectPool.has(objectId)) {
-    return undefined;
-  }
-
-  let cacheForState = effectiveObjectCache.get(state);
-  if (cacheForState === undefined) {
-    cacheForState = new Map<string, ReturnType<typeof computeGameObject>>();
-    effectiveObjectCache.set(state, cacheForState);
-  }
-
-  if (cacheForState.has(objectId)) {
-    return cacheForState.get(objectId);
-  }
-
-  const computed = computeGameObject(objectId, state);
-  cacheForState.set(objectId, computed);
-  return computed;
-}
-
-function getEffectiveActivatedAbilities(
-  state: Readonly<GameState>,
-  objectId: string
-): ActivatedAbilityAst[] {
-  const object = getEffectiveObject(state, objectId);
-  if (object === undefined) {
-    return [];
-  }
-
-  return object.abilities.filter(
-    (ability): ability is ActivatedAbilityAst => ability.kind === "activated"
-  );
-}
-
-function objectMustAttackIfAble(state: Readonly<GameState>, objectId: string): boolean {
-  return getApplicableContinuousEffects(objectId, state).some(
-    (effect) => effect.effect.kind === "must_attack"
-  );
-}
-
-export function getRequiredAttackerIds(state: Readonly<GameState>, playerId: string): string[] {
-  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
-  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
-
-  return battlefield.filter(
-    (objectId) =>
-      canObjectAttack(state, objectId, playerId) && objectMustAttackIfAble(state, objectId)
-  );
-}
-
-function canObjectAttack(state: Readonly<GameState>, objectId: string, playerId: string): boolean {
-  const object = getEffectiveObject(state, objectId);
-  if (object === undefined || object.controller !== playerId) {
-    return false;
-  }
-
-  if (!object.typeLine.includes("Creature")) {
-    return false;
-  }
-
-  const attackRestrictions = object.abilities.filter(
-    (ability): ability is Extract<StaticAbilityAst, { staticKind: "cant_attack_unless" }> =>
-      ability.kind === "static" && ability.staticKind === "cant_attack_unless"
-  );
-  if (
-    attackRestrictions.some(
-      (ability) => !defendingPlayerControlsLandType(state, playerId, ability.condition.landType)
-    )
-  ) {
-    return false;
-  }
-
-  return !object.tapped && !object.summoningSick;
-}
-
-function defendingPlayerControlsLandType(
-  state: Readonly<GameState>,
-  attackingPlayerId: string,
-  landType: BasicLandType
-): boolean {
-  const defendingPlayer = state.players.find((player) => player.id !== attackingPlayerId);
-  if (defendingPlayer === undefined) {
-    return false;
-  }
-
-  const battlefieldZone = state.mode.resolveZone(state, "battlefield", defendingPlayer.id);
-  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
-
-  return battlefield.some((objectId) => {
-    const object = getEffectiveObject(state, objectId);
-    if (object === undefined || object.controller !== defendingPlayer.id) {
-      return false;
-    }
-
-    return object.subtypes.some(
-      (subtype) => subtype.kind === "basic_land_type" && subtype.value === landType
-    );
-  });
-}
-
-function canObjectBlock(state: Readonly<GameState>, objectId: string, playerId: string): boolean {
-  const object = getEffectiveObject(state, objectId);
-  if (object === undefined || object.controller !== playerId) {
-    return false;
-  }
-
-  if (!object.typeLine.includes("Creature")) {
-    return false;
-  }
-
-  return !object.tapped;
-}
-
-function hasAttackersDeclared(state: Readonly<GameState>): boolean {
-  return state.turnState.attackers.length > 0;
+  return getComputedObjectView(state, objectId);
 }
 
 function playerHandContains(state: Readonly<GameState>, playerId: string, cardId: string): boolean {
@@ -362,46 +249,6 @@ export function validateActivateAbility(
   return {
     playerId
   };
-}
-
-export function validateDeclareAttackers(
-  state: Readonly<GameState>,
-  command: DeclareAttackersCommand
-): void {
-  const playerId = state.turnState.priorityState.playerWithPriority;
-  if (state.turnState.step !== "DECLARE_ATTACKERS") {
-    throw new Error("can only declare attackers during the declare attackers step");
-  }
-
-  if (state.turnState.activePlayerId !== playerId) {
-    throw new Error("only the active player can declare attackers");
-  }
-
-  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
-  const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
-
-  const seenAttackers = new Set<string>();
-  for (const attackerId of command.attackers) {
-    if (seenAttackers.has(attackerId)) {
-      throw new Error("declared attackers must be unique");
-    }
-    seenAttackers.add(attackerId);
-
-    if (!battlefield.includes(attackerId)) {
-      throw new Error("declared attackers must be permanents on the battlefield");
-    }
-
-    if (!canObjectAttack(state, attackerId, playerId)) {
-      throw new Error("declared attackers must be legal attackers");
-    }
-  }
-
-  const missingRequiredAttackers = getRequiredAttackerIds(state, playerId).filter(
-    (objectId) => !seenAttackers.has(objectId)
-  );
-  if (missingRequiredAttackers.length > 0) {
-    throw new Error("must-attack creatures that are able to attack must be declared as attackers");
-  }
 }
 
 function canPlayLand(state: Readonly<GameState>, command: PlayLandCommand): boolean {

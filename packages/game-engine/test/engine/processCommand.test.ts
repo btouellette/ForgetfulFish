@@ -70,6 +70,25 @@ const testDualManaLandDefinition: CardDefinition = {
   replacementEffects: []
 };
 
+const testCreatureDefinition: CardDefinition = {
+  id: "process-command-test-creature",
+  name: "Process Command Test Creature",
+  manaCost: { generic: 2 },
+  typeLine: ["Creature"],
+  subtypes: [],
+  color: ["blue"],
+  supertypes: [],
+  power: 2,
+  toughness: 2,
+  keywords: [],
+  staticAbilities: [],
+  triggeredAbilities: [],
+  activatedAbilities: [],
+  onResolve: [],
+  continuousEffects: [],
+  replacementEffects: []
+};
+
 function sampleCommand(type: Command["type"]): Command {
   switch (type) {
     case "CAST_SPELL":
@@ -353,6 +372,26 @@ describe("engine/processCommand", () => {
                         new Rng(declareAttackersState.rngSeed)
                       );
                     })()
+                  : command.type === "DECLARE_BLOCKERS"
+                    ? (() => {
+                        const declareBlockersState = createInitialGameState("p1", "p2", {
+                          id: "game-6g",
+                          rngSeed: "seed-6g"
+                        });
+                        declareBlockersState.turnState.phase = "DECLARE_BLOCKERS";
+                        declareBlockersState.turnState.step = "DECLARE_BLOCKERS";
+                        declareBlockersState.turnState.activePlayerId = "p1";
+                        declareBlockersState.turnState.attackers = ["obj-attacker"];
+                        declareBlockersState.turnState.priorityState =
+                          createInitialPriorityState("p2");
+                        declareBlockersState.players[0].priority = false;
+                        declareBlockersState.players[1].priority = true;
+                        return processCommand(
+                          declareBlockersState,
+                          command,
+                          new Rng(declareBlockersState.rngSeed)
+                        );
+                      })()
                   : processCommand(state, command, rng)
     );
 
@@ -580,5 +619,84 @@ describe("engine/processCommand", () => {
 
     expect(result.nextState.pendingChoice).toBeNull();
     expect(result.pendingChoice).toBeNull();
+  });
+
+  it("allows the current empty DECLARE_BLOCKERS scaffolding path", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "game-blockers-empty",
+      rngSeed: "seed-blockers-empty"
+    });
+
+    state.turnState.phase = "DECLARE_BLOCKERS";
+    state.turnState.step = "DECLARE_BLOCKERS";
+    state.turnState.activePlayerId = "p1";
+    state.turnState.attackers = ["obj-attacker"];
+    state.turnState.priorityState = createInitialPriorityState("p2");
+    state.players[0].priority = false;
+    state.players[1].priority = true;
+
+    const result = processCommand(
+      state,
+      { type: "DECLARE_BLOCKERS", assignments: [] },
+      new Rng(state.rngSeed)
+    );
+
+    expect(result.nextState.turnState.blockers).toEqual([]);
+    expect(result.newEvents).toEqual([]);
+  });
+
+  it("rejects specific blocker assignments until blocker rules are implemented", () => {
+    const previousCardDef = cardRegistry.get(testCreatureDefinition.id);
+
+    try {
+      cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
+
+      const state = createInitialGameState("p1", "p2", {
+        id: "game-blockers-unimplemented",
+        rngSeed: "seed-blockers-unimplemented"
+      });
+
+      state.turnState.phase = "DECLARE_BLOCKERS";
+      state.turnState.step = "DECLARE_BLOCKERS";
+      state.turnState.activePlayerId = "p1";
+      state.turnState.attackers = ["obj-attacker"];
+      state.turnState.priorityState = createInitialPriorityState("p2");
+      state.players[0].priority = false;
+      state.players[1].priority = true;
+
+      const blocker: GameObject = {
+        id: "obj-blocker",
+        zcc: 0,
+        cardDefId: testCreatureDefinition.id,
+        owner: "p2",
+        controller: "p2",
+        counters: new Map(),
+        damage: 0,
+        tapped: false,
+        summoningSick: false,
+        attachments: [],
+        abilities: [],
+        zone: { kind: "battlefield", scope: "shared" }
+      };
+      state.objectPool.set(blocker.id, blocker);
+      state.zones.get(zoneKey({ kind: "battlefield", scope: "shared" }))?.push(blocker.id);
+
+      expect(() =>
+        processCommand(
+          state,
+          {
+            type: "DECLARE_BLOCKERS",
+            assignments: [{ attackerId: "obj-attacker", blockerIds: [blocker.id] }]
+          },
+          new Rng(state.rngSeed)
+        )
+      ).toThrow("declaring specific blockers is not implemented yet");
+    } finally {
+      if (previousCardDef === undefined) {
+        cardRegistry.delete(testCreatureDefinition.id);
+      } else {
+        cardRegistry.set(testCreatureDefinition.id, previousCardDef);
+      }
+    }
   });
 });
