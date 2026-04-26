@@ -98,6 +98,13 @@ export function canObjectBlock(
   playerId: string
 ): boolean {
   const object = getComputedObjectView(state, objectId);
+  return canComputedObjectBlock(object, playerId);
+}
+
+function canComputedObjectBlock(
+  object: ReturnType<typeof getComputedObjectView>,
+  playerId: string
+): boolean {
   if (object === undefined || object.controller !== playerId) {
     return false;
   }
@@ -146,13 +153,9 @@ export function canBlockAttacker(
     return false;
   }
 
-  if (!canObjectBlock(state, blockerId, playerId)) {
-    return false;
-  }
-
   const attacker = getComputedObjectView(state, attackerId);
   const blocker = getComputedObjectView(state, blockerId);
-  if (attacker === undefined || blocker === undefined) {
+  if (attacker === undefined || blocker === undefined || !canComputedObjectBlock(blocker, playerId)) {
     return false;
   }
 
