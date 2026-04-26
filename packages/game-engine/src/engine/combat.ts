@@ -155,7 +155,11 @@ export function canBlockAttacker(
 
   const attacker = getComputedObjectView(state, attackerId);
   const blocker = getComputedObjectView(state, blockerId);
-  if (attacker === undefined || blocker === undefined || !canComputedObjectBlock(blocker, playerId)) {
+  if (
+    attacker === undefined ||
+    blocker === undefined ||
+    !canComputedObjectBlock(blocker, playerId)
+  ) {
     return false;
   }
 
