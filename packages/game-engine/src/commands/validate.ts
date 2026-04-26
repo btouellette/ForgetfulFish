@@ -8,13 +8,13 @@ import type {
   Target
 } from "./command";
 import type { CardDefinition } from "../cards/cardDefinition";
+import type { ActivatedAbilityAst } from "../cards/abilityAst";
 import type { GameState } from "../state/gameState";
 import type { ManaPool } from "../state/gameState";
 import { zoneKey } from "../state/zones";
 import {
   canObjectAttack,
   canObjectBlock,
-  getEffectiveActivatedAbilities,
   getRequiredAttackerIds,
   hasAttackersDeclared
 } from "../engine/combat";
@@ -25,6 +25,18 @@ function isMainPhase(state: Readonly<GameState>): boolean {
 
 function getEffectiveObject(state: Readonly<GameState>, objectId: string) {
   return getComputedObjectView(state, objectId);
+}
+
+function getActivatedAbilitiesFromComputedObject(
+  object: ReturnType<typeof getEffectiveObject> | undefined
+): ActivatedAbilityAst[] {
+  if (object === undefined) {
+    return [];
+  }
+
+  return object.abilities.filter(
+    (ability): ability is ActivatedAbilityAst => ability.kind === "activated"
+  );
 }
 
 function playerHandContains(state: Readonly<GameState>, playerId: string, cardId: string): boolean {
@@ -224,7 +236,7 @@ export function validateActivateAbility(
     throw new Error(`missing card definition '${sourceObject.cardDefId}'`);
   }
 
-  const ability = getEffectiveActivatedAbilities(state, command.sourceId)[command.abilityIndex];
+  const ability = getActivatedAbilitiesFromComputedObject(sourceObject)[command.abilityIndex];
   if (ability === undefined) {
     throw new Error("ability index is out of range for the source permanent");
   }
@@ -427,7 +439,7 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
       continue;
     }
 
-    const activatedAbilities = getEffectiveActivatedAbilities(state, sourceId);
+    const activatedAbilities = getActivatedAbilitiesFromComputedObject(sourceObject);
     if (activatedAbilities.length === 0) {
       continue;
     }
