@@ -77,12 +77,25 @@ function defendingPlayerControlsLandType(
     return false;
   }
 
-  const battlefieldZone = state.mode.resolveZone(state, "battlefield", defendingPlayer.id);
+  return playerControlsLandType(state, defendingPlayer.id, landType);
+}
+
+function playerControlsLandType(
+  state: Readonly<GameState>,
+  playerId: string,
+  landType: BasicLandType
+): boolean {
+  const playerExists = state.players.some((player) => player.id === playerId);
+  if (!playerExists) {
+    return false;
+  }
+
+  const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
   const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
 
   return battlefield.some((objectId) => {
     const object = getComputedObjectView(state, objectId);
-    if (object === undefined || object.controller !== defendingPlayer.id) {
+    if (object === undefined || object.controller !== playerId) {
       return false;
     }
 
@@ -138,8 +151,7 @@ function attackerHasLandwalk(
     (ability) =>
       ability.kind === "keyword" &&
       ability.keyword === "landwalk" &&
-      defendingPlayerControlsLandType(state, attacker.controller, ability.landType) &&
-      defendingPlayerId !== attacker.controller
+      playerControlsLandType(state, defendingPlayerId, ability.landType)
   );
 }
 

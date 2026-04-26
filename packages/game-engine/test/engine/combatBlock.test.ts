@@ -353,6 +353,47 @@ describe("engine/combatBlock", () => {
     ]);
   });
 
+  it("still treats landwalk against the defending player after a control-changing effect", () => {
+    const state = createBlockState();
+    putOnBattlefield(
+      state,
+      makeCard("obj-attacker", dandanCardDefinition.id, "p1", { kind: "battlefield", scope: "shared" })
+    );
+    putOnBattlefield(
+      state,
+      makeCard("obj-defender-island", "island", "p2", { kind: "battlefield", scope: "shared" })
+    );
+    putOnBattlefield(
+      state,
+      makeCard("obj-blocker", testCreatureDefinition.id, "p2", {
+        kind: "battlefield",
+        scope: "shared"
+      })
+    );
+    state.turnState.attackers = ["obj-attacker"];
+
+    const withControlEffect = addContinuousEffect(state, {
+      id: "effect-steal-attacker",
+      source: { id: "obj-attacker", zcc: 0 },
+      layer: LAYERS.CONTROL,
+      timestamp: 1,
+      duration: "until_end_of_turn",
+      appliesTo: { kind: "object", object: { id: "obj-attacker", zcc: 0 } },
+      effect: { kind: "set_controller", payload: { playerId: "p2" } }
+    });
+
+    expect(() =>
+      processCommand(
+        withControlEffect,
+        {
+          type: "DECLARE_BLOCKERS",
+          assignments: [{ attackerId: "obj-attacker", blockerIds: ["obj-blocker"] }]
+        },
+        new Rng(withControlEffect.rngSeed)
+      )
+    ).toThrow();
+  });
+
   it("allows a blocker with reach to block a flying attacker", () => {
     const state = createBlockState();
     putOnBattlefield(
