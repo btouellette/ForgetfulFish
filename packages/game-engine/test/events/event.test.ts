@@ -6,6 +6,11 @@ function samplePayloads(): GameEventPayload[] {
   return [
     { type: "CARD_DRAWN", playerId: "p1", cardId: "obj-1" },
     {
+      type: "DECLARE_ATTACKERS",
+      controller: "p1",
+      attackers: [{ id: "obj-attack-1", zcc: 0 }]
+    },
+    {
       type: "ZONE_CHANGE",
       objectId: "obj-1",
       oldZcc: 0,
@@ -49,6 +54,7 @@ function samplePayloads(): GameEventPayload[] {
 function assertExhaustive(payload: GameEventPayload): string {
   switch (payload.type) {
     case "CARD_DRAWN":
+    case "DECLARE_ATTACKERS":
     case "ZONE_CHANGE":
     case "SPELL_CAST":
     case "ABILITY_TRIGGERED":
@@ -75,10 +81,10 @@ function assertExhaustive(payload: GameEventPayload): string {
 }
 
 describe("events/event", () => {
-  it("constructs all 18 GameEventPayload variants", () => {
+  it("constructs all 19 GameEventPayload variants", () => {
     const payloads = samplePayloads();
 
-    expect(payloads).toHaveLength(18);
+    expect(payloads).toHaveLength(19);
   });
 
   it("narrows discriminated union fields correctly", () => {

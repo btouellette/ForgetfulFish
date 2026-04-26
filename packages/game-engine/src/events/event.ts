@@ -18,6 +18,7 @@ export type EventChoicePayload = unknown;
 
 export type GameEventPayload =
   | { type: "CARD_DRAWN"; playerId: PlayerId; cardId: ObjectId }
+  | { type: "DECLARE_ATTACKERS"; controller: PlayerId; attackers: ObjectRef[] }
   | {
       type: "ZONE_CHANGE";
       objectId: ObjectId;

@@ -242,16 +242,57 @@ function handleDeclareAttackersCommand(
 
   validateDeclareAttackers(state, command);
 
-  return {
-    state: {
-      ...state,
-      version: state.version + 1,
-      turnState: {
-        ...state.turnState,
-        attackers: command.attackers
+  const activePlayerId = state.turnState.activePlayerId;
+  if (state.players[0].id !== activePlayerId && state.players[1].id !== activePlayerId) {
+    throw new Error("declare attackers requires an active player in state.players");
+  }
+
+  const attackers = command.attackers.map((attackerId) => {
+    const attacker = state.objectPool.get(attackerId);
+    if (attacker === undefined) {
+      throw new Error(`Cannot declare missing attacker '${attackerId}'`);
+    }
+
+    return { id: attacker.id, zcc: attacker.zcc };
+  });
+
+  const nextState: GameState = {
+    ...state,
+    version: state.version + 1,
+    players: [
+      {
+        ...state.players[0],
+        priority: state.players[0].id === activePlayerId
+      },
+      {
+        ...state.players[1],
+        priority: state.players[1].id === activePlayerId
       }
+    ],
+    turnState: {
+      ...state.turnState,
+      attackers: command.attackers,
+      priorityState: createInitialPriorityState(activePlayerId)
+    }
+  };
+
+  const declareAttackersEvent = createEvent(
+    {
+      engineVersion: state.engineVersion,
+      schemaVersion: 1,
+      gameId: state.id
     },
-    events: []
+    nextState.version,
+    {
+      type: "DECLARE_ATTACKERS",
+      controller: activePlayerId,
+      attackers
+    }
+  );
+
+  return {
+    state: nextState,
+    events: [declareAttackersEvent]
   };
 }
 
