@@ -34,7 +34,7 @@ Status: planned
 - `engine/processCommand.ts`
 - `commands/validate.ts`
 - `events/event.ts`
-- `test/engine/combat_attack.test.ts`
+- `test/engine/combatAttack.test.ts`
 
 **Tests first**
 - Add or update combat tests proving:
@@ -62,7 +62,7 @@ Status: planned
 - `engine/combat.ts`
 - `engine/processCommand.ts`
 - `commands/validate.ts`
-- `test/engine/combat_block.test.ts`
+- `test/engine/combatBlock.test.ts`
 
 **Tests first**
 - Add or update combat-block tests proving:
@@ -93,7 +93,7 @@ Status: planned
 - `actions/executor.ts`
 - `events/event.ts`
 - `engine/sba.ts`
-- `test/engine/combat_damage.test.ts`
+- `test/engine/combatDamage.test.ts`
 
 **Tests first**
 - Add or update combat-damage tests proving:
@@ -199,7 +199,7 @@ Implement per §4:
 
 <!-- Confirmed current legality checks already read the computed Layer 3-rewritten view; Phase 4 needs to preserve that when combat events and damage resolution are added. -->
 
-**Test file**: `test/engine/combat_attack.test.ts`
+**Test file**: `test/engine/combatAttack.test.ts`
 Depends: P1.2, P3.2, P3.9
 Test: **Write tests FIRST**, then implement.
 1. Declare Dandan as attacker when opponent controls an Island → legal.
@@ -221,7 +221,7 @@ Implement:
   - Flying: can only be blocked by creatures with flying or reach
   - Block assignment (which blocker blocks which attacker)
 
-**Test file**: `test/engine/combat_block.test.ts`
+**Test file**: `test/engine/combatBlock.test.ts`
 Depends: P4.1, P3.2, P3.7
 Test: **Write tests FIRST**, then implement.
 1. Dandan with islandwalk attacking a player with an Island → cannot be blocked.
@@ -243,7 +243,7 @@ Implement:
 - Emit `DAMAGE_DEALT` and `LIFE_CHANGED` events
 - After damage: SBA check (creatures with lethal damage die, players at 0 lose)
 
-**Test file**: `test/engine/combat_damage.test.ts`
+**Test file**: `test/engine/combatDamage.test.ts`
 Depends: P4.1, P4.2, P1.8
 Test: **Write tests FIRST**, then implement.
 1. Unblocked Dandan (4/1) deals exactly 4 damage to the defending player.
