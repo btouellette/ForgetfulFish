@@ -273,7 +273,9 @@ export function validateDeclareBlockers(
     const seenBlockersForAttacker = new Set<string>();
     for (const blockerId of assignment.blockerIds) {
       if (seenBlockersForAttacker.has(blockerId)) {
-        throw new Error("blocker assignments cannot contain duplicate blockers for the same attacker");
+        throw new Error(
+          "blocker assignments cannot contain duplicate blockers for the same attacker"
+        );
       }
       seenBlockersForAttacker.add(blockerId);
 
