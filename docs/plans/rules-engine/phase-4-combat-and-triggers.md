@@ -2,7 +2,190 @@
 
 Status: planned
 
-> Current engine status before Phase 4: attacker legality and must-attack enforcement already exist through shared combat helpers used by `commands/validate.ts` and `engine/processCommand.ts`, but attacker declaration still emits no dedicated combat event and blocker assignment/evasion legality are not implemented yet. `DECLARE_BLOCKERS` is scaffolding only and currently supports the no-assignment path, not real blocking rules.
+> Current engine status before Phase 4: attacker legality and must-attack enforcement already exist through shared combat helpers used by `commands/validate.ts`, `engine/combat.ts`, and `engine/processCommand.ts`, but attacker declaration still emits no dedicated combat event and blocker assignment/evasion legality are not implemented yet. `DECLARE_BLOCKERS` is scaffolding only and currently supports the no-assignment path, not real blocking rules.
+
+## Phase 4 plan updates
+
+**Alignment with shipped Phase 3 work**
+- Treat attacker legality and must-attack enforcement as existing foundations, not greenfield Phase 4 scope. Phase 4 should extend those computed-view checks with events, blockers, damage, and trigger integration rather than re-deriving combat legality from raw object state.
+- Preserve the Phase 3 computed-view rule that combat restrictions and permissions must continue to read Layer-affected characteristics, including Layer 3-rewritten land types and Phase 3 keyword work such as `haste` and `flying`.
+- Keep the known Phase 3 deferral intact: Layer 3 color-word rewriting is still intentionally out of scope until a real structured color-text surface requires it. Phase 4 work should rely only on the already shipped land-type rewriting path.
+
+**Planning corrections confirmed from the current codebase**
+- There is no existing `packages/game-engine/src/triggers/` directory. Trigger batching/state-trigger work should plan against the current surfaces (`events/eventBus.ts`, `events/event.ts`, `state/gameState.ts`, `choices/pendingChoice.ts`, `choices/resume.ts`, `engine/sba.ts`, and command/stack orchestration files), or explicitly introduce new trigger modules as part of the slice that creates them.
+- `engine/combat.ts` already contains `canObjectAttack`, `getRequiredAttackerIds`, `validateDeclareAttackers`, and a minimal `canObjectBlock`; Phase 4 should build on those helpers instead of replacing them wholesale.
+- `events/event.ts` already has `DAMAGE_DEALT` and `LIFE_CHANGED` event payloads, so the remaining gap is emitting and consuming the right combat events, not inventing an entirely new event vocabulary from scratch.
+
+**Execution order to preserve**
+1. Finish attacker declaration as a real eventful combat step.
+2. Land real blocker legality and assignment on top of that attacker baseline.
+3. Land combat damage plus SBA convergence before broad trigger/card work.
+4. Add trigger batching/APNAP ordering and state-trigger plumbing on the current event/choice/state surfaces.
+5. Implement the Phase 4 cards and final integration coverage on top of the finished combat/trigger loop.
+
+### Concrete execution slices
+
+#### [ ] Slice A — Finish declare-attackers as a real combat step
+
+**Goal**: extend the already shipped computed-view attacker legality path into a complete declare-attackers step that emits combat events and transitions cleanly into the next priority window.
+
+**Files**
+- `engine/combat.ts`
+- `engine/processCommand.ts`
+- `commands/validate.ts`
+- `events/event.ts`
+- `test/engine/combatAttack.test.ts`
+
+**Tests first**
+- Add or update combat tests proving:
+  - Dandan is a legal attacker only when the defending player controls an Island-equivalent land type in the computed view.
+  - Tapped and summoning-sick creatures remain illegal attackers through the same computed-view path.
+  - Must-attack creatures that are able to attack still cannot be omitted.
+  - Declaring attackers emits a dedicated combat event and advances combat state without regressing priority handling.
+  - `assertStateInvariants` passes after attacker declaration.
+
+**Implementation steps**
+1. Keep `validateDeclareAttackers` as the single legality gate for attacker declaration.
+2. Add dedicated attacker-declaration event emission in the command-processing flow.
+3. Ensure turn-state transition and priority reset after declaration match the existing engine turn-loop conventions.
+4. Keep the combat path computed-view-driven; do not add raw-object shortcuts for Dandan, haste, or other restrictions.
+
+**Acceptance**
+- Attacker declaration is eventful and still uses the shipped computed-view legality path.
+- Must-attack enforcement remains correct after the new event/priority flow lands.
+
+#### [ ] Slice B — Replace blocker scaffolding with real legality and assignment
+
+**Goal**: turn `DECLARE_BLOCKERS` from an empty-scaffold path into full blocker declaration with assignment storage and computed-view evasion checks.
+
+**Files**
+- `engine/combat.ts`
+- `engine/processCommand.ts`
+- `commands/validate.ts`
+- `test/engine/combatBlock.test.ts`
+
+**Tests first**
+- Add or update combat-block tests proving:
+  - Dandan with islandwalk cannot be blocked when the defending player controls the relevant land type in the computed view.
+  - A Mind-Bent land-type rewrite changes blocking legality through the same land-type query path.
+  - Flying attackers can be blocked only by creatures with flying or reach once those keywords are represented in the computed view.
+  - Blockers must be legal defending-player creatures and must be untapped.
+  - Block assignments are stored deterministically and reject malformed duplicates/illegal assignments.
+  - `assertStateInvariants` passes after blockers are declared.
+
+**Implementation steps**
+1. Extend `canObjectBlock` and blocker validation so legality comes from computed-view characteristics.
+2. Add attacker/blocker assignment validation for the current combat model.
+3. Persist validated blocker assignments into `turnState.blockers` through `processCommand.ts`.
+4. Keep blocker legality isolated in combat helpers rather than scattering checks across callers.
+
+**Acceptance**
+- `DECLARE_BLOCKERS` accepts real legal assignments and rejects illegal ones.
+- Evasion checks respect Phase 3 Layer 3 rewriting and keyword-derived abilities.
+
+#### [ ] Slice C — Resolve combat damage and converge through SBAs
+
+**Goal**: add deterministic combat damage resolution for blocked and unblocked combat, then run the existing SBA/loss machinery on the resulting state.
+
+**Files**
+- `engine/combat.ts`
+- `engine/processCommand.ts`
+- `actions/executor.ts`
+- `events/event.ts`
+- `engine/sba.ts`
+- `test/engine/combatDamage.test.ts`
+
+**Tests first**
+- Add or update combat-damage tests proving:
+  - An unblocked Dandan deals exactly 4 damage to the defending player.
+  - Two Dandans in combat deal simultaneous lethal damage to each other.
+  - Combat damage emits the expected `DAMAGE_DEALT` and `LIFE_CHANGED` events.
+  - Creatures with lethal damage die through the normal SBA path.
+  - Players reduced to 0 life lose through the normal SBA path.
+  - Multiple combat pairs resolve simultaneously without order-dependent bugs.
+  - `assertStateInvariants` passes after damage resolution and SBA convergence.
+
+**Implementation steps**
+1. Add combat-damage assignment/resolution on top of the stored attacker/blocker state.
+2. Reuse existing action/executor and event surfaces where possible rather than creating a bespoke damage side path.
+3. Run SBA convergence after combat damage finishes.
+4. Preserve deterministic simultaneous-damage behavior for multi-creature combat.
+
+**Acceptance**
+- Combat damage produces correct state changes and events for blocked and unblocked combat.
+- SBA cleanup and player-loss checks run correctly after combat damage.
+
+#### [ ] Slice D — Add trigger batching, APNAP ordering, and state-trigger plumbing on current engine surfaces
+
+**Goal**: build the trigger system Phase 4 needs on the engine’s existing event/choice/state surfaces instead of assuming nonexistent `triggers/*` modules.
+
+**Files**
+- `events/eventBus.ts`
+- `events/event.ts`
+- `state/gameState.ts`
+- `choices/pendingChoice.ts`
+- `choices/resume.ts`
+- `engine/sba.ts`
+- `test/triggers/batch.test.ts`
+- `test/triggers/state.test.ts`
+
+**Tests first**
+- Add or update trigger tests proving:
+  - A single matching trigger is queued from emitted events and reaches the stack correctly.
+  - Simultaneous triggers for one player create an `ORDER_TRIGGERS` choice.
+  - APNAP ordering is preserved across both players.
+  - State-triggered abilities are checked during SBA convergence and fire at most once per convergence pass.
+  - Trigger references use stable object identity (`zcc`) where needed.
+  - `assertStateInvariants` passes after the trigger batching cycle completes.
+
+**Implementation steps**
+1. Extend the current event/trigger queue representation to carry the information required for ordering and resolution.
+2. Add APNAP batching and `ORDER_TRIGGERS` choice production on the existing choice system.
+3. Add state-trigger checks to the SBA loop without introducing infinite requeue behavior.
+4. Introduce new trigger helper modules only if the implementation now justifies them; do not plan as though they already exist.
+
+**Acceptance**
+- Trigger batching works on the current engine surfaces and supports APNAP ordering plus same-player ordering choices.
+- State-triggered abilities integrate with the SBA loop without duplicate-fire bugs.
+
+#### [ ] Slice E — Land the Phase 4 cards, integration coverage, and final cleanup
+
+**Goal**: implement the Phase 4 ETB/state-trigger card slice and prove the finished combat + trigger loop works end to end.
+
+**Files**
+- `cards/dandan.ts`
+- `cards/mystic-sanctuary.ts`
+- `cards/halimar-depths.ts`
+- `cards/temple-of-epiphany.ts`
+- `cards/izzet-boilerworks.ts`
+- `engine/combat.ts`
+- `events/eventBus.ts`
+- `test/cards/mysticSanctuary.test.ts`
+- `test/cards/halimarDepths.test.ts`
+- `test/cards/templeOfEpiphany.test.ts`
+- `test/cards/izzetBoilerworks.test.ts`
+- `test/integration/combat-triggers.test.ts`
+- `docs/decisions/decision-log.md`
+
+**Tests first**
+- Add or update card/integration tests proving:
+  - Dandan’s state trigger uses the same Layer 3-rewritten land-type semantics as combat legality.
+  - Mystic Sanctuary checks for three **other** Islands and routes graveyard/library access through `GameMode`.
+  - Halimar Depths orders the shared library’s top cards through the existing choice model.
+  - Temple of Epiphany resolves scry 1 with the chosen Phase 4 choice encoding.
+  - Izzet Boilerworks forces a land bounce and still preserves expected continuous-effect/state behavior.
+  - Integration scenarios cover Dandan-vs-Dandan combat, APNAP ETB ordering, and Ray of Command interaction with combat restrictions.
+  - `assertStateInvariants` passes throughout the full integration scenarios.
+
+**Implementation steps**
+1. Add the state-trigger and ETB card implementations only after the trigger queue/order infrastructure is in place.
+2. Resolve the Phase 4 card-specific open questions locally as part of implementation, starting with Mystic Sanctuary’s “other Islands” requirement and Temple of Epiphany’s scry-1 choice shape.
+3. Add end-to-end integration coverage that exercises combat, triggers, APNAP ordering, and shared-deck routing together.
+4. Record any finalized combat/trigger architecture decisions in the decision log once implementation lands.
+
+**Acceptance**
+- The listed Phase 4 cards work through the finished combat/trigger system rather than bespoke one-off logic.
+- Integration coverage demonstrates that combat, APNAP trigger ordering, and state triggers work together in the shared-deck rules model.
 
 ### [ ] P4.1 — Declare attackers
 
@@ -16,7 +199,7 @@ Implement per §4:
 
 <!-- Confirmed current legality checks already read the computed Layer 3-rewritten view; Phase 4 needs to preserve that when combat events and damage resolution are added. -->
 
-**Test file**: `test/engine/combat_attack.test.ts`
+**Test file**: `test/engine/combatAttack.test.ts`
 Depends: P1.2, P3.2, P3.9
 Test: **Write tests FIRST**, then implement.
 1. Declare Dandan as attacker when opponent controls an Island → legal.
@@ -38,7 +221,7 @@ Implement:
   - Flying: can only be blocked by creatures with flying or reach
   - Block assignment (which blocker blocks which attacker)
 
-**Test file**: `test/engine/combat_block.test.ts`
+**Test file**: `test/engine/combatBlock.test.ts`
 Depends: P4.1, P3.2, P3.7
 Test: **Write tests FIRST**, then implement.
 1. Dandan with islandwalk attacking a player with an Island → cannot be blocked.
@@ -60,7 +243,7 @@ Implement:
 - Emit `DAMAGE_DEALT` and `LIFE_CHANGED` events
 - After damage: SBA check (creatures with lethal damage die, players at 0 lose)
 
-**Test file**: `test/engine/combat_damage.test.ts`
+**Test file**: `test/engine/combatDamage.test.ts`
 Depends: P4.1, P4.2, P1.8
 Test: **Write tests FIRST**, then implement.
 1. Unblocked Dandan (4/1) deals exactly 4 damage to the defending player.
@@ -97,7 +280,7 @@ Acceptance: Existing must-attack enforcement remains correct as combat events/bl
 
 ### [ ] P4.5 — Trigger batching with APNAP ordering
 
-**Files**: `triggers/trigger.ts`, `triggers/batch.ts`
+**Files**: `events/eventBus.ts`, `state/gameState.ts`, `choices/pendingChoice.ts`, `choices/resume.ts`
 
 Implement per §10:
 - After events are emitted, scan for matching triggers:
@@ -123,7 +306,7 @@ Acceptance: APNAP ordering with player choice for simultaneous triggers.
 
 ### [ ] P4.6 — State-triggered abilities
 
-**Files**: `triggers/trigger.ts` (extend), `engine/sba.ts` (extend)
+**Files**: `events/eventBus.ts`, `engine/sba.ts`, `state/gameState.ts`
 
 Cards: **Dandan** ("when you control no Islands, sacrifice Dandan")
 
@@ -153,7 +336,7 @@ Cards: **Mystic Sanctuary** (ETB: if you control 3+ Islands, return instant/sorc
 Implement:
 - CardDefinition: land (Island subtype — enters untapped? check Oracle)
 - ETB trigger:
-  - Condition: controller controls 3 or more Islands (including Mystic Sanctuary itself)
+  - Condition: controller controls 3 or more other Islands
   - Effect: `CHOOSE_CARDS` from instants/sorceries in graveyard + `MOVE_ZONE` to top of library
 
 <!-- TODO: Mystic Sanctuary Oracle: "If you control three or more other Islands" — the word "other" means Mystic Sanctuary itself doesn't count. Verify the condition checks for 3+ OTHER Islands, not including itself. Also: in shared-deck, "your graveyard" → shared graveyard via GameMode. -->
