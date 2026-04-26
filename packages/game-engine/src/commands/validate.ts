@@ -414,7 +414,11 @@ export function getLegalCommands(state: Readonly<GameState>): Command[] {
 
   const controlsLegalBlocker = () =>
     state.turnState.attackers.some((attackerId) =>
-      battlefield.some((objectId) => canObjectBlock(state, objectId, playerId) && canBlockAttacker(state, objectId, attackerId, playerId))
+      battlefield.some(
+        (objectId) =>
+          canObjectBlock(state, objectId, playerId) &&
+          canBlockAttacker(state, objectId, attackerId, playerId)
+      )
     );
 
   for (const cardId of hand) {

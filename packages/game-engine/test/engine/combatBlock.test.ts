@@ -148,10 +148,13 @@ describe("engine/combatBlock", () => {
         scope: "shared"
       })
     );
-    putOnBattlefield(
-      state,
-      { ...makeCard("obj-blocker", testCreatureDefinition.id, "p2", { kind: "battlefield", scope: "shared" }), tapped: true }
-    );
+    putOnBattlefield(state, {
+      ...makeCard("obj-blocker", testCreatureDefinition.id, "p2", {
+        kind: "battlefield",
+        scope: "shared"
+      }),
+      tapped: true
+    });
     state.turnState.attackers = ["obj-attacker"];
 
     expect(() =>
@@ -241,7 +244,10 @@ describe("engine/combatBlock", () => {
     const state = createBlockState();
     putOnBattlefield(
       state,
-      makeCard("obj-attacker", dandanCardDefinition.id, "p1", { kind: "battlefield", scope: "shared" })
+      makeCard("obj-attacker", dandanCardDefinition.id, "p1", {
+        kind: "battlefield",
+        scope: "shared"
+      })
     );
     putOnBattlefield(
       state,
@@ -272,7 +278,10 @@ describe("engine/combatBlock", () => {
     const state = createBlockState();
     putOnBattlefield(
       state,
-      makeCard("obj-attacker", dandanCardDefinition.id, "p1", { kind: "battlefield", scope: "shared" })
+      makeCard("obj-attacker", dandanCardDefinition.id, "p1", {
+        kind: "battlefield",
+        scope: "shared"
+      })
     );
     putOnBattlefield(
       state,

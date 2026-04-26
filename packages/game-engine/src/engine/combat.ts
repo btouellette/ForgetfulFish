@@ -117,7 +117,9 @@ function hasKeyword(
   object: NonNullable<ReturnType<typeof getComputedObjectView>>,
   keyword: "flying" | "reach"
 ): boolean {
-  return object.abilities.some((ability) => ability.kind === "keyword" && ability.keyword === keyword);
+  return object.abilities.some(
+    (ability) => ability.kind === "keyword" && ability.keyword === keyword
+  );
 }
 
 function attackerHasLandwalk(

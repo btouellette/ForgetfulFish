@@ -448,7 +448,12 @@ function toGrantedKeywordAbility(
   }
 
   const { keyword } = payload.payload;
-  if (keyword === "flying" || keyword === "first_strike" || keyword === "haste" || keyword === "reach") {
+  if (
+    keyword === "flying" ||
+    keyword === "first_strike" ||
+    keyword === "haste" ||
+    keyword === "reach"
+  ) {
     return { kind: "keyword", keyword };
   }
 
