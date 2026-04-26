@@ -701,15 +701,15 @@ describe("engine/processCommand", () => {
     }
   });
 
-  it("rejects specific blocker assignments until blocker rules are implemented", () => {
+  it("accepts a legal specific blocker assignment", () => {
     const previousCardDef = cardRegistry.get(testCreatureDefinition.id);
 
     try {
       cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
 
       const state = createInitialGameState("p1", "p2", {
-        id: "game-blockers-unimplemented",
-        rngSeed: "seed-blockers-unimplemented"
+        id: "game-blockers-assignment",
+        rngSeed: "seed-blockers-assignment"
       });
 
       state.turnState.phase = "DECLARE_BLOCKERS";
@@ -727,16 +727,18 @@ describe("engine/processCommand", () => {
       state.objectPool.set(blocker.id, blocker);
       state.zones.get(zoneKey({ kind: "battlefield", scope: "shared" }))?.push(blocker.id);
 
-      expect(() =>
-        processCommand(
-          state,
-          {
-            type: "DECLARE_BLOCKERS",
-            assignments: [{ attackerId: attacker.id, blockerIds: [blocker.id] }]
-          },
-          new Rng(state.rngSeed)
-        )
-      ).toThrow("declaring specific blockers is not implemented yet");
+      const result = processCommand(
+        state,
+        {
+          type: "DECLARE_BLOCKERS",
+          assignments: [{ attackerId: attacker.id, blockerIds: [blocker.id] }]
+        },
+        new Rng(state.rngSeed)
+      );
+
+      expect(result.nextState.turnState.blockers).toEqual([
+        { attackerId: attacker.id, blockerId: blocker.id }
+      ]);
     } finally {
       if (previousCardDef === undefined) {
         cardRegistry.delete(testCreatureDefinition.id);

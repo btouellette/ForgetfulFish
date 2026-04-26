@@ -462,6 +462,10 @@ describe("commands/legal", () => {
     blockersState.turnState.activePlayerId = "p1";
     blockersState.turnState.attackers = ["obj-declared-attacker"];
     setPriority(blockersState, "p2");
+    putOnBattlefield(blockersState, "p1", {
+      id: "obj-declared-attacker",
+      cardDefId: testCreatureDefinition.id
+    });
     putOnBattlefield(blockersState, "p2", {
       id: "obj-legal-blocker",
       cardDefId: testCreatureDefinition.id
@@ -469,6 +473,36 @@ describe("commands/legal", () => {
 
     const blockersCommands = getLegalCommands(blockersState);
     expect(blockersCommands.some((command) => command.type === "DECLARE_BLOCKERS")).toBe(true);
+  });
+
+  it("does not include DECLARE_BLOCKERS when Dandan has islandwalk against the defending player", () => {
+    cardRegistry.set(dandanCardDefinition.id, dandanCardDefinition);
+    cardRegistry.set(testCreatureDefinition.id, testCreatureDefinition);
+
+    const blockersState = createInitialGameState("p1", "p2", {
+      id: "legal-blockers-dandan-islandwalk",
+      rngSeed: "seed-legal-blockers-dandan-islandwalk"
+    });
+    blockersState.turnState.phase = "DECLARE_BLOCKERS";
+    blockersState.turnState.step = "DECLARE_BLOCKERS";
+    blockersState.turnState.activePlayerId = "p1";
+    setPriority(blockersState, "p2");
+    blockersState.turnState.attackers = ["obj-dandan"];
+    putOnBattlefield(blockersState, "p1", {
+      id: "obj-dandan",
+      cardDefId: dandanCardDefinition.id
+    });
+    putOnBattlefield(blockersState, "p2", {
+      id: "obj-island",
+      cardDefId: "island"
+    });
+    putOnBattlefield(blockersState, "p2", {
+      id: "obj-blocker",
+      cardDefId: testCreatureDefinition.id
+    });
+
+    const blockersCommands = getLegalCommands(blockersState);
+    expect(blockersCommands.some((command) => command.type === "DECLARE_BLOCKERS")).toBe(false);
   });
 
   it("includes DECLARE_BLOCKERS when control of an opposing creature changes continuously", () => {
@@ -483,6 +517,10 @@ describe("commands/legal", () => {
     blockersState.turnState.activePlayerId = "p1";
     blockersState.turnState.attackers = ["obj-declared-attacker"];
     setPriority(blockersState, "p2");
+    putOnBattlefield(blockersState, "p1", {
+      id: "obj-declared-attacker",
+      cardDefId: testCreatureDefinition.id
+    });
     putOnBattlefield(blockersState, "p1", {
       id: "obj-stolen-blocker",
       cardDefId: testCreatureDefinition.id
