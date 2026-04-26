@@ -726,6 +726,20 @@ function resolveContinuousEffects(
   };
 }
 
+export function getComputedObjectAccess(
+  objectId: string,
+  state: Readonly<GameState>
+): {
+  view: DerivedGameObjectView;
+  appliedEffects: readonly ContinuousEffect[];
+} | null {
+  if (!state.objectPool.has(objectId)) {
+    return null;
+  }
+
+  return resolveContinuousEffects(objectId, state);
+}
+
 export function computeGameObject(
   objectId: string,
   state: Readonly<GameState>

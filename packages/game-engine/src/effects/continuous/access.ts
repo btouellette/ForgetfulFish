@@ -1,25 +1,27 @@
 import type { DerivedGameObjectView } from "../../state/gameObject";
 import type { GameState } from "../../state/gameState";
-import { computeGameObject, getApplicableContinuousEffects, type ContinuousEffect } from "./layers";
+import { getComputedObjectAccess, type ContinuousEffect } from "./layers";
+
+export function getComputedObjectAccessForObject(
+  state: Readonly<GameState>,
+  objectId: string
+): {
+  view: DerivedGameObjectView;
+  appliedEffects: readonly ContinuousEffect[];
+} | null {
+  return getComputedObjectAccess(objectId, state);
+}
 
 export function getComputedObjectView(
   state: Readonly<GameState>,
   objectId: string
 ): DerivedGameObjectView | undefined {
-  if (!state.objectPool.has(objectId)) {
-    return undefined;
-  }
-
-  return computeGameObject(objectId, state);
+  return getComputedObjectAccessForObject(state, objectId)?.view;
 }
 
 export function getApplicableEffectsForObject(
   state: Readonly<GameState>,
   objectId: string
 ): readonly ContinuousEffect[] {
-  if (!state.objectPool.has(objectId)) {
-    return [];
-  }
-
-  return getApplicableContinuousEffects(objectId, state);
+  return getComputedObjectAccessForObject(state, objectId)?.appliedEffects ?? [];
 }

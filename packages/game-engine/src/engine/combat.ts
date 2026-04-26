@@ -1,6 +1,7 @@
 import type { DeclareAttackersCommand, DeclareBlockersCommand } from "../commands/command";
 import type { ActivatedAbilityAst, BasicLandType, StaticAbilityAst } from "../cards/abilityAst";
-import { getApplicableEffectsForObject, getComputedObjectView } from "../effects/continuous/access";
+import { getComputedObjectAccessForObject, getComputedObjectView } from "../effects/continuous/access";
+import type { ContinuousEffect } from "../effects/continuous/layers";
 import type { GameState } from "../state/gameState";
 import { zoneKey } from "../state/zones";
 
@@ -18,8 +19,10 @@ export function getEffectiveActivatedAbilities(
   );
 }
 
-function objectMustAttackIfAble(state: Readonly<GameState>, objectId: string): boolean {
-  return getApplicableEffectsForObject(state, objectId).some(
+function objectMustAttackIfAble(
+  access: { appliedEffects: readonly ContinuousEffect[] } | null
+): boolean {
+  return (access?.appliedEffects ?? []).some(
     (effect) => effect.effect.kind === "must_attack"
   );
 }
@@ -28,10 +31,35 @@ export function getRequiredAttackerIds(state: Readonly<GameState>, playerId: str
   const battlefieldZone = state.mode.resolveZone(state, "battlefield", playerId);
   const battlefield = state.zones.get(zoneKey(battlefieldZone)) ?? [];
 
-  return battlefield.filter(
-    (objectId) =>
-      canObjectAttack(state, objectId, playerId) && objectMustAttackIfAble(state, objectId)
-  );
+  return battlefield.filter((objectId) => {
+    const access = getComputedObjectAccessForObject(state, objectId);
+    if (access === null) {
+      return false;
+    }
+
+    const object = access.view;
+    if (object.controller !== playerId || !object.typeLine.includes("Creature")) {
+      return false;
+    }
+
+    const attackRestrictions = object.abilities.filter(
+      (ability): ability is Extract<StaticAbilityAst, { staticKind: "cant_attack_unless" }> =>
+        ability.kind === "static" && ability.staticKind === "cant_attack_unless"
+    );
+    if (
+      attackRestrictions.some(
+        (ability) => !defendingPlayerControlsLandType(state, playerId, ability.condition.landType)
+      )
+    ) {
+      return false;
+    }
+
+    if (object.tapped || object.summoningSick) {
+      return false;
+    }
+
+    return objectMustAttackIfAble(access);
+  });
 }
 
 export function canObjectAttack(
