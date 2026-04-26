@@ -83,7 +83,10 @@ function createAttackState(): GameState {
 
   putOnBattlefield(
     state,
-    makeCard("obj-attacker", dandanCardDefinition.id, "p1", { kind: "battlefield", scope: "shared" })
+    makeCard("obj-attacker", dandanCardDefinition.id, "p1", {
+      kind: "battlefield",
+      scope: "shared"
+    })
   );
   putOnBattlefield(
     state,
