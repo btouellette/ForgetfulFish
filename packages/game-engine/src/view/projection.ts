@@ -3,7 +3,7 @@ import { OnResolveRegistry } from "../stack/onResolveRegistry";
 import type { ActivatedAbilityAst, ManaAmount } from "../cards/abilityAst";
 import { getLegalCommands } from "../commands/validate";
 import { getComputedObjectView } from "../effects/continuous/access";
-import type { DerivedGameObjectView, GameObject } from "../state/gameObject";
+import type { DerivedGameObjectView } from "../state/gameObject";
 import type { GameState, ManaPool, PlayerInfo } from "../state/gameState";
 import type { ObjectId, PlayerId } from "../state/objectRef";
 import { zoneKey, type ZoneRef } from "../state/zones";
@@ -94,21 +94,10 @@ function getOpponent(state: Readonly<GameState>, viewerPlayerId: PlayerId): Play
   return opponent;
 }
 
-function requireObject(state: Readonly<GameState>, objectId: ObjectId): GameObject {
-  const object = state.objectPool.get(objectId);
-
-  if (!object) {
-    throw new Error(`object '${objectId}' is missing from state '${state.id}'`);
-  }
-
-  return object;
-}
-
 function requireComputedObject(
   state: Readonly<GameState>,
   objectId: ObjectId
 ): DerivedGameObjectView {
-  requireObject(state, objectId);
   const computed = getComputedObjectView(state, objectId);
   if (computed === undefined) {
     throw new Error(`object '${objectId}' is missing from state '${state.id}'`);
