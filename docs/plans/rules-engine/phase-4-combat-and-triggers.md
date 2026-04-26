@@ -25,7 +25,7 @@ Status: planned
 
 ### Concrete execution slices
 
-#### [ ] Slice A — Finish declare-attackers as a real combat step
+#### [x] Slice A — Finish declare-attackers as a real combat step
 
 **Goal**: extend the already shipped computed-view attacker legality path into a complete declare-attackers step that emits combat events and transitions cleanly into the next priority window.
 
@@ -187,7 +187,7 @@ Status: planned
 - The listed Phase 4 cards work through the finished combat/trigger system rather than bespoke one-off logic.
 - Integration coverage demonstrates that combat, APNAP trigger ordering, and state triggers work together in the shared-deck rules model.
 
-### [ ] P4.1 — Declare attackers
+### [x] P4.1 — Declare attackers
 
 **Files**: `engine/combat.ts`, `engine/processCommand.ts`
 
