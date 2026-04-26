@@ -270,7 +270,13 @@ export function validateDeclareBlockers(
       throw new Error("block assignments must reference declared attackers");
     }
 
+    const seenBlockersForAttacker = new Set<string>();
     for (const blockerId of assignment.blockerIds) {
+      if (seenBlockersForAttacker.has(blockerId)) {
+        throw new Error("blocker assignments cannot contain duplicate blockers for the same attacker");
+      }
+      seenBlockersForAttacker.add(blockerId);
+
       if (seenBlockers.has(blockerId)) {
         throw new Error("a blocker cannot be assigned to multiple attackers");
       }

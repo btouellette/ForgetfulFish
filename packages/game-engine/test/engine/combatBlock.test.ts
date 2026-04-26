@@ -240,6 +240,36 @@ describe("engine/combatBlock", () => {
     ).toThrow();
   });
 
+  it("rejects duplicate blocker ids within the same attacker assignment", () => {
+    const state = createBlockState();
+    putOnBattlefield(
+      state,
+      makeCard("obj-attacker", testCreatureDefinition.id, "p1", {
+        kind: "battlefield",
+        scope: "shared"
+      })
+    );
+    putOnBattlefield(
+      state,
+      makeCard("obj-blocker", testCreatureDefinition.id, "p2", {
+        kind: "battlefield",
+        scope: "shared"
+      })
+    );
+    state.turnState.attackers = ["obj-attacker"];
+
+    expect(() =>
+      processCommand(
+        state,
+        {
+          type: "DECLARE_BLOCKERS",
+          assignments: [{ attackerId: "obj-attacker", blockerIds: ["obj-blocker", "obj-blocker"] }]
+        },
+        new Rng(state.rngSeed)
+      )
+    ).toThrow("blocker assignments cannot contain duplicate blockers for the same attacker");
+  });
+
   it("rejects DECLARE_BLOCKERS when the attacker is no longer on the battlefield", () => {
     const state = createBlockState();
     state.objectPool.set(
