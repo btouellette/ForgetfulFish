@@ -39,6 +39,7 @@ jobs:
         with:
           name: ${{ env.PREPARED_WORKSPACE_ARTIFACT }}
           path: /tmp/workspace-with-deps.tgz
+          retention-days: 1
 
   build:
     runs-on: ubuntu-latest
