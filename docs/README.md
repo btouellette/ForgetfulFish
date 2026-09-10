@@ -40,6 +40,7 @@
 ## Active Plans
 
 - `docs/plans/roadmap.md`: current milestone-level roadmap.
+- `docs/plans/current-workstream-plan.md`: consolidated status review, blocking issues, and the ordered execution plan for the next wave.
 - `docs/plans/rules-engine/README.md`: split rules-engine implementation plan index and shared planning conventions.
 - `docs/plans/web-prototype-current-cards.md`: commit-slice execution plan for web-playable prototype work using currently implemented cards.
 

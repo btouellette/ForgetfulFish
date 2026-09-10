@@ -47,7 +47,7 @@ Status: in progress
 - [x] Deterministic engine foundations, turn flow, and stack-resolution basics are in place through rules-engine phases 0-2.
 - [x] Deliver a web-usable prototype for the shipped playable card slice (execution plan: `docs/plans/web-prototype-current-cards.md`).
 - [x] Complete the Phase 3 continuous-effects and layers slice, including Dandan, Ray of Command, Mind Bend, Crystal Spray, Dance of the Skywise, and explicit Layer 3 dependency coverage; color-word Layer 3 support remains intentionally deferred until a real structured color-text surface requires it.
-- [ ] Complete the remaining core-loop behaviors still planned in later phases, especially combat, trigger handling, and the rest of deck-fidelity coverage.
+- [ ] Complete the remaining core-loop behaviors still planned in later phases, especially combat, trigger handling, and the rest of deck-fidelity coverage. Ordered execution and current blockers: `docs/plans/current-workstream-plan.md`.
 - [ ] Keep the milestone roadmap and split rules-engine phase files aligned as phase status changes land.
 
 ## Milestone 4 - Full Deck Rules Coverage

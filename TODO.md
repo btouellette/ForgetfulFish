@@ -2,6 +2,8 @@
 
 Status: active follow-up items that are not already tracked in a dedicated plan doc.
 
+The operational items below are scheduled as step `S4` in `docs/plans/current-workstream-plan.md`.
+
 ## Current Follow-ups
 
 - [ ] Rotate all `.env` secrets after development is complete.
