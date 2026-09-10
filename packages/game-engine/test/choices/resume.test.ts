@@ -57,12 +57,15 @@ function buildPausedChoiceState(choice: PendingChoice): GameState {
         source: { id: object.id, zcc: object.zcc },
         controller: "p1",
         targets: [],
-        cursor: { kind: "waiting_choice", choiceId: choice.id },
+        cursor: {
+          kind: "waiting_choice",
+          choiceId: choice.id,
+          resumePath: [1],
+          phase: "effects"
+        },
         whiteboard: {
           actions: [],
-          scratch: {
-            resumeStepIndex: 1
-          }
+          scratch: {}
         }
       }
     }
@@ -209,7 +212,7 @@ describe("choices/resume", () => {
 
   it("rejects MAKE_CHOICE when stack cursor is not waiting_choice", () => {
     const state = buildPausedChoiceState(pendingYesNoChoice());
-    state.stack[0]!.effectContext.cursor = { kind: "step", index: 1 };
+    state.stack[0]!.effectContext.cursor = { kind: "node", path: [1], phase: "effects" };
 
     expect(() =>
       processCommand(
@@ -222,7 +225,12 @@ describe("choices/resume", () => {
 
   it("rejects MAKE_CHOICE when cursor choiceId does not match pending choice id", () => {
     const state = buildPausedChoiceState(pendingYesNoChoice());
-    state.stack[0]!.effectContext.cursor = { kind: "waiting_choice", choiceId: "choice-other" };
+    state.stack[0]!.effectContext.cursor = {
+      kind: "waiting_choice",
+      choiceId: "choice-other",
+      resumePath: [1],
+      phase: "effects"
+    };
 
     expect(() =>
       processCommand(

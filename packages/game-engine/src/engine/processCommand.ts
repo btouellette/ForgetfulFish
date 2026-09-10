@@ -198,7 +198,7 @@ function handleMakeChoiceCommand(
     pendingChoice === null &&
     resumedTopItem !== undefined &&
     (resumedTopItem.effectContext.cursor.kind === "start" ||
-      resumedTopItem.effectContext.cursor.kind === "step")
+      resumedTopItem.effectContext.cursor.kind === "node")
   ) {
     const resolved = resolveTopOfStack(nextState, rng);
     nextState = resolved.state;

@@ -4,7 +4,7 @@ import type { GameEvent, GameEventPayload } from "../../events/event";
 import type { Rng } from "../../rng/rng";
 import type { GameState } from "../../state/gameState";
 import type { OnResolveRegistry } from "../onResolveRegistry";
-import type { StackItem } from "../stackItem";
+import type { ResolutionPath, StackItem } from "../stackItem";
 
 export type PauseResult = {
   state: GameState;
@@ -26,6 +26,8 @@ export type ResolveMutableState = {
 export type ResolveEffectHandlerContext = {
   state: Readonly<GameState>;
   stackItem: StackItem;
+  /** Where the executing effect sits in the card's resolution tree, used to resume after a pause. */
+  path: ResolutionPath;
   cardDefinition: CardDefinition;
   rng: Rng;
   mutable: ResolveMutableState;

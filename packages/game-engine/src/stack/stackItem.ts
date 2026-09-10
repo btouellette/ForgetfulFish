@@ -4,10 +4,24 @@ import type { ObjectRef, PlayerId } from "../state/objectRef";
 
 export type StackItemId = string;
 
+/**
+ * Position within a card's `onResolve` tree. Each entry indexes one level of composition, so a flat
+ * spec list resolves at `[i]` and a spec nested inside a composite node at `[i, j, ...]`.
+ */
+export type ResolutionPath = number[];
+
+/** Which half of resolution the cursor sits in: the card's effects, or its action pipeline. */
+export type ResolutionPhase = "effects" | "pipeline";
+
 export type ResolutionCursor =
   | { kind: "start" }
-  | { kind: "step"; index: number }
-  | { kind: "waiting_choice"; choiceId: string }
+  | { kind: "node"; path: ResolutionPath; phase: ResolutionPhase }
+  | {
+      kind: "waiting_choice";
+      choiceId: string;
+      resumePath: ResolutionPath;
+      phase: ResolutionPhase;
+    }
   | { kind: "done" };
 
 export type Whiteboard = {

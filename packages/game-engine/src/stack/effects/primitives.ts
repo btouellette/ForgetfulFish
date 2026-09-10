@@ -1,9 +1,10 @@
 import type { GameState } from "../../state/gameState";
-import type { StackItem } from "../stackItem";
+import type { ResolutionPath, StackItem } from "../stackItem";
 import type { PauseResult, ResolveEffectResult } from "./types";
 
 type PauseContext = {
   stackItem: StackItem;
+  path: ResolutionPath;
   pauseWithChoice: (
     choice: NonNullable<GameState["pendingChoice"]>,
     updatedTopItem: StackItem
@@ -19,7 +20,12 @@ export function pauseWithChoiceAndScratch(
     ...context.stackItem,
     effectContext: {
       ...context.stackItem.effectContext,
-      cursor: { kind: "waiting_choice", choiceId: choice.id },
+      cursor: {
+        kind: "waiting_choice",
+        choiceId: choice.id,
+        resumePath: [...context.path],
+        phase: "effects"
+      },
       whiteboard: {
         ...context.stackItem.effectContext.whiteboard,
         scratch: {

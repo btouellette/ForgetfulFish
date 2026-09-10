@@ -32,6 +32,7 @@ function makeContext(stackItem: StackItem): {
   }> = [];
   const context = {
     stackItem,
+    path: [3],
     pauseWithChoice: (
       choice: NonNullable<PauseResult["pendingChoice"]>,
       updatedTopItem: StackItem
@@ -69,11 +70,12 @@ describe("stack/effects/requestChoice", () => {
     });
     expect(pause.updatedTopItem.effectContext.cursor).toEqual({
       kind: "waiting_choice",
-      choiceId: "stack-1:brainstorm:selected:choose-cards"
+      choiceId: "stack-1:brainstorm:selected:choose-cards",
+      resumePath: [3],
+      phase: "effects"
     });
-    expect(pause.updatedTopItem.effectContext.whiteboard.scratch).toMatchObject({
-      "brainstorm:selected:choiceId": "stack-1:brainstorm:selected:choose-cards",
-      "resumeStepIndex:stack-1:brainstorm:selected:choose-cards": 0
+    expect(pause.updatedTopItem.effectContext.whiteboard.scratch).toEqual({
+      "brainstorm:selected:choiceId": "stack-1:brainstorm:selected:choose-cards"
     });
   });
 

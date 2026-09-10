@@ -197,8 +197,11 @@ describe("stack/resolve pipeline choice integration", () => {
     const top = result.state.stack[result.state.stack.length - 1];
     expect(top?.effectContext.cursor).toEqual({
       kind: "waiting_choice",
-      choiceId: result.pendingChoice.id
+      choiceId: result.pendingChoice.id,
+      resumePath: [islandCardDefinition.onResolve?.length ?? 0],
+      phase: "pipeline"
     });
+    expect(top?.effectContext.whiteboard.scratch).toEqual({});
   });
 
   it("continues resolution after CHOOSE_REPLACEMENT is provided", () => {

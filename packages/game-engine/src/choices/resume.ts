@@ -163,25 +163,6 @@ function validateChoicePayload(choice: PendingChoice, payload: ChoicePayload): v
   }
 }
 
-function getResumeStepIndex(state: Readonly<GameState>, choice: PendingChoice): number {
-  const topItem = state.stack[state.stack.length - 1];
-  if (topItem === undefined) {
-    return 0;
-  }
-
-  const byId = topItem.effectContext.whiteboard.scratch[`resumeStepIndex:${choice.id}`];
-  if (typeof byId === "number" && Number.isInteger(byId) && byId >= 0) {
-    return byId;
-  }
-
-  const fallback = topItem.effectContext.whiteboard.scratch.resumeStepIndex;
-  if (typeof fallback === "number" && Number.isInteger(fallback) && fallback >= 0) {
-    return fallback;
-  }
-
-  return 0;
-}
-
 export function resumeChoiceResolution(
   state: Readonly<GameState>,
   command: MakeChoiceCommand
@@ -205,11 +186,12 @@ export function resumeChoiceResolution(
     throw new Error("cannot resume missing top stack item");
   }
 
-  if (topItem.effectContext.cursor.kind !== "waiting_choice") {
+  const cursor = topItem.effectContext.cursor;
+  if (cursor.kind !== "waiting_choice") {
     throw new Error("top stack item is not waiting for a choice");
   }
 
-  if (topItem.effectContext.cursor.choiceId !== state.pendingChoice.id) {
+  if (cursor.choiceId !== state.pendingChoice.id) {
     throw new Error("pending choice id does not match stack cursor choice id");
   }
 
@@ -218,26 +200,13 @@ export function resumeChoiceResolution(
     `choice:${state.pendingChoice.id}`,
     command.payload
   );
-  const isPipelineChoice =
-    resumedContext.whiteboard.scratch[`pipelineChoice:${topItem.id}`] === true &&
-    state.pendingChoice.type === "CHOOSE_REPLACEMENT";
-  const nextStep = getResumeStepIndex(state, state.pendingChoice) + 1;
 
   const nextStack = state.stack.slice(0, -1);
   nextStack.push({
     ...topItem,
     effectContext: {
       ...resumedContext,
-      cursor: { kind: "step", index: nextStep },
-      whiteboard: isPipelineChoice
-        ? {
-            ...resumedContext.whiteboard,
-            scratch: {
-              ...resumedContext.whiteboard.scratch,
-              [`pipelineChoice:${topItem.id}`]: true
-            }
-          }
-        : resumedContext.whiteboard
+      cursor: { kind: "node", path: [...cursor.resumePath], phase: cursor.phase }
     }
   });
 

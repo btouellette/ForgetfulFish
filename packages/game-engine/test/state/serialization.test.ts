@@ -130,6 +130,46 @@ describe("state/serialization", () => {
     expect(serialized.lkiStore["obj-1:0"]?.base.counters).toEqual({ charge: 2 });
   });
 
+  it("round-trips a paused resolution cursor with its resume path", () => {
+    const state = createInitialGameState("p1", "p2", {
+      id: "game-cursor",
+      rngSeed: "seed-cursor"
+    });
+
+    state.stack = [
+      {
+        id: "stack-item-1",
+        object: { id: "obj-1", zcc: 0 },
+        controller: "p1",
+        targets: [],
+        effectContext: {
+          stackItemId: "stack-item-1",
+          source: { id: "obj-1", zcc: 0 },
+          controller: "p1",
+          targets: [],
+          cursor: {
+            kind: "waiting_choice",
+            choiceId: "choice-1",
+            resumePath: [1, 0, 2],
+            phase: "effects"
+          },
+          whiteboard: { actions: [], scratch: {} }
+        }
+      }
+    ];
+
+    const restored = deserializeGameState(
+      JSON.parse(JSON.stringify(serializeGameState(state))) as SerializedGameState
+    );
+
+    expect(restored.stack[0]?.effectContext.cursor).toEqual({
+      kind: "waiting_choice",
+      choiceId: "choice-1",
+      resumePath: [1, 0, 2],
+      phase: "effects"
+    });
+  });
+
   it("serializes __proto__ keys without mutating object prototypes", () => {
     const state = createInitialGameState("p1", "p2", {
       id: "game-proto",

@@ -23,12 +23,12 @@ function makeContext(cursor: EffectContext["cursor"], whiteboard: Whiteboard): E
 }
 
 describe("stack/stackItem", () => {
-  it("advances cursor from start to step 0", () => {
+  it("advances cursor from start to the first node", () => {
     const context = makeContext({ kind: "start" }, makeWhiteboard());
 
     const next = advanceCursor(context);
 
-    expect(next.cursor).toEqual({ kind: "step", index: 0 });
+    expect(next.cursor).toEqual({ kind: "node", path: [0], phase: "effects" });
   });
 
   it("writes and reads whiteboard scratch values", () => {
@@ -49,7 +49,7 @@ describe("stack/stackItem", () => {
       count: 1
     };
     const context = makeContext(
-      { kind: "waiting_choice", choiceId: "choice-1" },
+      { kind: "waiting_choice", choiceId: "choice-1", resumePath: [2], phase: "effects" },
       makeWhiteboard([drawAction])
     );
     const withScratch = writeToScratch(context, "selected", ["obj-2", "obj-3"]);
@@ -57,17 +57,41 @@ describe("stack/stackItem", () => {
     const next = advanceCursor(withScratch);
 
     expect(next).not.toBe(withScratch);
-    expect(next.cursor).toEqual({ kind: "waiting_choice", choiceId: "choice-1" });
+    expect(next.cursor).toEqual({
+      kind: "waiting_choice",
+      choiceId: "choice-1",
+      resumePath: [2],
+      phase: "effects"
+    });
     expect(next.whiteboard.actions).toHaveLength(1);
     expect(readFromScratch<string[]>(next, "selected")).toEqual(["obj-2", "obj-3"]);
   });
 
-  it("increments step index by one", () => {
-    const context = makeContext({ kind: "step", index: 2 }, makeWhiteboard());
+  it("increments the last path segment by one", () => {
+    const context = makeContext({ kind: "node", path: [2], phase: "effects" }, makeWhiteboard());
 
     const next = advanceCursor(context);
 
-    expect(next.cursor).toEqual({ kind: "step", index: 3 });
+    expect(next.cursor).toEqual({ kind: "node", path: [3], phase: "effects" });
+  });
+
+  it("advances within a nested node without disturbing its ancestors", () => {
+    const context = makeContext(
+      { kind: "node", path: [1, 0, 4], phase: "effects" },
+      makeWhiteboard()
+    );
+
+    const next = advanceCursor(context);
+
+    expect(next.cursor).toEqual({ kind: "node", path: [1, 0, 5], phase: "effects" });
+  });
+
+  it("keeps the pipeline phase while advancing", () => {
+    const context = makeContext({ kind: "node", path: [0], phase: "pipeline" }, makeWhiteboard());
+
+    const next = advanceCursor(context);
+
+    expect(next.cursor).toEqual({ kind: "node", path: [1], phase: "pipeline" });
   });
 
   it("supports whiteboard action storage", () => {

@@ -363,10 +363,15 @@ describe("engine/processCommand", () => {
                           source: { id: stackObject.id, zcc: stackObject.zcc },
                           controller: "p1",
                           targets: [],
-                          cursor: { kind: "waiting_choice", choiceId: pendingChoice.id },
+                          cursor: {
+                            kind: "waiting_choice",
+                            choiceId: pendingChoice.id,
+                            resumePath: [0],
+                            phase: "effects"
+                          },
                           whiteboard: {
                             actions: [],
-                            scratch: { resumeStepIndex: 0 }
+                            scratch: {}
                           }
                         }
                       }

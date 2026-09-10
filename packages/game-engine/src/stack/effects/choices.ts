@@ -103,10 +103,7 @@ export function requestChoice<R extends ChoiceRequest>(
 
     return {
       kind: "paused",
-      result: pauseWithChoiceAndScratch(context, choice, {
-        [choiceIdKey]: choiceId,
-        [`resumeStepIndex:${choiceId}`]: 0
-      })
+      result: pauseWithChoiceAndScratch(context, choice, { [choiceIdKey]: choiceId })
     };
   }
 

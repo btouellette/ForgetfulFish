@@ -41,7 +41,6 @@ import {
   listLandTypeInstancesInAbilities,
   listLandTypesInAbilities
 } from "../../effects/continuous/textChange";
-import type { GameState } from "../../state/gameState";
 import { zoneKey } from "../../state/zones";
 import { requestChoice } from "./choices";
 import type { ResolveEffectHandlerContext, ResolveEffectResult } from "./types";

@@ -8,13 +8,16 @@ export function advanceCursor(context: EffectContext): EffectContext {
     case "start":
       return {
         ...context,
-        cursor: { kind: "step", index: 0 }
+        cursor: { kind: "node", path: [0], phase: "effects" }
       };
-    case "step":
+    case "node": {
+      const path = [...context.cursor.path];
+      path[path.length - 1] = (path[path.length - 1] ?? -1) + 1;
       return {
         ...context,
-        cursor: { kind: "step", index: context.cursor.index + 1 }
+        cursor: { kind: "node", path, phase: context.cursor.phase }
       };
+    }
     case "waiting_choice":
     case "done":
       return {
