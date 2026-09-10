@@ -14,6 +14,9 @@ function collectLeafKinds(
       case "sequence":
         collectLeafKinds(node.children, collected);
         break;
+      case "for_each_player":
+        collectLeafKinds([node.body], collected);
+        break;
       case "conditional":
         collectLeafKinds(node.else === undefined ? [node.then] : [node.then, node.else], collected);
         break;

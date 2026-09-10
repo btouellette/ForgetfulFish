@@ -93,17 +93,20 @@ export function requestChoice<R extends ChoiceRequest>(
   request: R
 ): ChoiceOutcome<R["type"]> {
   const { stackItem } = context;
-  const scratch = stackItem.effectContext.whiteboard.scratch;
+  const scratch = context.scratchView();
+  const namespacedStoreKey = context.scratchKey(request.storeKey);
   const choiceIdKey = `${request.storeKey}:choiceId`;
   const storedChoiceId = scratch[choiceIdKey];
 
   if (typeof storedChoiceId !== "string") {
-    const choiceId = `${stackItem.id}:${request.storeKey}:${request.idSuffix}`;
+    const choiceId = `${stackItem.id}:${namespacedStoreKey}:${request.idSuffix}`;
     const choice = buildPendingChoice(choiceId, stackItem.controller, request);
 
     return {
       kind: "paused",
-      result: pauseWithChoiceAndScratch(context, choice, { [choiceIdKey]: choiceId })
+      result: pauseWithChoiceAndScratch(context, choice, {
+        [context.scratchKey(choiceIdKey)]: choiceId
+      })
     };
   }
 

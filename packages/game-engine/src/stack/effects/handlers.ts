@@ -107,6 +107,10 @@ function resolvePlayerId(
     return context.stackItem.controller;
   }
 
+  if (player === "iteration_player") {
+    return context.iterationPlayerId ?? context.stackItem.controller;
+  }
+
   const playerTarget = context.stackItem.targets.find((target) => target.kind === "player");
   return playerTarget?.playerId ?? context.stackItem.controller;
 }
@@ -124,7 +128,7 @@ function readStoredStringArray(
   key: string,
   message: string
 ): string[] {
-  const stored = context.stackItem.effectContext.whiteboard.scratch[key];
+  const stored = context.scratchView()[key];
   if (!Array.isArray(stored) || !stored.every((value) => typeof value === "string")) {
     throw new Error(message);
   }
@@ -136,7 +140,7 @@ function readOptionalStoredString(
   context: ResolveEffectHandlerContext,
   key: string
 ): string | null {
-  const stored = context.stackItem.effectContext.whiteboard.scratch[key];
+  const stored = context.scratchView()[key];
   return typeof stored === "string" ? stored : null;
 }
 
@@ -205,7 +209,7 @@ function resolveCount(count: ResolveCount, context: ResolveEffectHandlerContext)
   }
 
   return evaluateResolveValue(count, {
-    scratch: context.stackItem.effectContext.whiteboard.scratch,
+    scratch: context.scratchView(),
     zones: context.mutable.nextZones,
     objectPool: context.mutable.nextObjectPool,
     resolveZone: (zone, playerId) => resolveZone(context, zone, playerId),

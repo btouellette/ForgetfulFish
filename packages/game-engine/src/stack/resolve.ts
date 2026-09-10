@@ -206,10 +206,39 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     };
   };
 
+  const scratchKeyFor = (namespace: string | undefined, key: string): string =>
+    namespace === undefined ? key : `${namespace}:${key}`;
+
+  const scratchViewFor = (namespace: string | undefined): Readonly<Record<string, unknown>> => {
+    const scratch = activeStackItem.effectContext.whiteboard.scratch;
+    if (namespace === undefined) {
+      return scratch;
+    }
+
+    const prefix = `${namespace}:`;
+    const view: Record<string, unknown> = { ...scratch };
+    for (const [key, value] of Object.entries(scratch)) {
+      if (key.startsWith(prefix)) {
+        view[key.slice(prefix.length)] = value;
+      }
+    }
+
+    return view;
+  };
+
+  const iterationPlayerIds = (order: "apnap" | "controller_first"): string[] => {
+    const first = order === "apnap" ? state.turnState.activePlayerId : activeStackItem.controller;
+    const other = state.players.find((player) => player.id !== first)?.id;
+
+    return other === undefined ? [first] : [first, other];
+  };
+
   const walkNode = (
     node: ResolveEffectNode,
     path: number[],
-    resumePath: readonly number[]
+    resumePath: readonly number[],
+    iterationPlayerId?: string,
+    scratchNamespace?: string
   ): ResolveStackResult | null => {
     switch (node.kind) {
       case "sequence": {
@@ -223,7 +252,34 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
           const paused = walkNode(
             child,
             [...path, index],
-            index === startIndex ? resumePath.slice(1) : []
+            index === startIndex ? resumePath.slice(1) : [],
+            iterationPlayerId,
+            scratchNamespace
+          );
+          if (paused !== null) {
+            return paused;
+          }
+        }
+
+        return null;
+      }
+      case "for_each_player": {
+        const players = iterationPlayerIds(node.order);
+        const startIndex = resumePath[0] ?? 0;
+        for (let index = startIndex; index < players.length; index += 1) {
+          const playerId = players[index];
+          if (playerId === undefined) {
+            continue;
+          }
+
+          // Each iteration reads and writes scratch under its own namespace, so one player's
+          // stored choices are never visible to the next player's pass over the same effects.
+          const paused = walkNode(
+            node.body,
+            [...path, index],
+            index === startIndex ? resumePath.slice(1) : [],
+            playerId,
+            `iteration@${[...path, index].join(".")}`
           );
           if (paused !== null) {
             return paused;
@@ -239,7 +295,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
           resumePath.length > 0
             ? (resumePath[0] ?? 0)
             : evaluateResolveCondition(node.if, {
-                  scratch: activeStackItem.effectContext.whiteboard.scratch,
+                  scratch: scratchViewFor(scratchNamespace),
                   objectPool: mutable.nextObjectPool
                 })
               ? 0
@@ -248,18 +304,35 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
 
         return branch === undefined
           ? null
-          : walkNode(branch, [...path, branchIndex], resumePath.slice(1));
+          : walkNode(
+              branch,
+              [...path, branchIndex],
+              resumePath.slice(1),
+              iterationPlayerId,
+              scratchNamespace
+            );
       }
       default: {
         const effectResult = resolveOnResolveEffect(node, {
           state,
           stackItem: activeStackItem,
           path,
+          iterationPlayerId,
+          scratchKey: (key) => scratchKeyFor(scratchNamespace, key),
+          scratchView: () => scratchViewFor(scratchNamespace),
           cardDefinition,
           rng,
           mutable,
           effects: onResolveRegistry,
-          writeScratch,
+          writeScratch: (entries) =>
+            writeScratch(
+              Object.fromEntries(
+                Object.entries(entries).map(([key, value]) => [
+                  scratchKeyFor(scratchNamespace, key),
+                  value
+                ])
+              )
+            ),
           enqueueAction,
           emit,
           pauseWithChoice

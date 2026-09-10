@@ -28,6 +28,15 @@ export type ResolveEffectHandlerContext = {
   stackItem: StackItem;
   /** Where the executing effect sits in the card's resolution tree, used to resume after a pause. */
   path: ResolutionPath;
+  /** Set while resolving inside a `for_each_player` body; selected by `iteration_player`. */
+  iterationPlayerId?: string | undefined;
+  /**
+   * Namespaces a card-declared scratch key to the executing iteration, so one player's stored
+   * values are never visible to the next player's pass over the same effects.
+   */
+  scratchKey: (key: string) => string;
+  /** Scratch as the executing iteration sees it: its own values shadow the shared ones. */
+  scratchView: () => Readonly<Record<string, unknown>>;
   cardDefinition: CardDefinition;
   rng: Rng;
   mutable: ResolveMutableState;

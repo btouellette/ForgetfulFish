@@ -4,7 +4,10 @@ import type { Mode } from "../commands/command";
 
 export type ResolveStoredValueKey = string;
 export type ResolveTargetObjectSelector = "first_object_target";
-export type ResolvePlayerSelector = "controller" | "target_player_or_controller";
+export type ResolvePlayerSelector =
+  | "controller"
+  | "target_player_or_controller"
+  | "iteration_player";
 export type ResolveZoneSelector = "hand" | "library" | "graveyard";
 
 /** An arithmetic expression evaluated against the game state at resolution time. */
@@ -157,6 +160,12 @@ export type ResolveCondition =
  */
 export type ResolveEffectNode =
   | { kind: "sequence"; children: ResolveEffectNode[] }
+  | {
+      kind: "for_each_player";
+      /** `apnap` starts with the active player; `controller_first` starts with the controller. */
+      order: "apnap" | "controller_first";
+      body: ResolveEffectNode;
+    }
   | {
       kind: "conditional";
       if: ResolveCondition;

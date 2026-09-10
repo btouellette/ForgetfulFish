@@ -33,6 +33,8 @@ function makeContext(stackItem: StackItem): {
   const context = {
     stackItem,
     path: [3],
+    scratchKey: (key: string) => key,
+    scratchView: () => stackItem.effectContext.whiteboard.scratch,
     pauseWithChoice: (
       choice: NonNullable<PauseResult["pendingChoice"]>,
       updatedTopItem: StackItem
