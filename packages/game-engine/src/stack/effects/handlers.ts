@@ -33,7 +33,6 @@ import type {
   ShuffleZoneSpec,
   UntapTargetSpec
 } from "../../cards/resolveEffect";
-import type { ChoicePayload } from "../../commands/command";
 import { getComputedObjectView } from "../../effects/continuous/access";
 import { LAYERS } from "../../effects/continuous/layers";
 import {
@@ -44,66 +43,8 @@ import {
 } from "../../effects/continuous/textChange";
 import type { GameState } from "../../state/gameState";
 import { zoneKey } from "../../state/zones";
-import { pauseWithChoiceAndScratch, requireChoicePayload, requireUniqueIds } from "./primitives";
+import { requestChoice } from "./choices";
 import type { ResolveEffectHandlerContext, ResolveEffectResult } from "./types";
-
-function isChooseCardsPayload(
-  payload: unknown
-): payload is Extract<ChoicePayload, { type: "CHOOSE_CARDS" }> {
-  if (typeof payload !== "object" || payload === null) {
-    return false;
-  }
-
-  const candidate = payload as Record<string, unknown>;
-  return (
-    candidate.type === "CHOOSE_CARDS" &&
-    Array.isArray(candidate.selected) &&
-    candidate.selected.every((value) => typeof value === "string")
-  );
-}
-
-function isOrderCardsPayload(
-  payload: unknown
-): payload is Extract<ChoicePayload, { type: "ORDER_CARDS" }> {
-  if (typeof payload !== "object" || payload === null) {
-    return false;
-  }
-
-  const candidate = payload as Record<string, unknown>;
-  return (
-    candidate.type === "ORDER_CARDS" &&
-    Array.isArray(candidate.ordered) &&
-    candidate.ordered.every((value) => typeof value === "string")
-  );
-}
-
-function isNameCardPayload(
-  payload: unknown
-): payload is Extract<ChoicePayload, { type: "NAME_CARD" }> {
-  if (typeof payload !== "object" || payload === null) {
-    return false;
-  }
-
-  const candidate = payload as Record<string, unknown>;
-  return candidate.type === "NAME_CARD" && typeof candidate.cardName === "string";
-}
-
-function isChooseModePayload(
-  payload: unknown
-): payload is Extract<ChoicePayload, { type: "CHOOSE_MODE" }> {
-  if (typeof payload !== "object" || payload === null) {
-    return false;
-  }
-
-  const candidate = payload as Record<string, unknown>;
-  const mode = candidate.mode;
-  return (
-    candidate.type === "CHOOSE_MODE" &&
-    typeof mode === "object" &&
-    mode !== null &&
-    typeof (mode as Record<string, unknown>).id === "string"
-  );
-}
 
 function baseActionFields(
   context: ResolveEffectHandlerContext
@@ -331,36 +272,18 @@ function resolveChooseCards(
     return { kind: "continue" };
   }
 
-  const choiceIdKey = `${spec.storeKey}:choiceId`;
-  if (typeof stackItem.effectContext.whiteboard.scratch[choiceIdKey] !== "string") {
-    const choiceId = `${stackItem.id}:${spec.storeKey}:choose-cards`;
-    const choice: NonNullable<GameState["pendingChoice"]> = {
-      id: choiceId,
-      type: "CHOOSE_CARDS",
-      forPlayer: stackItem.controller,
-      prompt: spec.prompt,
-      constraints: {
-        candidates,
-        min: spec.min,
-        max: spec.max
-      }
-    };
-
-    return pauseWithChoiceAndScratch(context, choice, {
-      [choiceIdKey]: choiceId,
-      [`resumeStepIndex:${choiceId}`]: 0
-    });
+  const outcome = requestChoice(context, {
+    type: "CHOOSE_CARDS",
+    storeKey: spec.storeKey,
+    prompt: spec.prompt,
+    constraints: { candidates, min: spec.min, max: spec.max },
+    idSuffix: "choose-cards"
+  });
+  if (outcome.kind === "paused") {
+    return outcome.result;
   }
 
-  const payload = requireChoicePayload(
-    stackItem,
-    choiceIdKey,
-    isChooseCardsPayload,
-    `missing ${spec.kind} choice id in scratch state for '${spec.storeKey}'`,
-    `missing ${spec.kind} payload in scratch state for '${spec.storeKey}'`
-  );
-  requireUniqueIds(payload.selected, `${spec.kind} payload must contain unique cards`);
-  context.writeScratch({ [spec.storeKey]: [...payload.selected] });
+  context.writeScratch({ [spec.storeKey]: [...outcome.payload.selected] });
 
   return { kind: "continue" };
 }
@@ -374,32 +297,18 @@ function resolveOrderCards(
     spec.sourceKey,
     `missing ordered-card source '${spec.sourceKey}' in scratch state`
   );
-  const choiceIdKey = `${spec.storeKey}:choiceId`;
-  if (typeof context.stackItem.effectContext.whiteboard.scratch[choiceIdKey] !== "string") {
-    const choiceId = `${context.stackItem.id}:${spec.storeKey}:order-cards`;
-    const choice: NonNullable<GameState["pendingChoice"]> = {
-      id: choiceId,
-      type: "ORDER_CARDS",
-      forPlayer: context.stackItem.controller,
-      prompt: spec.prompt,
-      constraints: { cards: selectedCards }
-    };
-
-    return pauseWithChoiceAndScratch(context, choice, {
-      [choiceIdKey]: choiceId,
-      [`resumeStepIndex:${choiceId}`]: 0
-    });
+  const outcome = requestChoice(context, {
+    type: "ORDER_CARDS",
+    storeKey: spec.storeKey,
+    prompt: spec.prompt,
+    constraints: { cards: selectedCards },
+    idSuffix: "order-cards"
+  });
+  if (outcome.kind === "paused") {
+    return outcome.result;
   }
 
-  const payload = requireChoicePayload(
-    context.stackItem,
-    choiceIdKey,
-    isOrderCardsPayload,
-    `missing ${spec.kind} choice id in scratch state for '${spec.storeKey}'`,
-    `missing ${spec.kind} payload in scratch state for '${spec.storeKey}'`
-  );
-  requireUniqueIds(payload.ordered, `${spec.kind} payload must contain unique cards`);
-  context.writeScratch({ [spec.storeKey]: [...payload.ordered] });
+  context.writeScratch({ [spec.storeKey]: [...outcome.payload.ordered] });
 
   return { kind: "continue" };
 }
@@ -435,31 +344,18 @@ function resolveNameCard(
   spec: NameCardSpec,
   context: ResolveEffectHandlerContext
 ): ResolveEffectResult {
-  const choiceIdKey = `${spec.storeKey}:choiceId`;
-  if (typeof context.stackItem.effectContext.whiteboard.scratch[choiceIdKey] !== "string") {
-    const choiceId = `${context.stackItem.id}:${spec.storeKey}:name-card`;
-    const choice: NonNullable<GameState["pendingChoice"]> = {
-      id: choiceId,
-      type: "NAME_CARD",
-      forPlayer: context.stackItem.controller,
-      prompt: spec.prompt,
-      constraints: {}
-    };
-
-    return pauseWithChoiceAndScratch(context, choice, {
-      [choiceIdKey]: choiceId,
-      [`resumeStepIndex:${choiceId}`]: 0
-    });
+  const outcome = requestChoice(context, {
+    type: "NAME_CARD",
+    storeKey: spec.storeKey,
+    prompt: spec.prompt,
+    constraints: {},
+    idSuffix: "name-card"
+  });
+  if (outcome.kind === "paused") {
+    return outcome.result;
   }
 
-  const payload = requireChoicePayload(
-    context.stackItem,
-    choiceIdKey,
-    isNameCardPayload,
-    `missing ${spec.kind} choice id in scratch state for '${spec.storeKey}'`,
-    `missing ${spec.kind} payload in scratch state for '${spec.storeKey}'`
-  );
-  context.writeScratch({ [spec.storeKey]: payload.cardName });
+  context.writeScratch({ [spec.storeKey]: outcome.payload.cardName });
 
   return { kind: "continue" };
 }
@@ -473,30 +369,18 @@ function resolveChooseMode(
     return { kind: "continue" };
   }
 
-  const choiceIdKey = `${spec.storeKey}:choiceId`;
-  if (typeof context.stackItem.effectContext.whiteboard.scratch[choiceIdKey] !== "string") {
-    const choiceId = `${context.stackItem.id}:${spec.storeKey}:choose-mode`;
-    const choice: NonNullable<GameState["pendingChoice"]> = {
-      id: choiceId,
-      type: "CHOOSE_MODE",
-      forPlayer: context.stackItem.controller,
-      prompt: spec.prompt,
-      constraints: { modes }
-    };
-
-    return pauseWithChoiceAndScratch(context, choice, {
-      [choiceIdKey]: choiceId,
-      [`resumeStepIndex:${choiceId}`]: 0
-    });
+  const outcome = requestChoice(context, {
+    type: "CHOOSE_MODE",
+    storeKey: spec.storeKey,
+    prompt: spec.prompt,
+    constraints: { modes },
+    idSuffix: "choose-mode"
+  });
+  if (outcome.kind === "paused") {
+    return outcome.result;
   }
 
-  const payload = requireChoicePayload(
-    context.stackItem,
-    choiceIdKey,
-    isChooseModePayload,
-    `missing ${spec.kind} choice id in scratch state for '${spec.storeKey}'`,
-    `missing ${spec.kind} payload in scratch state for '${spec.storeKey}'`
-  );
+  const payload = outcome.payload;
 
   if (spec.modeSource.kind === "target_land_type_instances") {
     const target = resolveTargetObject(context, spec.modeSource.target);
