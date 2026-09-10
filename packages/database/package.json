@@ -17,14 +17,14 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.4.1",
-    "@prisma/client": "^7.4.1"
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0"
   },
   "devDependencies": {
     "@types/pg": "^8.15.6",
     "cross-env": "^10.1.0",
     "dotenv": "^17.2.3",
     "pg": "^8.16.3",
-    "prisma": "^7.4.1"
+    "prisma": "^7.10.0"
   }
 }

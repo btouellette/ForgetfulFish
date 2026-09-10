@@ -13,15 +13,15 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@auth/prisma-adapter": "^2.11.1",
+    "@auth/prisma-adapter": "^2.11.3",
     "@forgetful-fish/database": "workspace:*",
     "@forgetful-fish/game-engine": "workspace:*",
     "@forgetful-fish/realtime-contract": "workspace:*",
-    "@prisma/client": "^7.4.1",
+    "@prisma/client": "^7.10.0",
     "framer-motion": "^12.35.2",
-    "next": "^16.1.6",
-    "next-auth": "5.0.0-beta.30",
-    "nodemailer": "^7.0.13",
+    "next": "^16.3.4",
+    "next-auth": "5.0.0-beta.32",
+    "nodemailer": "^9.1.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "zustand": "^5.0.11"
