@@ -123,7 +123,7 @@
 ## 2026-09-10 Resolve-Effect Composition Before Phase 5
 
 - Resolves open question 32. The composable resolve-spec refactor lands **before** Phase 5 adds 13 cards,
-  planned as `docs/plans/rules-engine/phase-9-resolve-effect-composition.md`.
+  planned as `docs/plans/rules-engine/phase-4.1-resolve-effect-composition.md`.
 - Rationale is capability, not cleanliness: the flat `ResolveEffectSpec[]` has no branching, iteration, or
   arithmetic, so control flow gets encoded as per-card leaf kinds. `draw_by_named_hit` (Predict) and
   `draw_by_graveyard_self_count` (Accumulated Knowledge) already are that. Vision Charm (modal) and

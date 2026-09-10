@@ -60,7 +60,7 @@ landed, so they can run in parallel with engine work.
 
 Status: planned
 
-- [ ] Land the composable resolve-effect refactor before adding cards (`docs/plans/rules-engine/phase-9-resolve-effect-composition.md`); it gates Phase 5.
+- [ ] Land the composable resolve-effect refactor before adding cards (`docs/plans/rules-engine/phase-4.1-resolve-effect-composition.md`); it gates Phase 5.
 - [ ] Implement card handlers for the remaining deck cards (`docs/plans/rules-engine/phase-5-deck-completion.md`).
 - [ ] Add targeting and choice flows needed for full deck interactions.
 - [ ] Expand scenario coverage for representative card combinations.

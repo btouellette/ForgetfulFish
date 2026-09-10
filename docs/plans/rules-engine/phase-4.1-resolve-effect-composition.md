@@ -1,10 +1,10 @@
-# Rules Engine Implementation: Phase 9 — Resolve-effect composition
+# Rules Engine Implementation: Phase 4.1 — Resolve-effect composition
 
 Status: planned
 
-**Gates Phase 5.** This phase resolves open question 32. It is numbered 9 because it was identified after
-Phase 8, but it is scheduled *before* `docs/plans/rules-engine/phase-5-deck-completion.md`: Phase 5 adds 13
-cards, and two of them cannot be expressed with today's spec vocabulary at all (see "Forcing cases").
+**Gates Phase 5**, and resolves open question 32. Phase 5 adds 13 cards, and two of them cannot be expressed
+with today's spec vocabulary at all (see "Forcing cases"). Independent of Phase 4 — this touches resolution,
+not combat — so the two can run in parallel by separate agents.
 
 Scope: `packages/game-engine/src/stack/effects/`, `packages/game-engine/src/cards/resolveEffect.ts`,
 `packages/game-engine/src/stack/{resolve,onResolveRegistry,stackItem}.ts`, and the 11 shipped card
@@ -145,7 +145,7 @@ keyed by `ChoiceType`. This is the piece most likely to be copy-pasted 13 more t
 
 ## Tasks
 
-### [ ] P9.1 — Handler table and derived target requirements
+### [ ] P4.1.1 — Handler table and derived target requirements
 
 **Files**: `stack/effects/handlers.ts`, `stack/onResolveRegistry.ts`
 
@@ -164,7 +164,7 @@ Test: **Write tests FIRST**, then implement.
 6. All 12 existing card test files pass unchanged.
 Acceptance: adding a leaf kind requires editing one file, not two.
 
-### [ ] P9.2 — Single choice primitive; delete dead step abstraction
+### [ ] P4.1.2 — Single choice primitive; delete dead step abstraction
 
 **Files**: `stack/effects/primitives.ts`, `stack/effects/handlers.ts`
 
@@ -173,7 +173,7 @@ Extract `requestChoice` + a payload parser table; rewrite `choose_cards`, `order
 `runStepHandlers` / `getStepIndex` exports.
 
 **Test file**: `test/choices/resume.test.ts` (extend), `test/stack/effects/requestChoice.test.ts` (new)
-Depends: P9.1
+Depends: P4.1.1
 Test: **Write tests FIRST**, then implement.
 1. First pass with no stored choiceId pauses with the expected `PendingChoice`.
 2. Second pass with a stored payload writes `storeKey` and continues.
@@ -183,17 +183,17 @@ Test: **Write tests FIRST**, then implement.
 6. Brainstorm, Predict, Mind Bend, and Crystal Spray resolutions are byte-identical to before.
 Acceptance: one pause/resume implementation; `primitives.ts` has no unreferenced exports.
 
-### [ ] P9.3 — Path cursor
+### [ ] P4.1.3 — Path cursor
 
 **Files**: `stack/stackItem.ts`, `stack/resolve.ts`, `stack/effects/types.ts`
 
 Replace `{ kind: "step"; index }` with `{ kind: "node"; path: number[] }`, move the resume path onto
 `waiting_choice`, and delete `scratch.onResolveEffectIndex`, `resumeStepIndex:<choiceId>`, and
-`pipelineChoice:<id>`. Root stays a flat `sequence`, so paths are length 1 until P9.4 — behavior-preserving
+`pipelineChoice:<id>`. Root stays a flat `sequence`, so paths are length 1 until P4.1.4 — behavior-preserving
 by construction.
 
 **Test file**: `test/stack/stackItem.test.ts` (extend), `test/stack/resolvePipelineChoice.test.ts` (extend), `test/state/serialization.test.ts` (regenerate)
-Depends: P9.2
+Depends: P4.1.2
 Test: **Write tests FIRST**, then implement.
 1. `advanceCursor` walks a flat sequence root as `[0] → [1] → [2] → done`.
 2. A pause records `resumePath` and resumes at the same node, not the next one.
@@ -203,7 +203,7 @@ Test: **Write tests FIRST**, then implement.
 6. `test/integration/replay-determinism.test.ts` is unchanged and green.
 Acceptance: one resume mechanism; scratch holds only card data.
 
-### [ ] P9.4 — `sequence` + `conditional` + conditions; retire `draw_by_named_hit`
+### [ ] P4.1.4 — `sequence` + `conditional` + conditions; retire `draw_by_named_hit`
 
 **Files**: `cards/resolveEffect.ts`, `stack/effects/{conditions.ts,handlers.ts}`, `stack/resolve.ts`, `cards/predict.ts`
 
@@ -211,7 +211,7 @@ Add the node union and the `ResolveCondition` evaluator; wrap every existing car
 re-express Predict as `conditional` and delete `draw_by_named_hit` from the union and the table.
 
 **Test file**: `test/stack/effects/conditional.test.ts` (new), `test/cards/predict.test.ts` (extend)
-Depends: P9.3
+Depends: P4.1.3
 Test: **Write tests FIRST**, then implement.
 1. `conditional` with a true condition executes `then` and skips `else`.
 2. A missing `else` on a false condition continues without error.
@@ -222,7 +222,7 @@ Test: **Write tests FIRST**, then implement.
 7. `draw_by_named_hit` no longer exists in `ResolveEffectKind`.
 Acceptance: branching is expressible without a new leaf kind.
 
-### [ ] P9.5 — Value expressions; retire `draw_by_graveyard_self_count`
+### [ ] P4.1.5 — Value expressions; retire `draw_by_graveyard_self_count`
 
 **Files**: `cards/resolveEffect.ts`, `stack/effects/values.ts`, `cards/accumulated-knowledge.ts`
 
@@ -230,7 +230,7 @@ Widen counts to `ResolveValue`; implement `literal`, `scratch_number`, `count_in
 `clamp`; re-express Accumulated Knowledge and delete `draw_by_graveyard_self_count`.
 
 **Test file**: `test/stack/effects/values.test.ts` (new), `test/cards/accumulatedKnowledge.test.ts` (extend)
-Depends: P9.4
+Depends: P4.1.4
 Test: **Write tests FIRST**, then implement.
 1. `count_in_zone` with a card-definition filter counts only matching objects.
 2. `count_in_zone` is evaluated against mutable in-resolution state, not the pre-resolution snapshot.
@@ -240,7 +240,7 @@ Test: **Write tests FIRST**, then implement.
 6. `draw_by_graveyard_self_count` no longer exists in `ResolveEffectKind`.
 Acceptance: no leaf kind encodes arithmetic for one card.
 
-### [ ] P9.6 — `for_each_player`
+### [ ] P4.1.6 — `for_each_player`
 
 **Files**: `cards/resolveEffect.ts`, `stack/effects/handlers.ts`, `mode/gameMode.ts` (read `simultaneousDrawOrder`)
 
@@ -248,7 +248,7 @@ Iteration node binding a current player for its body, ordered through the `GameM
 ordering stays mode-routed. Unblocks P5.1.
 
 **Test file**: `test/stack/effects/forEachPlayer.test.ts` (new)
-Depends: P9.5
+Depends: P4.1.5
 Test: **Write tests FIRST**, then implement.
 1. Body executes once per player in APNAP order.
 2. `player: "controller"` inside the body resolves to the *iteration* player, not the spell's controller.
@@ -258,7 +258,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` passes after each iteration.
 Acceptance: per-player effects need no per-card leaf kind.
 
-### [ ] P9.7 — Typed scratch references
+### [ ] P4.1.7 — Typed scratch references
 
 **Files**: `cards/resolveEffect.ts`, `stack/effects/handlers.ts`, all card definitions
 
@@ -267,7 +267,7 @@ Replace `storeKey: string` / `sourceKey: string` with a branded `ScratchRef<T>` 
 instead of a runtime throw. Update the card-authoring section of the plan README.
 
 **Test file**: `test/stack/effects/scratchRef.test.ts` (new)
-Depends: P9.6
+Depends: P4.1.6
 Test: **Write tests FIRST**, then implement.
 1. A `ScratchRef<string[]>` read as `string` fails to typecheck (Vitest `expectTypeOf`; needs `typecheck` enabled in the game-engine Vitest config).
 2. Round-trip write/read preserves value and type.
@@ -292,6 +292,6 @@ Acceptance: no raw string scratch keys remain in card definitions.
 
 - Migration surface is small *now* and only grows: 11 card definitions, of which 9 are a mechanical wrap in
   `sequence` and 2 change shape. After Phase 5 it is 24.
-- P9.1-P9.3 are behavior-preserving and can land without any card change; P9.4-P9.6 are the capability
-  additions Phase 5 depends on. P9.7 is hygiene and may trail Phase 5 if schedule pressure demands.
+- P4.1.1-P4.1.3 are behavior-preserving and can land without any card change; P4.1.4-P4.1.6 are the capability
+  additions Phase 5 depends on. P4.1.7 is hygiene and may trail Phase 5 if schedule pressure demands.
 - No transport impact: no new `ChoiceType`, so `packages/realtime-contract` and the web client are untouched.
