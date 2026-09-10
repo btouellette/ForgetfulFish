@@ -120,6 +120,24 @@
 - Creatures entering the battlefield become summoning sick through centralized battlefield-entry handling, with computed haste clearing that restriction in the derived view.
 - Attacker legality and must-attack enforcement already live on the computed-view combat path ahead of Phase 4, while blocker declaration remains scaffolding pending full combat implementation.
 
+## 2026-09-10 Resolve-Effect Composition Before Phase 5
+
+- Resolves open question 32. The composable resolve-spec refactor lands **before** Phase 5 adds 13 cards,
+  planned as `docs/plans/rules-engine/phase-9-resolve-effect-composition.md`.
+- Rationale is capability, not cleanliness: the flat `ResolveEffectSpec[]` has no branching, iteration, or
+  arithmetic, so control flow gets encoded as per-card leaf kinds. `draw_by_named_hit` (Predict) and
+  `draw_by_graveyard_self_count` (Accumulated Knowledge) already are that. Vision Charm (modal) and
+  Diminishing Returns (per-player, "draw up to seven") cannot be expressed at all without it.
+- `onResolve` becomes a node tree (`sequence` / `conditional` / `for_each_player` over unchanged leaf specs),
+  with `ResolveCondition` and `ResolveValue` expression unions; both existing composite leaf kinds are deleted.
+- Resolution cursor moves from a flat `scratch.onResolveEffectIndex` to a path into the tree, collapsing the
+  two parallel resume mechanisms (effect loop vs. action pipeline) into one. This changes the persisted
+  `StackItem` shape; hard cutover with no migration shim, since no games are live.
+- `OnResolveRegistry` derives target requirements from a handler table by walking the node tree, instead of
+  hardcoding spec kinds in a second file. Conditional branches count as targeting because targets are chosen
+  at cast time, before modes.
+- No transport impact: no new `ChoiceType`, so `packages/realtime-contract` and the web client are unaffected.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.

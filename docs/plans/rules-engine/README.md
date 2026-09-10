@@ -13,8 +13,12 @@ Status: active implementation reference. The monolithic plan has been split by p
 - `docs/plans/rules-engine/phase-6-view-network-and-replay.md`
 - `docs/plans/rules-engine/phase-7-testing-and-polish.md`
 - `docs/plans/rules-engine/phase-8-opening-hands-and-mulligan.md`
+- `docs/plans/rules-engine/phase-9-resolve-effect-composition.md`
 
-Phase 8 has no dependency on Phases 4-7 and can be executed in parallel by a separate agent.
+Phase numbers are identifiers, not a strict execution order:
+- Phase 8 has no dependency on Phases 4-7 and can be executed in parallel by a separate agent.
+- Phase 9 gates Phase 5. It replaces the flat `ResolveEffectSpec` list with a composable node tree; Phase 5
+  adds 13 cards, two of which (Vision Charm, Diminishing Returns) cannot be expressed without it.
 
 **Scope boundary**: this series owns `packages/game-engine/` only. Realtime schemas, server, persistence,
 web UI, and E2E are planned in `docs/plans/product-surface/`. When an engine capability exists but is
@@ -184,6 +188,6 @@ Collected from the phase files below — items needing clarification before or d
 29. **P7.4** — Property-testing library selection (fast-check recommended)
 30. **P0.14** — State Invariant Checker: ensure all objectPool entries have valid zone references
 31. **P0.15** — Property-Based Test Utilities: generate diverse but internally consistent GameStates
-32. **P5 entry** — Whether the composable `sequence`/`conditional` resolve-spec refactor lands before Phase 5 adds 13 more cards to the monolithic `ResolveEffectSpec` switch interpreter; needs a decision-log entry
+32. **P5 entry** — *Resolved 2026-09-10*: the composable resolve-spec refactor lands first, as `docs/plans/rules-engine/phase-9-resolve-effect-composition.md`. See the decision-log entry of the same date.
 33. **P6.8** — Whether a draw (simultaneous loss) is reachable in the shared-deck variant and how it should be reported
 34. **P8.1** — Whether the free-mulligan condition is evaluated once per opener or re-evaluated after each mulligan (product overview states the condition but not the repeat rule)

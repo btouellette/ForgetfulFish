@@ -2,11 +2,11 @@
 
 Status: planned
 
-> Decide before starting: whether to land the composable `sequence`/`conditional` resolve-spec refactor first.
-> `stack/effects/handlers.ts` is still a monolithic `ResolveEffectSpec` union plus a switch interpreter, and this
-> phase adds 13 more cards on top of it — doing the refactor afterwards means migrating a much larger card
-> surface. Record the outcome in `docs/decisions/decision-log.md`; see open question 32 in
-> `docs/plans/rules-engine/README.md`.
+> **Blocked on Phase 9.** `docs/plans/rules-engine/phase-9-resolve-effect-composition.md` replaces the flat
+> `ResolveEffectSpec` list and its switch interpreter with a composable node tree. Start this phase after
+> `P9.6`. Two cards below are not expressible before then: `P5.6` Vision Charm needs branching on a chosen
+> mode, and `P5.1` Diminishing Returns needs per-player iteration and a computed draw count. Implementing
+> them first means a bespoke leaf spec kind per card — the pattern Phase 9 exists to remove.
 >
 > Every card landed here must also be added to `apps/server/src/room-store/deck-preset.ts` or it stays
 > unreachable in real rooms; `PS1.4` adds the test that enforces this.

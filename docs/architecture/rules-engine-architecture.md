@@ -279,6 +279,8 @@ type CardDefinition = {
   activatedAbilities?: ActivatedAbilityAst[]
 
   // Spell effect: structured resolution steps
+  // Shipped as a flat ResolveEffectSpec[]; becomes a composable node tree in Phase 9
+  // (docs/plans/rules-engine/phase-9-resolve-effect-composition.md)
   onResolve?: ResolutionStep[]
 
   // Continuous effects while on battlefield
