@@ -61,6 +61,10 @@ describe("stack/effects/handlers table", () => {
     }
   });
 
+  it("no longer carries card-specific control-flow kinds", () => {
+    expect(RESOLVE_EFFECT_KINDS).not.toContain("draw_by_named_hit");
+  });
+
   it("rejects a handler invoked with a spec of a different kind", () => {
     expect(() =>
       resolveEffectHandlers.draw_cards.execute(

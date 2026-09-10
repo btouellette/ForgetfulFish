@@ -1,18 +1,42 @@
-import type { ResolveEffectKind, ResolveEffectSpec } from "../cards/resolveEffect";
+import type { ResolveEffectKind, ResolveEffectNode } from "../cards/resolveEffect";
 import { targetRequirementFor } from "./effects/handlers";
+
+/**
+ * Both branches of a `conditional` count: targets are chosen at cast time, before any condition can
+ * be evaluated, so a card that targets in either branch targets unconditionally.
+ */
+function collectLeafKinds(
+  nodes: readonly ResolveEffectNode[],
+  collected: Set<ResolveEffectKind>
+): Set<ResolveEffectKind> {
+  for (const node of nodes) {
+    switch (node.kind) {
+      case "sequence":
+        collectLeafKinds(node.children, collected);
+        break;
+      case "conditional":
+        collectLeafKinds(node.else === undefined ? [node.then] : [node.then, node.else], collected);
+        break;
+      default:
+        collected.add(node.kind);
+    }
+  }
+
+  return collected;
+}
 
 export class OnResolveRegistry {
   private readonly effects: Set<ResolveEffectKind>;
   private readonly stackObjectTargetRequirement: boolean;
   private readonly battlefieldObjectTargetRequirement: boolean;
 
-  public constructor(effectSpecs: readonly ResolveEffectSpec[]) {
-    this.effects = new Set(effectSpecs.map((effect) => effect.kind));
-    this.stackObjectTargetRequirement = effectSpecs.some(
-      (effect) => targetRequirementFor(effect.kind) === "stack_object"
+  public constructor(nodes: readonly ResolveEffectNode[]) {
+    this.effects = collectLeafKinds(nodes, new Set());
+    this.stackObjectTargetRequirement = [...this.effects].some(
+      (kind) => targetRequirementFor(kind) === "stack_object"
     );
-    this.battlefieldObjectTargetRequirement = effectSpecs.some(
-      (effect) => targetRequirementFor(effect.kind) === "battlefield_object"
+    this.battlefieldObjectTargetRequirement = [...this.effects].some(
+      (kind) => targetRequirementFor(kind) === "battlefield_object"
     );
   }
 

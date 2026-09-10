@@ -65,14 +65,6 @@ export type MillCardsSpec = {
   storeKey: ResolveStoredValueKey;
 };
 
-export type DrawByNamedHitSpec = {
-  kind: "draw_by_named_hit";
-  namedCardKey: ResolveStoredValueKey;
-  milledCardsKey: ResolveStoredValueKey;
-  hitCount: number;
-  missCount: number;
-};
-
 export type CounterTargetSpellSpec = {
   kind: "counter_target_spell";
   destination: "graveyard" | "library-top";
@@ -126,7 +118,6 @@ export type ResolveEffectSpec =
   | NameCardSpec
   | ChooseModeSpec
   | MillCardsSpec
-  | DrawByNamedHitSpec
   | CounterTargetSpellSpec
   | DrawByGraveyardSelfCountSpec
   | SetControlOfTargetSpec
@@ -136,3 +127,28 @@ export type ResolveEffectSpec =
   | ShuffleZoneSpec;
 
 export type ResolveEffectKind = ResolveEffectSpec["kind"];
+
+export type ResolveCondition =
+  | {
+      kind: "named_card_among";
+      nameKey: ResolveStoredValueKey;
+      cardsKey: ResolveStoredValueKey;
+    }
+  | { kind: "mode_equals"; storeKey: ResolveStoredValueKey; modeId: string }
+  | { kind: "scratch_present"; key: ResolveStoredValueKey };
+
+/**
+ * A card's resolution tree. Leaves are the effect specs above; composite nodes supply the control
+ * flow that would otherwise have to be encoded as a card-specific leaf kind. `onResolve` is the
+ * child list of an implicit root `sequence`, so a leaf declared at top-level index `i` resolves at
+ * path `[i]`.
+ */
+export type ResolveEffectNode =
+  | { kind: "sequence"; children: ResolveEffectNode[] }
+  | {
+      kind: "conditional";
+      if: ResolveCondition;
+      then: ResolveEffectNode;
+      else?: ResolveEffectNode;
+    }
+  | ResolveEffectSpec;

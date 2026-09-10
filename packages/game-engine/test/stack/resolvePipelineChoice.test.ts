@@ -198,7 +198,7 @@ describe("stack/resolve pipeline choice integration", () => {
     expect(top?.effectContext.cursor).toEqual({
       kind: "waiting_choice",
       choiceId: result.pendingChoice.id,
-      resumePath: [islandCardDefinition.onResolve?.length ?? 0],
+      resumePath: [],
       phase: "pipeline"
     });
     expect(top?.effectContext.whiteboard.scratch).toEqual({});

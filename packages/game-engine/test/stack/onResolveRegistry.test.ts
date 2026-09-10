@@ -99,4 +99,34 @@ describe("stack/onResolveRegistry", () => {
     expect(registry.requiresStackObjectTargets()).toBe(false);
     expect(registry.requiresBattlefieldObjectTargets()).toBe(false);
   });
+
+  it("collects leaf kinds from nested sequence nodes", () => {
+    const registry = new OnResolveRegistry([
+      {
+        kind: "sequence",
+        children: [
+          { kind: "sequence", children: [{ kind: "draw_cards", count: 1, player: "controller" }] },
+          { kind: "untap_target", target: "first_object_target" }
+        ]
+      }
+    ]);
+
+    expect(registry.has("draw_cards")).toBe(true);
+    expect(registry.requiresBattlefieldObjectTargets()).toBe(true);
+  });
+
+  it("requires targets declared in either branch of a conditional", () => {
+    const registry = new OnResolveRegistry([
+      {
+        kind: "conditional",
+        if: { kind: "scratch_present", key: "registry:flag" },
+        then: { kind: "draw_cards", count: 1, player: "controller" },
+        else: { kind: "counter_target_spell", destination: "graveyard" }
+      }
+    ]);
+
+    expect(registry.has("draw_cards")).toBe(true);
+    expect(registry.has("counter_target_spell")).toBe(true);
+    expect(registry.requiresStackObjectTargets()).toBe(true);
+  });
 });

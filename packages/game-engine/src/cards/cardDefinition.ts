@@ -6,7 +6,7 @@ import type {
   SubtypeAtom,
   TriggerDefinitionAst
 } from "./abilityAst";
-import type { ResolveEffectSpec } from "./resolveEffect";
+import type { ResolveEffectNode } from "./resolveEffect";
 
 export type ManaCost = Partial<{
   white: number;
@@ -33,7 +33,7 @@ export type CardDefinition = {
   staticAbilities: StaticAbilityAst[];
   triggeredAbilities: TriggerDefinitionAst[];
   activatedAbilities: ActivatedAbilityAst[];
-  onResolve: ResolveEffectSpec[];
+  onResolve: ResolveEffectNode[];
   continuousEffects: string[];
   replacementEffects: string[];
 };

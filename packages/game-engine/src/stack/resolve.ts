@@ -7,6 +7,8 @@ import { createEvent, type GameEvent, type GameEventPayload } from "../events/ev
 import type { Rng } from "../rng/rng";
 import type { GameState } from "../state/gameState";
 import { bumpZcc, zoneKey } from "../state/zones";
+import type { ResolveEffectNode } from "../cards/resolveEffect";
+import { evaluateResolveCondition } from "./effects/conditions";
 import { resolveOnResolveEffect } from "./effects/handlers";
 import type { ResolveMutableState } from "./effects/types";
 import { OnResolveRegistry } from "./onResolveRegistry";
@@ -79,8 +81,8 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     validatedTargets.illegalTargets.length > 0;
   const resumeCursor = stackItem.effectContext.cursor;
   const resumePhase = resumeCursor.kind === "node" ? resumeCursor.phase : "effects";
-  const resumeOnResolveIndex =
-    resumeCursor.kind === "node" ? Math.max(resumeCursor.path[0] ?? 0, 0) : 0;
+  const resumeOnResolvePath: readonly number[] =
+    resumeCursor.kind === "node" ? resumeCursor.path : [];
 
   const stackZone = state.mode.resolveZone(state, "stack", stackItem.controller);
   const destinationZone = allTargetsIllegal
@@ -204,22 +206,55 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     };
   };
 
-  if (!allTargetsIllegal) {
-    if (resumePhase !== "pipeline") {
-      for (
-        let effectIndex = resumeOnResolveIndex;
-        effectIndex < cardDefinition.onResolve.length;
-        effectIndex += 1
-      ) {
-        const effectSpec = cardDefinition.onResolve[effectIndex];
-        if (effectSpec === undefined) {
-          continue;
+  const walkNode = (
+    node: ResolveEffectNode,
+    path: number[],
+    resumePath: readonly number[]
+  ): ResolveStackResult | null => {
+    switch (node.kind) {
+      case "sequence": {
+        const startIndex = resumePath[0] ?? 0;
+        for (let index = startIndex; index < node.children.length; index += 1) {
+          const child = node.children[index];
+          if (child === undefined) {
+            continue;
+          }
+
+          const paused = walkNode(
+            child,
+            [...path, index],
+            index === startIndex ? resumePath.slice(1) : []
+          );
+          if (paused !== null) {
+            return paused;
+          }
         }
 
-        const effectResult = resolveOnResolveEffect(effectSpec, {
+        return null;
+      }
+      case "conditional": {
+        // Resuming re-enters the branch recorded in the path instead of re-evaluating the
+        // condition, whose inputs may have been overwritten by the choice that paused it.
+        const branchIndex =
+          resumePath.length > 0
+            ? (resumePath[0] ?? 0)
+            : evaluateResolveCondition(node.if, {
+                  scratch: activeStackItem.effectContext.whiteboard.scratch,
+                  objectPool: mutable.nextObjectPool
+                })
+              ? 0
+              : 1;
+        const branch = branchIndex === 0 ? node.then : node.else;
+
+        return branch === undefined
+          ? null
+          : walkNode(branch, [...path, branchIndex], resumePath.slice(1));
+      }
+      default: {
+        const effectResult = resolveOnResolveEffect(node, {
           state,
           stackItem: activeStackItem,
-          path: [effectIndex],
+          path,
           cardDefinition,
           rng,
           mutable,
@@ -230,10 +265,19 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
           pauseWithChoice
         });
 
-        if (effectResult.kind === "pause") {
-          return effectResult.result;
-        }
+        return effectResult.kind === "pause" ? effectResult.result : null;
       }
+    }
+  };
+
+  if (!allTargetsIllegal && resumePhase !== "pipeline") {
+    const paused = walkNode(
+      { kind: "sequence", children: cardDefinition.onResolve },
+      [],
+      resumeOnResolvePath
+    );
+    if (paused !== null) {
+      return paused;
     }
   }
 
@@ -267,7 +311,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
         cursor: {
           kind: "waiting_choice",
           choiceId: choice.id,
-          resumePath: [cardDefinition.onResolve.length],
+          resumePath: [],
           phase: "pipeline"
         },
         whiteboard: {

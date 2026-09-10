@@ -18,7 +18,6 @@ import type {
   ChooseCardsSpec,
   CounterTargetSpellSpec,
   DrawByGraveyardSelfCountSpec,
-  DrawByNamedHitSpec,
   DrawCardsSpec,
   MillCardsSpec,
   MoveOrderedCardsSpec,
@@ -130,19 +129,6 @@ function readStoredStringArray(
   }
 
   return [...stored];
-}
-
-function readStoredString(
-  context: ResolveEffectHandlerContext,
-  key: string,
-  message: string
-): string {
-  const stored = context.stackItem.effectContext.whiteboard.scratch[key];
-  if (typeof stored !== "string") {
-    throw new Error(message);
-  }
-
-  return stored;
 }
 
 function readOptionalStoredString(
@@ -429,43 +415,6 @@ function resolveMillCards(
   return { kind: "continue" };
 }
 
-function resolveDrawByNamedHit(
-  spec: DrawByNamedHitSpec,
-  context: ResolveEffectHandlerContext
-): ResolveEffectResult {
-  const namedCardLower = readStoredString(
-    context,
-    spec.namedCardKey,
-    `missing named card key '${spec.namedCardKey}' in scratch state`
-  )
-    .trim()
-    .toLowerCase();
-  const milledCards = readStoredStringArray(
-    context,
-    spec.milledCardsKey,
-    `missing milled cards key '${spec.milledCardsKey}' in scratch state`
-  );
-
-  const namedCardWasMilled = milledCards.some((milledCardId) => {
-    const milledObject = context.mutable.nextObjectPool.get(milledCardId);
-    if (milledObject === undefined) {
-      return false;
-    }
-
-    const milledDefinition = cardRegistry.get(milledObject.cardDefId);
-    return milledDefinition?.name.toLowerCase() === namedCardLower;
-  });
-
-  enqueueDrawAction(
-    context,
-    context.stackItem.controller,
-    namedCardWasMilled ? spec.hitCount : spec.missCount,
-    namedCardWasMilled ? `${spec.kind}-hit` : `${spec.kind}-miss`
-  );
-
-  return { kind: "continue" };
-}
-
 function resolveCounterTargetSpell(
   spec: CounterTargetSpellSpec,
   context: ResolveEffectHandlerContext
@@ -715,7 +664,6 @@ export const resolveEffectHandlers: Record<ResolveEffectKind, ResolveEffectHandl
   name_card: defineHandler("name_card", "none", resolveNameCard),
   choose_mode: defineHandler("choose_mode", "none", resolveChooseMode),
   mill_cards: defineHandler("mill_cards", "none", resolveMillCards),
-  draw_by_named_hit: defineHandler("draw_by_named_hit", "none", resolveDrawByNamedHit),
   counter_target_spell: defineHandler(
     "counter_target_spell",
     "stack_object",
