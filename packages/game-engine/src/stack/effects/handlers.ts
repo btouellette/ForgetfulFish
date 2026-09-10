@@ -17,12 +17,12 @@ import type {
   ChooseModeSpec,
   ChooseCardsSpec,
   CounterTargetSpellSpec,
-  DrawByGraveyardSelfCountSpec,
   DrawCardsSpec,
   MillCardsSpec,
   MoveOrderedCardsSpec,
   NameCardSpec,
   OrderCardsSpec,
+  ResolveCount,
   ResolveEffectKind,
   ResolveEffectSpec,
   ResolvePlayerSelector,
@@ -32,6 +32,7 @@ import type {
   ShuffleZoneSpec,
   UntapTargetSpec
 } from "../../cards/resolveEffect";
+import { evaluateResolveValue } from "./values";
 import { getComputedObjectView } from "../../effects/continuous/access";
 import { LAYERS } from "../../effects/continuous/layers";
 import {
@@ -198,16 +199,28 @@ function resolveTargetObject(
   return context.stackItem.targets.find((candidate) => candidate.kind === "object");
 }
 
+function resolveCount(count: ResolveCount, context: ResolveEffectHandlerContext): number {
+  if (typeof count === "number") {
+    return count;
+  }
+
+  return evaluateResolveValue(count, {
+    scratch: context.stackItem.effectContext.whiteboard.scratch,
+    zones: context.mutable.nextZones,
+    objectPool: context.mutable.nextObjectPool,
+    resolveZone: (zone, playerId) => resolveZone(context, zone, playerId),
+    controller: context.stackItem.controller,
+    sourceCardDefId: context.cardDefinition.id
+  });
+}
+
 function resolveDrawCards(
   spec: DrawCardsSpec,
   context: ResolveEffectHandlerContext
 ): ResolveEffectResult {
-  enqueueDrawAction(
-    context,
-    resolvePlayerId(context, spec.player),
-    spec.count,
-    `${spec.kind}-${spec.count}`
-  );
+  const count = resolveCount(spec.count, context);
+
+  enqueueDrawAction(context, resolvePlayerId(context, spec.player), count, `${spec.kind}-${count}`);
 
   return { kind: "continue" };
 }
@@ -446,28 +459,6 @@ function resolveCounterTargetSpell(
   return { kind: "continue" };
 }
 
-function resolveDrawByGraveyardSelfCount(
-  spec: DrawByGraveyardSelfCountSpec,
-  context: ResolveEffectHandlerContext
-): ResolveEffectResult {
-  const graveyardZone = resolveZone(context, "graveyard", context.stackItem.controller);
-  const graveyardCards = context.mutable.nextZones.get(zoneKey(graveyardZone)) ?? [];
-  const resolvingCardDefId = context.cardDefinition.id;
-  const count = graveyardCards.reduce((total, objectId) => {
-    const graveyardObject = context.mutable.nextObjectPool.get(objectId);
-    return graveyardObject?.cardDefId === resolvingCardDefId ? total + 1 : total;
-  }, 0);
-
-  enqueueDrawAction(
-    context,
-    context.stackItem.controller,
-    count + spec.bonus,
-    `${spec.kind}-${spec.bonus}`
-  );
-
-  return { kind: "continue" };
-}
-
 function resolveSetControlOfTarget(
   spec: SetControlOfTargetSpec,
   context: ResolveEffectHandlerContext
@@ -668,11 +659,6 @@ export const resolveEffectHandlers: Record<ResolveEffectKind, ResolveEffectHandl
     "counter_target_spell",
     "stack_object",
     resolveCounterTargetSpell
-  ),
-  draw_by_graveyard_self_count: defineHandler(
-    "draw_by_graveyard_self_count",
-    "none",
-    resolveDrawByGraveyardSelfCount
   ),
   set_control_of_target: defineHandler(
     "set_control_of_target",

@@ -7,9 +7,27 @@ export type ResolveTargetObjectSelector = "first_object_target";
 export type ResolvePlayerSelector = "controller" | "target_player_or_controller";
 export type ResolveZoneSelector = "hand" | "library" | "graveyard";
 
+/** An arithmetic expression evaluated against the game state at resolution time. */
+export type ResolveValue =
+  | { kind: "literal"; value: number }
+  | { kind: "scratch_number"; key: ResolveStoredValueKey }
+  | { kind: "zone_size"; zone: ResolveZoneSelector; player: "controller" }
+  | {
+      kind: "count_in_zone";
+      zone: ResolveZoneSelector;
+      player: "controller";
+      filter?:
+        | { kind: "same_card_definition_as_source" }
+        | { kind: "card_definition"; cardDefId: string };
+    }
+  | { kind: "sum"; values: ResolveValue[] }
+  | { kind: "clamp"; value: ResolveValue; min?: number; max?: number };
+
+export type ResolveCount = number | ResolveValue;
+
 export type DrawCardsSpec = {
   kind: "draw_cards";
-  count: number;
+  count: ResolveCount;
   player: ResolvePlayerSelector;
 };
 
@@ -70,11 +88,6 @@ export type CounterTargetSpellSpec = {
   destination: "graveyard" | "library-top";
 };
 
-export type DrawByGraveyardSelfCountSpec = {
-  kind: "draw_by_graveyard_self_count";
-  bonus: number;
-};
-
 export type SetControlOfTargetSpec = {
   kind: "set_control_of_target";
   target: ResolveTargetObjectSelector;
@@ -119,7 +132,6 @@ export type ResolveEffectSpec =
   | ChooseModeSpec
   | MillCardsSpec
   | CounterTargetSpellSpec
-  | DrawByGraveyardSelfCountSpec
   | SetControlOfTargetSpec
   | UntapTargetSpec
   | AddContinuousEffectToTargetSpec
