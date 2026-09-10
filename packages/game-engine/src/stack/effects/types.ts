@@ -43,6 +43,11 @@ export type ResolveEffectHandlerContext = {
   effects: OnResolveRegistry;
   writeScratch: (entries: Record<string, unknown>) => void;
   enqueueAction: (action: GameAction) => void;
+  /**
+   * Applies everything enqueued so far, so a later effect in the same resolution observes the
+   * zones an earlier one changed (e.g. exiling the top of a library that was just shuffled).
+   */
+  flushActions: () => void;
   emit: (payload: GameEventPayload) => void;
   pauseWithChoice: (
     choice: NonNullable<GameState["pendingChoice"]>,

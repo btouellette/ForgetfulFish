@@ -12,14 +12,17 @@ import type {
   GameActionBase
 } from "../../actions/action";
 import type {
+  AddSubtypeFromChoiceToTargetSpec,
   AddTextChangeEffectToTargetSpec,
   AddContinuousEffectToTargetSpec,
   ChooseModeSpec,
   ChooseCardsSpec,
   CounterTargetSpellSpec,
   DrawCardsSpec,
+  ExileFromLibraryTopSpec,
   MillCardsSpec,
   MoveOrderedCardsSpec,
+  MoveZoneContentsSpec,
   NameCardSpec,
   OrderCardsSpec,
   ResolveCount,
@@ -213,7 +216,7 @@ function resolveCount(count: ResolveCount, context: ResolveEffectHandlerContext)
     zones: context.mutable.nextZones,
     objectPool: context.mutable.nextObjectPool,
     resolveZone: (zone, playerId) => resolveZone(context, zone, playerId),
-    controller: context.stackItem.controller,
+    resolvePlayer: (player) => resolvePlayerId(context, player),
     sourceCardDefId: context.cardDefinition.id
   });
 }
@@ -432,6 +435,91 @@ function resolveMillCards(
   return { kind: "continue" };
 }
 
+function resolveMoveZoneContents(
+  spec: MoveZoneContentsSpec,
+  context: ResolveEffectHandlerContext
+): ResolveEffectResult {
+  const playerId = resolvePlayerId(context, spec.player);
+  const fromZone = resolveZone(context, spec.fromZone, playerId);
+  const toZone = resolveZone(context, spec.toZone, playerId);
+  const cards = context.mutable.nextZones.get(zoneKey(fromZone)) ?? [];
+
+  for (let index = 0; index < cards.length; index += 1) {
+    enqueueMoveZoneAction(
+      context,
+      cards[index]!,
+      fromZone,
+      toZone,
+      `${spec.kind}-${spec.fromZone}-${playerId}-${index}`
+    );
+  }
+
+  return { kind: "continue" };
+}
+
+function resolveExileFromLibraryTop(
+  spec: ExileFromLibraryTopSpec,
+  context: ResolveEffectHandlerContext
+): ResolveEffectResult {
+  // The cards to exile are whichever ones are on top once earlier effects (moves, shuffles) in
+  // this same resolution have actually been applied.
+  context.flushActions();
+
+  const playerId = resolvePlayerId(context, spec.player);
+  const libraryZone = resolveZone(context, "library", playerId);
+  const exileZone = context.state.mode.resolveZone(context.state, "exile", playerId);
+  const libraryCards = context.mutable.nextZones.get(zoneKey(libraryZone)) ?? [];
+  const exiledCards = libraryCards.slice(0, resolveCount(spec.count, context));
+
+  for (let index = 0; index < exiledCards.length; index += 1) {
+    enqueueMoveZoneAction(
+      context,
+      exiledCards[index]!,
+      libraryZone,
+      exileZone,
+      `${spec.kind}-${index}`
+    );
+  }
+
+  return { kind: "continue" };
+}
+
+function resolveAddSubtypeFromChoiceToTarget(
+  spec: AddSubtypeFromChoiceToTargetSpec,
+  context: ResolveEffectHandlerContext
+): ResolveEffectResult {
+  const target = resolveTargetObject(context, spec.target);
+  const subtype = readOptionalStoredString(context, spec.subtypeKey);
+  if (target === undefined || subtype === null) {
+    return { kind: "continue" };
+  }
+
+  if (!isBasicLandType(subtype)) {
+    throw new Error(`stored subtype '${subtype}' is not a basic land type`);
+  }
+
+  const effectSuffix = `${spec.kind}:${subtype}`;
+  const effectAction: AddContinuousEffectAction = {
+    ...baseActionFields(context),
+    id: actionId(context, "ADD_CONTINUOUS_EFFECT", effectSuffix),
+    type: "ADD_CONTINUOUS_EFFECT",
+    effect: {
+      id: actionId(context, "ADD_CONTINUOUS_EFFECT", effectSuffix),
+      source: context.stackItem.effectContext.source,
+      layer: LAYERS.TYPE,
+      duration: spec.duration,
+      appliesTo: { kind: "object", object: target.object },
+      effect: {
+        kind: "type_change",
+        payload: { subtypes: [{ kind: "basic_land_type", value: subtype }] }
+      }
+    }
+  };
+  context.enqueueAction(effectAction);
+
+  return { kind: "continue" };
+}
+
 function resolveCounterTargetSpell(
   spec: CounterTargetSpellSpec,
   context: ResolveEffectHandlerContext
@@ -594,7 +682,7 @@ function resolveShuffleZone(
   spec: ShuffleZoneSpec,
   context: ResolveEffectHandlerContext
 ): ResolveEffectResult {
-  const zone = resolveZone(context, spec.zone, context.stackItem.controller);
+  const zone = resolveZone(context, spec.zone, resolvePlayerId(context, spec.player));
   const stored =
     spec.topCardFromKey === undefined
       ? null
@@ -659,6 +747,17 @@ export const resolveEffectHandlers: Record<ResolveEffectKind, ResolveEffectHandl
   name_card: defineHandler("name_card", "none", resolveNameCard),
   choose_mode: defineHandler("choose_mode", "none", resolveChooseMode),
   mill_cards: defineHandler("mill_cards", "none", resolveMillCards),
+  move_zone_contents: defineHandler("move_zone_contents", "none", resolveMoveZoneContents),
+  exile_from_library_top: defineHandler(
+    "exile_from_library_top",
+    "none",
+    resolveExileFromLibraryTop
+  ),
+  add_subtype_from_choice_to_target: defineHandler(
+    "add_subtype_from_choice_to_target",
+    "battlefield_object",
+    resolveAddSubtypeFromChoiceToTarget
+  ),
   counter_target_spell: defineHandler(
     "counter_target_spell",
     "stack_object",

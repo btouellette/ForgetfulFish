@@ -1,4 +1,8 @@
-import type { ResolveValue, ResolveZoneSelector } from "../../cards/resolveEffect";
+import type {
+  ResolvePlayerSelector,
+  ResolveValue,
+  ResolveZoneSelector
+} from "../../cards/resolveEffect";
 import type { GameObject } from "../../state/gameObject";
 import { zoneKey, type ZoneRef } from "../../state/zones";
 
@@ -7,12 +11,17 @@ export type ResolveValueContext = {
   zones: ReadonlyMap<string, string[]>;
   objectPool: ReadonlyMap<string, GameObject>;
   resolveZone: (zone: ResolveZoneSelector, playerId: string) => ZoneRef;
-  controller: string;
+  resolvePlayer: (player: ResolvePlayerSelector) => string;
   sourceCardDefId: string;
 };
 
-function objectsInZone(context: ResolveValueContext, zone: ResolveZoneSelector): GameObject[] {
-  const objectIds = context.zones.get(zoneKey(context.resolveZone(zone, context.controller))) ?? [];
+function objectsInZone(
+  context: ResolveValueContext,
+  zone: ResolveZoneSelector,
+  player: ResolvePlayerSelector
+): GameObject[] {
+  const objectIds =
+    context.zones.get(zoneKey(context.resolveZone(zone, context.resolvePlayer(player)))) ?? [];
 
   return objectIds
     .map((objectId) => context.objectPool.get(objectId))
@@ -28,9 +37,9 @@ export function evaluateResolveValue(value: ResolveValue, context: ResolveValueC
       return typeof stored === "number" ? stored : 0;
     }
     case "zone_size":
-      return objectsInZone(context, value.zone).length;
+      return objectsInZone(context, value.zone, value.player).length;
     case "count_in_zone": {
-      const objects = objectsInZone(context, value.zone);
+      const objects = objectsInZone(context, value.zone, value.player);
       if (value.filter === undefined) {
         return objects.length;
       }
@@ -47,6 +56,8 @@ export function evaluateResolveValue(value: ResolveValue, context: ResolveValueC
         (total, operand) => total + evaluateResolveValue(operand, context),
         0
       );
+    case "subtract":
+      return evaluateResolveValue(value.left, context) - evaluateResolveValue(value.right, context);
     case "clamp": {
       const evaluated = evaluateResolveValue(value.value, context);
       const lowerBounded = value.min === undefined ? evaluated : Math.max(evaluated, value.min);

@@ -37,6 +37,7 @@ describe("stack/effects/handlers table", () => {
     expect(battlefieldTargeting).toEqual(
       [
         "add_continuous_effect_to_target",
+        "add_subtype_from_choice_to_target",
         "add_text_change_effect_to_target",
         "set_control_of_target",
         "untap_target"
@@ -53,6 +54,8 @@ describe("stack/effects/handlers table", () => {
       "name_card",
       "choose_mode",
       "mill_cards",
+      "move_zone_contents",
+      "exile_from_library_top",
       "shuffle_zone"
     ];
 

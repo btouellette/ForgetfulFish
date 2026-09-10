@@ -11,7 +11,7 @@ Status: planned
 > Every card landed here must also be added to `apps/server/src/room-store/deck-preset.ts` or it stays
 > unreachable in real rooms; `PS1.4` adds the test that enforces this.
 
-### [ ] P5.1 — Card: Diminishing Returns
+### [x] P5.1 — Card: Diminishing Returns
 
 **Files**: `cards/diminishing-returns.ts`
 
@@ -34,7 +34,14 @@ Test: **Write tests FIRST**, then implement.
 6. (Resolution) Both players draw up to seven cards in alternating order.
 7. (Shared-deck) All zone operations target the common library/graveyard.
 8. (State) `assertStateInvariants` passes after the massive multi-zone state change.
+
 Acceptance: Complex multi-zone card works with shared-deck hooks.
+
+Built on Phase 4.1 nodes: `for_each_player` (`apnap`) around `move_zone_contents` + `shuffle_zone`,
+then `exile_from_library_top`, then a second `for_each_player` draw. Exiling the top of a library
+that earlier effects in the same resolution just shuffled required a new
+`ResolveEffectHandlerContext.flushActions()`, since enqueued actions otherwise only apply at the end
+of resolution.
 
 ### [ ] P5.2 — Card: Supplant Form
 
@@ -128,7 +135,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after hand-return.
 Acceptance: Dual-mode bounce works for both battlefield creatures and stack spells.
 
-### [ ] P5.6 — Card: Vision Charm
+### [~] P5.6 — Card: Vision Charm (modes 1-2 done; mode 3 blocked on phasing)
 
 **Files**: `cards/vision-charm.ts`
 
@@ -151,6 +158,12 @@ Test: **Write tests FIRST**, then implement.
 5. (Mode 3) Targeted permanent is marked as "phased out" and treated as non-existent.
 6. (Shared-deck) Mill uses the common library zone.
 7. (Interaction) Phased out permanent returns during its owner's next untap step.
+
+Modes 1-2 ship as `choose_mode` + `conditional` over `mill_cards` and
+`add_subtype_from_choice_to_target`; no card-specific effect kind was needed. Mode 3 is deferred:
+the engine has no phasing concept at all (no phased-out object state, no untap-step return, no
+visibility/targeting exclusion), which is its own slice rather than part of a card definition. Add
+phasing before re-enabling the third mode; tests 5 and 7 stay unwritten until then.
 8. (State) `assertStateInvariants` passes after each mode's resolution.
 Acceptance: All three modes work.
 

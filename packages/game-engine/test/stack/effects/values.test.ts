@@ -36,7 +36,7 @@ function makeContext(scratch: Record<string, unknown> = {}) {
     zones: new Map<string, string[]>([[zoneKey(GRAVEYARD), objects.map((object) => object.id)]]),
     objectPool: new Map(objects.map((object) => [object.id, object])),
     resolveZone: () => GRAVEYARD,
-    controller: "p1",
+    resolvePlayer: () => "p1",
     sourceCardDefId: "accumulated-knowledge"
   };
 }

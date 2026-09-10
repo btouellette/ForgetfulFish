@@ -156,30 +156,38 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     };
   };
 
+  const flushActions = (): void => {
+    if (mutable.nextActions.length === 0) {
+      return;
+    }
+
+    const preFlushState: GameState = {
+      ...state,
+      version: nextVersion,
+      players: mutable.nextPlayers,
+      stack: mutable.nextStack,
+      zones: mutable.nextZones,
+      objectPool: mutable.nextObjectPool,
+      continuousEffects: mutable.nextContinuousEffects,
+      lkiStore: mutable.nextLkiStore,
+      pendingChoice: null
+    };
+    const postActionState = applyActions(preFlushState, mutable.nextActions, rng, emit);
+    mutable.nextPlayers = postActionState.players;
+    mutable.nextZones = postActionState.zones;
+    mutable.nextObjectPool = postActionState.objectPool;
+    mutable.nextContinuousEffects = postActionState.continuousEffects;
+    mutable.nextLkiStore = postActionState.lkiStore;
+    mutable.nextStack = postActionState.stack;
+    mutable.nextActions = [];
+  };
+
   const pauseWithChoice = (
     choice: NonNullable<GameState["pendingChoice"]>,
     updatedTopItem: GameState["stack"][number]
   ): ResolveStackResult => {
-    if (choice.type !== "CHOOSE_REPLACEMENT" && mutable.nextActions.length > 0) {
-      const prePauseState: GameState = {
-        ...state,
-        version: nextVersion,
-        players: mutable.nextPlayers,
-        stack: mutable.nextStack,
-        zones: mutable.nextZones,
-        objectPool: mutable.nextObjectPool,
-        continuousEffects: mutable.nextContinuousEffects,
-        lkiStore: mutable.nextLkiStore,
-        pendingChoice: null
-      };
-      const postActionState = applyActions(prePauseState, mutable.nextActions, rng, emit);
-      mutable.nextPlayers = postActionState.players;
-      mutable.nextZones = postActionState.zones;
-      mutable.nextObjectPool = postActionState.objectPool;
-      mutable.nextContinuousEffects = postActionState.continuousEffects;
-      mutable.nextLkiStore = postActionState.lkiStore;
-      mutable.nextStack = postActionState.stack;
-      mutable.nextActions = [];
+    if (choice.type !== "CHOOSE_REPLACEMENT") {
+      flushActions();
     }
 
     const pausedStack = state.stack.slice();
@@ -334,6 +342,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
               )
             ),
           enqueueAction,
+          flushActions,
           emit,
           pauseWithChoice
         });

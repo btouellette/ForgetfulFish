@@ -14,16 +14,17 @@ export type ResolveZoneSelector = "hand" | "library" | "graveyard";
 export type ResolveValue =
   | { kind: "literal"; value: number }
   | { kind: "scratch_number"; key: ResolveStoredValueKey }
-  | { kind: "zone_size"; zone: ResolveZoneSelector; player: "controller" }
+  | { kind: "zone_size"; zone: ResolveZoneSelector; player: ResolvePlayerSelector }
   | {
       kind: "count_in_zone";
       zone: ResolveZoneSelector;
-      player: "controller";
+      player: ResolvePlayerSelector;
       filter?:
         | { kind: "same_card_definition_as_source" }
         | { kind: "card_definition"; cardDefId: string };
     }
   | { kind: "sum"; values: ResolveValue[] }
+  | { kind: "subtract"; left: ResolveValue; right: ResolveValue }
   | { kind: "clamp"; value: ResolveValue; min?: number; max?: number };
 
 export type ResolveCount = number | ResolveValue;
@@ -79,6 +80,27 @@ export type ChooseModeSpec = {
     | { kind: "basic_land_types"; excludeStoreKey?: ResolveStoredValueKey };
 };
 
+export type MoveZoneContentsSpec = {
+  kind: "move_zone_contents";
+  fromZone: Extract<ResolveZoneSelector, "hand" | "graveyard">;
+  toZone: Extract<ResolveZoneSelector, "library">;
+  player: ResolvePlayerSelector;
+};
+
+export type ExileFromLibraryTopSpec = {
+  kind: "exile_from_library_top";
+  count: ResolveCount;
+  player: ResolvePlayerSelector;
+};
+
+export type AddSubtypeFromChoiceToTargetSpec = {
+  kind: "add_subtype_from_choice_to_target";
+  target: ResolveTargetObjectSelector;
+  /** Scratch key holding the subtype chosen earlier in the same resolution. */
+  subtypeKey: ResolveStoredValueKey;
+  duration: Duration;
+};
+
 export type MillCardsSpec = {
   kind: "mill_cards";
   count: number;
@@ -122,7 +144,7 @@ export type AddTextChangeEffectToTargetSpec = {
 export type ShuffleZoneSpec = {
   kind: "shuffle_zone";
   zone: Extract<ResolveZoneSelector, "library">;
-  player: "controller";
+  player: ResolvePlayerSelector;
   topCardFromKey?: ResolveStoredValueKey;
 };
 
@@ -134,6 +156,9 @@ export type ResolveEffectSpec =
   | NameCardSpec
   | ChooseModeSpec
   | MillCardsSpec
+  | MoveZoneContentsSpec
+  | ExileFromLibraryTopSpec
+  | AddSubtypeFromChoiceToTargetSpec
   | CounterTargetSpellSpec
   | SetControlOfTargetSpec
   | UntapTargetSpec
