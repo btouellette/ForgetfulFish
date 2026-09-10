@@ -40,9 +40,9 @@
 ## Active Plans
 
 - `docs/plans/roadmap.md`: current milestone-level roadmap.
-- `docs/plans/current-workstream-plan.md`: consolidated status review, blocking issues, and the ordered execution plan for the next wave.
-- `docs/plans/rules-engine/README.md`: split rules-engine implementation plan index and shared planning conventions.
-- `docs/plans/web-prototype-current-cards.md`: commit-slice execution plan for web-playable prototype work using currently implemented cards.
+- `docs/plans/rules-engine/README.md`: split rules-engine implementation plan index and shared planning conventions; owns `packages/game-engine/`.
+- `docs/plans/product-surface/README.md`: phase index for realtime contract, server, persistence, web, and E2E work; owns everything between the engine and the browser.
+- `docs/plans/web-prototype-current-cards.md`: completed commit-slice plan for the web-playable prototype; superseded for new work by `docs/plans/product-surface/`.
 
 ## Archive
 
@@ -54,3 +54,4 @@
 - Use `plans/` for active planning docs; start them with a `Status:` line and track tasks with GitHub checklists.
 - Use `archive/plans/` for completed or superseded plans; keep a short note explaining why the file was archived and what doc supersedes it.
 - Prefer milestone, phase, `Exit Criteria`, and `Notes` sections over ad hoc heading names when updating planning docs.
+- Record a newly found gap in the phase file that owns the affected code, or open a new phase file in the owning series; do not create standalone workstream docs that cut across series.

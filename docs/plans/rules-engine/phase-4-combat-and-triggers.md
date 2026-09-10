@@ -4,6 +4,19 @@ Status: planned
 
 > Current engine status before Phase 4: attacker legality and must-attack enforcement already exist through shared combat helpers used by `commands/validate.ts`, `engine/combat.ts`, and `engine/processCommand.ts`, but attacker declaration still emits no dedicated combat event and blocker assignment/evasion legality are not implemented yet. `DECLARE_BLOCKERS` is scaffolding only and currently supports the no-assignment path, not real blocking rules.
 
+## Known gaps carried by other phases
+
+Combat shipped through slice B with no way to reach it from the product. Those follow-ups are deliberately
+not Phase 4 scope, so combat work here and client work there can proceed in parallel:
+
+- Surfacing declarable attackers/blockers on the projected view is `P6.7`.
+- Realtime schema, store commands, combat UI, and E2E are `docs/plans/product-surface/phase-ps1-combat-in-the-client.md`.
+- The deck a real room is dealt (`apps/server/src/room-store/deck-preset.ts`) contains no creatures, so slice C
+  damage cannot be exercised in-app until `PS1.4` lands. Engine tests remain the proof of correctness until then.
+- Making a combat kill or lethal damage visible to players is `P6.8` plus
+  `docs/plans/product-surface/phase-ps2-game-result-surfacing.md`; slice C only has to converge the engine's
+  SBA loss state.
+
 ## Phase 4 plan updates
 
 **Alignment with shipped Phase 3 work**

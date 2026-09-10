@@ -2,6 +2,11 @@
 
 Status: planned
 
+> Scope note: `P6.7` and `P6.8` are the engine half of two gaps that currently block the product surface —
+> combat is undeclarable from a browser and a finished game is invisible outside the engine. Everything
+> downstream of the projected view (realtime schemas, persistence, broadcast, UI) is owned by
+> `docs/plans/product-surface/`, not by this phase.
+
 ### [ ] P6.1 — Extend `projectPlayerView` and expose `projectView` alias
 
 **Files**: `view/projection.ts`
@@ -131,5 +136,55 @@ Test: **Write tests FIRST**, then implement.
 5. `PendingChoice` details for other players are never leaked.
 6. Automated audit scan across 1000 generated game states.
 Acceptance: No hidden information leaks found.
+
+### [ ] P6.7 — Combat entries in `LegalActionsView`
+
+**Files**: `view/projection.ts`, `view/types.ts`
+
+Gap: `createLegalActionsView` in `view/projection.ts` maps `PLAY_LAND`, `CAST_SPELL`, and `ACTIVATE_ABILITY`
+only; `DECLARE_ATTACKERS`/`DECLARE_BLOCKERS` fall into the default branch and are never surfaced. Phase 4
+shipped attacker and blocker legality that no view consumer can see.
+
+Implement:
+- An `attack` section listing the viewer's declarable attackers, with required (must-attack) entries flagged
+- A `block` section mapping each of the viewer's legal blockers to the attackers it may legally block
+- Both sections derived from the existing `engine/combat.ts` helpers and computed views, never from raw object state
+- Both present and empty outside their combat steps, so consumers need no optionality branch
+
+**Test file**: `test/view/projection.test.ts`
+Depends: P4.1, P4.2, P6.1
+Test: **Write tests FIRST**, then implement.
+1. During `DECLARE_ATTACKERS` the active player's untapped, non-sick creatures appear as declarable.
+2. A creature that cannot attack (tapped, summoning sick, Dandan without an Island) is absent.
+3. Must-attack creatures are flagged as required.
+4. During `DECLARE_BLOCKERS` each blocker maps only to attackers it may legally block (flying/reach respected).
+5. The non-acting player's combat sections are empty.
+6. Sections are empty outside combat steps.
+Acceptance: a client can render legal combat declarations from the projected view alone. Consumed by
+`docs/plans/product-surface/phase-ps1-combat-in-the-client.md`.
+
+### [ ] P6.8 — Game result on the projected view
+
+**Files**: `view/projection.ts`, `view/types.ts`
+
+Gap: `hasLost` is set by `engine/sba.ts` and by `CONCEDE` in `engine/processCommand.ts`, but the projected
+view has no result field, so no consumer can tell a finished game from a stuck one.
+
+Implement:
+- A result on the view that is null while the game is live and otherwise carries the winner (or none, for a
+  simultaneous loss) plus the reason (`CONCEDE`, `LIFE`, `EMPTY_LIBRARY`)
+- Derivation from `hasLost` and the SBA loss cause; consumers must never re-derive it
+
+**Test file**: `test/view/projection.test.ts`
+Depends: P1.8, P6.1
+Test: **Write tests FIRST**, then implement.
+1. A live game projects a null result for both players.
+2. Concession projects the opponent as winner with reason `CONCEDE`, identically for both viewers.
+3. Zero life projects reason `LIFE`.
+4. An empty-library loss projects reason `EMPTY_LIBRARY`.
+5. A simultaneous loss projects a completed result with no winner.
+6. Projecting a completed game leaks no otherwise-hidden information.
+Acceptance: a finished game is unambiguous from the view alone. Consumed by
+`docs/plans/product-surface/phase-ps2-game-result-surfacing.md`.
 
 ---

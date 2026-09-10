@@ -47,16 +47,24 @@ Status: in progress
 - [x] Deterministic engine foundations, turn flow, and stack-resolution basics are in place through rules-engine phases 0-2.
 - [x] Deliver a web-usable prototype for the shipped playable card slice (execution plan: `docs/plans/web-prototype-current-cards.md`).
 - [x] Complete the Phase 3 continuous-effects and layers slice, including Dandan, Ray of Command, Mind Bend, Crystal Spray, Dance of the Skywise, and explicit Layer 3 dependency coverage; color-word Layer 3 support remains intentionally deferred until a real structured color-text surface requires it.
-- [ ] Complete the remaining core-loop behaviors still planned in later phases, especially combat, trigger handling, and the rest of deck-fidelity coverage. Ordered execution and current blockers: `docs/plans/current-workstream-plan.md`.
-- [ ] Keep the milestone roadmap and split rules-engine phase files aligned as phase status changes land.
+- [ ] Complete combat damage, triggers, and the Phase 4 cards (`docs/plans/rules-engine/phase-4-combat-and-triggers.md`, slices C-E).
+- [ ] Make combat and the shipped post-prototype cards reachable from the browser (`docs/plans/product-surface/phase-ps1-combat-in-the-client.md`, with engine prerequisite `P6.7`).
+- [ ] Surface game end to both players (`docs/plans/product-surface/phase-ps2-game-result-surfacing.md`, with engine prerequisite `P6.8`).
+- [ ] Keep the milestone roadmap and the split rules-engine and product-surface phase files aligned as phase status changes land.
+
+Execution order for the remainder of this milestone: Phase 4 slice C, then `P6.7`/`PS1`, then `P6.8`/`PS2`,
+then Phase 4 slices D-E. `PS1` and `PS2` are independent of each other once their engine prerequisite has
+landed, so they can run in parallel with engine work.
 
 ## Milestone 4 - Full Deck Rules Coverage
 
 Status: planned
 
-- [ ] Implement card handlers for the remaining deck cards.
+- [ ] Implement card handlers for the remaining deck cards (`docs/plans/rules-engine/phase-5-deck-completion.md`).
 - [ ] Add targeting and choice flows needed for full deck interactions.
 - [ ] Expand scenario coverage for representative card combinations.
+- [ ] Deliver the mulligan flow: engine (`docs/plans/rules-engine/phase-8-opening-hands-and-mulligan.md`) and client (`docs/plans/product-surface/phase-ps3-mulligan-experience.md`).
+- [ ] Keep every implemented card present in the room deck preset, enforced by the reachability test from `PS1.4`.
 
 ## Milestone 5 - Stability and UX Polish
 
@@ -65,7 +73,8 @@ Status: planned
 - [ ] Harden reconnect and session recovery behavior.
 - [ ] Improve the action log and stack/priority presentation.
 - [ ] Run performance and reliability hardening.
-- [ ] Finalize room lifecycle expiry and cleanup policy.
+- [ ] Finalize room lifecycle expiry and cleanup policy, together with the rematch-or-close decision from `PS2`.
+- [ ] Work the operational backlog in `TODO.md` (monitoring, healthchecks, backups, secret rotation), deferred until a launch date is in sight.
 
 ## Milestone 6 - Beta Readiness
 
