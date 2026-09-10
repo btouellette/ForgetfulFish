@@ -17,8 +17,8 @@
     "@forgetful-fish/database": "workspace:*",
     "@forgetful-fish/game-engine": "workspace:*",
     "@forgetful-fish/realtime-contract": "workspace:*",
-    "fastify": "^5.7.4",
-    "ws": "^8.19.0",
+    "fastify": "^5.12.3",
+    "ws": "^8.21.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
