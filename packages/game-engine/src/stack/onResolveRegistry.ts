@@ -1,30 +1,18 @@
 import type { ResolveEffectKind, ResolveEffectSpec } from "../cards/resolveEffect";
+import { targetRequirementFor } from "./effects/handlers";
 
 export class OnResolveRegistry {
   private readonly effects: Set<ResolveEffectKind>;
-  private readonly objectTargetRequirement: boolean;
   private readonly stackObjectTargetRequirement: boolean;
   private readonly battlefieldObjectTargetRequirement: boolean;
 
   public constructor(effectSpecs: readonly ResolveEffectSpec[]) {
     this.effects = new Set(effectSpecs.map((effect) => effect.kind));
-    this.objectTargetRequirement = effectSpecs.some(
-      (effect) =>
-        effect.kind === "counter_target_spell" ||
-        effect.kind === "set_control_of_target" ||
-        effect.kind === "untap_target" ||
-        effect.kind === "add_continuous_effect_to_target" ||
-        effect.kind === "add_text_change_effect_to_target"
-    );
     this.stackObjectTargetRequirement = effectSpecs.some(
-      (effect) => effect.kind === "counter_target_spell"
+      (effect) => targetRequirementFor(effect.kind) === "stack_object"
     );
     this.battlefieldObjectTargetRequirement = effectSpecs.some(
-      (effect) =>
-        effect.kind === "set_control_of_target" ||
-        effect.kind === "untap_target" ||
-        effect.kind === "add_continuous_effect_to_target" ||
-        effect.kind === "add_text_change_effect_to_target"
+      (effect) => targetRequirementFor(effect.kind) === "battlefield_object"
     );
   }
 
@@ -33,7 +21,7 @@ export class OnResolveRegistry {
   }
 
   public requiresObjectTargets(): boolean {
-    return this.objectTargetRequirement;
+    return this.stackObjectTargetRequirement || this.battlefieldObjectTargetRequirement;
   }
 
   public requiresStackObjectTargets(): boolean {

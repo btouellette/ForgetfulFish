@@ -24,6 +24,7 @@ import type {
   MoveOrderedCardsSpec,
   NameCardSpec,
   OrderCardsSpec,
+  ResolveEffectKind,
   ResolveEffectSpec,
   ResolvePlayerSelector,
   ResolveTargetObjectSelector,
@@ -788,44 +789,88 @@ function resolveShuffleZone(
   return { kind: "continue" };
 }
 
+/**
+ * What a resolve effect needs from the spell's declared targets. Target legality is checked at cast
+ * time, so this is metadata about the effect kind rather than about a particular resolution.
+ */
+export type EffectTargetRequirement = "none" | "stack_object" | "battlefield_object";
+
+export type ResolveEffectHandler = {
+  kind: ResolveEffectKind;
+  targets: EffectTargetRequirement;
+  execute: (spec: ResolveEffectSpec, context: ResolveEffectHandlerContext) => ResolveEffectResult;
+};
+
+function defineHandler<K extends ResolveEffectKind>(
+  kind: K,
+  targets: EffectTargetRequirement,
+  execute: (
+    spec: Extract<ResolveEffectSpec, { kind: K }>,
+    context: ResolveEffectHandlerContext
+  ) => ResolveEffectResult
+): ResolveEffectHandler {
+  return {
+    kind,
+    targets,
+    execute: (spec, context) => {
+      if (spec.kind !== kind) {
+        throw new Error(`expected resolve effect kind '${kind}', received '${spec.kind}'`);
+      }
+
+      // Narrowing a union by a generic literal discriminant is not inferred by the compiler; the
+      // guard above establishes it.
+      return execute(spec as Extract<ResolveEffectSpec, { kind: K }>, context);
+    }
+  };
+}
+
+export const resolveEffectHandlers: Record<ResolveEffectKind, ResolveEffectHandler> = {
+  draw_cards: defineHandler("draw_cards", "none", resolveDrawCards),
+  choose_cards: defineHandler("choose_cards", "none", resolveChooseCards),
+  order_cards: defineHandler("order_cards", "none", resolveOrderCards),
+  move_ordered_cards: defineHandler("move_ordered_cards", "none", resolveMoveOrderedCards),
+  name_card: defineHandler("name_card", "none", resolveNameCard),
+  choose_mode: defineHandler("choose_mode", "none", resolveChooseMode),
+  mill_cards: defineHandler("mill_cards", "none", resolveMillCards),
+  draw_by_named_hit: defineHandler("draw_by_named_hit", "none", resolveDrawByNamedHit),
+  counter_target_spell: defineHandler(
+    "counter_target_spell",
+    "stack_object",
+    resolveCounterTargetSpell
+  ),
+  draw_by_graveyard_self_count: defineHandler(
+    "draw_by_graveyard_self_count",
+    "none",
+    resolveDrawByGraveyardSelfCount
+  ),
+  set_control_of_target: defineHandler(
+    "set_control_of_target",
+    "battlefield_object",
+    resolveSetControlOfTarget
+  ),
+  untap_target: defineHandler("untap_target", "battlefield_object", resolveUntapTarget),
+  add_continuous_effect_to_target: defineHandler(
+    "add_continuous_effect_to_target",
+    "battlefield_object",
+    resolveAddContinuousEffectToTarget
+  ),
+  add_text_change_effect_to_target: defineHandler(
+    "add_text_change_effect_to_target",
+    "battlefield_object",
+    resolveAddTextChangeEffectToTarget
+  ),
+  shuffle_zone: defineHandler("shuffle_zone", "none", resolveShuffleZone)
+};
+
+export const RESOLVE_EFFECT_KINDS = Object.keys(resolveEffectHandlers) as ResolveEffectKind[];
+
+export function targetRequirementFor(kind: ResolveEffectKind): EffectTargetRequirement {
+  return resolveEffectHandlers[kind].targets;
+}
+
 export function resolveOnResolveEffect(
   spec: ResolveEffectSpec,
   context: ResolveEffectHandlerContext
 ): ResolveEffectResult {
-  switch (spec.kind) {
-    case "draw_cards":
-      return resolveDrawCards(spec, context);
-    case "choose_cards":
-      return resolveChooseCards(spec, context);
-    case "order_cards":
-      return resolveOrderCards(spec, context);
-    case "move_ordered_cards":
-      return resolveMoveOrderedCards(spec, context);
-    case "name_card":
-      return resolveNameCard(spec, context);
-    case "choose_mode":
-      return resolveChooseMode(spec, context);
-    case "mill_cards":
-      return resolveMillCards(spec, context);
-    case "draw_by_named_hit":
-      return resolveDrawByNamedHit(spec, context);
-    case "counter_target_spell":
-      return resolveCounterTargetSpell(spec, context);
-    case "draw_by_graveyard_self_count":
-      return resolveDrawByGraveyardSelfCount(spec, context);
-    case "set_control_of_target":
-      return resolveSetControlOfTarget(spec, context);
-    case "untap_target":
-      return resolveUntapTarget(spec, context);
-    case "add_continuous_effect_to_target":
-      return resolveAddContinuousEffectToTarget(spec, context);
-    case "add_text_change_effect_to_target":
-      return resolveAddTextChangeEffectToTarget(spec, context);
-    case "shuffle_zone":
-      return resolveShuffleZone(spec, context);
-    default: {
-      const exhaustive: never = spec;
-      return exhaustive;
-    }
-  }
+  return resolveEffectHandlers[spec.kind].execute(spec, context);
 }
