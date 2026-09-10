@@ -2,6 +2,15 @@
 
 Status: planned
 
+> Decide before starting: whether to land the composable `sequence`/`conditional` resolve-spec refactor first.
+> `stack/effects/handlers.ts` is still a monolithic `ResolveEffectSpec` union plus a switch interpreter, and this
+> phase adds 13 more cards on top of it — doing the refactor afterwards means migrating a much larger card
+> surface. Record the outcome in `docs/decisions/decision-log.md`; see open question 32 in
+> `docs/plans/rules-engine/README.md`.
+>
+> Every card landed here must also be added to `apps/server/src/room-store/deck-preset.ts` or it stays
+> unreachable in real rooms; `PS1.4` adds the test that enforces this.
+
 ### [ ] P5.1 — Card: Diminishing Returns
 
 **Files**: `cards/diminishing-returns.ts`
