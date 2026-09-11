@@ -62,6 +62,16 @@ These rules define how AI agents should operate in this repository.
 - Do not use TypeScript casts (`as`, angle-bracket assertions, or double assertions) in non-test files.
 - Prefer proper type packages (for example `@types/*`) or explicit type-safe wrappers instead of assertions.
 
+## Card Implementation
+
+- Oracle text is not the specification. Before writing a card, check it against the variant rules in
+  `docs/overview/product-overview.md` and any card-specific note in
+  `docs/architecture/rules-engine-architecture.md`.
+- List which `GameMode` hooks the card's text touches (`resolveZone`, `simultaneousDrawOrder`,
+  `determineOwner`) and route through them; never read a zone or deal simultaneous draws directly.
+- Test the card where variant and vanilla behavior diverge (short shared library, contested shared
+  graveyard, non-active controller), not only the happy path where both give the same result.
+
 ## Validation Before Completion
 
 - Run the relevant test suite for affected areas before declaring done.
