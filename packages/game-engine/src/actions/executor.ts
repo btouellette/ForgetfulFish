@@ -92,6 +92,7 @@ function setObjectZoneAndMove(
         }
       : bumpZcc({
           ...object,
+          damage: 0,
           zone: to,
           summoningSick: entersBattlefieldSummoningSick(object, to)
         });
@@ -226,10 +227,25 @@ export function applyActions(
         if (action.target.kind === "player") {
           const playerIndex = getPlayerIndex(next, action.target.playerId);
           const player = next.players[playerIndex];
+          const nextLife = player.life - action.amount;
           next.players =
             playerIndex === 0
-              ? [{ ...player, life: player.life - action.amount }, next.players[1]]
-              : [next.players[0], { ...player, life: player.life - action.amount }];
+              ? [{ ...player, life: nextLife }, next.players[1]]
+              : [next.players[0], { ...player, life: nextLife }];
+          emit?.({
+            type: "LIFE_CHANGED",
+            playerId: action.target.playerId,
+            amount: -action.amount,
+            newTotal: nextLife
+          });
+          if (action.source !== null) {
+            emit?.({
+              type: "DAMAGE_DEALT",
+              source: action.source,
+              target: { kind: "player", playerId: action.target.playerId },
+              amount: action.amount
+            });
+          }
           break;
         }
 
@@ -239,6 +255,14 @@ export function applyActions(
             ...targetObject,
             damage: targetObject.damage + action.amount
           });
+          if (action.source !== null) {
+            emit?.({
+              type: "DAMAGE_DEALT",
+              source: action.source,
+              target: { kind: "object", object: { id: targetObject.id, zcc: targetObject.zcc } },
+              amount: action.amount
+            });
+          }
         }
         break;
       }

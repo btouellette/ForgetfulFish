@@ -36,7 +36,7 @@ function samplePayloads(): GameEventPayload[] {
       type: "DAMAGE_DEALT",
       amount: 3,
       source: { id: "obj-5", zcc: 0 },
-      target: { id: "obj-6", zcc: 0 }
+      target: { kind: "object", object: { id: "obj-6", zcc: 0 } }
     },
     { type: "LIFE_CHANGED", playerId: "p2", amount: -3, newTotal: 17 },
     { type: "PRIORITY_PASSED", playerId: "p1" },
@@ -95,7 +95,10 @@ describe("events/event", () => {
     }
 
     expect(payload.amount).toBe(3);
-    expect(payload.target.id).toBe("obj-6");
+    if (payload.target.kind !== "object") {
+      throw new Error("expected object target");
+    }
+    expect(payload.target.object.id).toBe("obj-6");
   });
 
   it("createEvent uses stable gameId:seq identifier", () => {

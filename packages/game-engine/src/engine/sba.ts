@@ -8,6 +8,7 @@ import { bumpZcc, type ZoneRef, zoneKey } from "../state/zones";
 
 export type SBAResult =
   | { type: "DESTROY_ZERO_TOUGHNESS"; objectId: ObjectId }
+  | { type: "DESTROY_LETHAL_DAMAGE"; objectId: ObjectId }
   | { type: "SACRIFICE_WHEN_NO_LAND_TYPE"; objectId: ObjectId; landType: string }
   | { type: "PLAYER_LOSES"; playerId: PlayerId; reason: string };
 
@@ -34,6 +35,11 @@ export function checkSBAs(state: Readonly<GameState>): SBAResult[] {
 
     if (toughness <= 0) {
       results.push({ type: "DESTROY_ZERO_TOUGHNESS", objectId });
+      continue;
+    }
+
+    if (computedObject.damage >= toughness) {
+      results.push({ type: "DESTROY_LETHAL_DAMAGE", objectId });
     }
 
     const sacrificeAbility = computedObject.abilities.find(
@@ -88,7 +94,9 @@ export function applySBAs(
     sbas
       .filter(
         (sba): sba is Extract<SBAResult, { objectId: ObjectId }> =>
-          sba.type === "DESTROY_ZERO_TOUGHNESS" || sba.type === "SACRIFICE_WHEN_NO_LAND_TYPE"
+          sba.type === "DESTROY_ZERO_TOUGHNESS" ||
+          sba.type === "DESTROY_LETHAL_DAMAGE" ||
+          sba.type === "SACRIFICE_WHEN_NO_LAND_TYPE"
       )
       .map((sba) => sba.objectId)
   );
@@ -131,6 +139,7 @@ export function applySBAs(
 
     const movedObject = bumpZcc({
       ...object,
+      damage: 0,
       zone: toZone
     });
     nextObjectPool.set(objectId, movedObject);

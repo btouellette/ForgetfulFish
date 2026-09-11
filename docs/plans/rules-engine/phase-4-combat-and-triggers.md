@@ -96,7 +96,7 @@ not Phase 4 scope, so combat work here and client work there can proceed in para
 - `DECLARE_BLOCKERS` accepts real legal assignments and rejects illegal ones.
 - Evasion checks respect Phase 3 Layer 3 rewriting and keyword-derived abilities.
 
-#### [ ] Slice C — Resolve combat damage and converge through SBAs
+#### [x] Slice C — Resolve combat damage and converge through SBAs
 
 **Goal**: add deterministic combat damage resolution for blocked and unblocked combat, then run the existing SBA/loss machinery on the resulting state.
 
@@ -245,7 +245,7 @@ Test: **Write tests FIRST**, then implement.
 6. `assertStateInvariants` holds after blocking is finalized.
 Acceptance: Evasion checks use computed (layer-derived) abilities.
 
-### [ ] P4.3 — Combat damage assignment and resolution
+### [x] P4.3 — Combat damage assignment and resolution
 
 **Files**: `engine/combat.ts` (extend)
 

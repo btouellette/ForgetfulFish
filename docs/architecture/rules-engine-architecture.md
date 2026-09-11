@@ -631,7 +631,7 @@ type GameEventPayload =
   | { type: 'ABILITY_ACTIVATED';  source: ObjectRef; controller: PlayerId }
   | { type: 'SPELL_RESOLVED';     object: ObjectRef }
   | { type: 'SPELL_COUNTERED';    object: ObjectRef }
-  | { type: 'DAMAGE_DEALT';       source: ObjectRef; target: ObjectRef; amount: number }
+  | { type: 'DAMAGE_DEALT';       source: ObjectRef; target: { kind: 'object'; object: ObjectRef } | { kind: 'player'; playerId: PlayerId }; amount: number }
   | { type: 'LIFE_CHANGED';       playerId: PlayerId; amount: number; newTotal: number }
   | { type: 'PRIORITY_PASSED';    playerId: PlayerId }
   | { type: 'PHASE_CHANGED';      phase: Phase; step: Step }
@@ -932,7 +932,8 @@ packages/game-engine/src/
     processCommand.ts            # Entry point: processCommand
     kernel.ts                    # Turn structure, SBA, stack resolution, priority loop
     sba.ts                       # State-based action predicates
-    combat.ts                    # Combat phases and damage
+    combat.ts                    # Combat phases, legality checks and declaration validation
+    combatDamage.ts              # Damage assignment & damage-action planning (passes actions into the pipeline)
   stack/
     stackItem.ts                 # StackItem with EffectContext
     resolve.ts                   # Resolution with persisted whiteboard/cursor
