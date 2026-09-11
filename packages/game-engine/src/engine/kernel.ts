@@ -1,4 +1,5 @@
 import type { ActivatedAbilityAst } from "../cards/abilityAst";
+import { applyActions } from "../actions/executor";
 import { cardRegistry } from "../cards";
 import {
   cleanupExpiredEffects,
@@ -6,13 +7,15 @@ import {
   removeAsLongAsEffects
 } from "../effects/continuous/duration";
 import { computeGameObject } from "../effects/continuous/layers";
-import { createEvent, type GameEvent } from "../events/event";
+import { createEvent, type GameEvent, type GameEventPayload } from "../events/event";
 import { Rng } from "../rng/rng";
 import { captureSnapshot, lkiKey } from "../state/lki";
 import type { GameState, ManaPool } from "../state/gameState";
 import type { ObjectId, PlayerId } from "../state/objectRef";
 import { createInitialPriorityState } from "../state/priorityState";
 import { bumpZcc, zoneKey } from "../state/zones";
+import { createCombatDamageActions } from "./combatDamage";
+import { runSBALoop } from "./sba";
 
 function assertKnownPlayerId(state: Readonly<GameState>, playerId: PlayerId): void {
   if (state.players[0].id === playerId || state.players[1].id === playerId) {
@@ -350,7 +353,52 @@ export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): Ste
     events = drawResult.events;
   }
 
+  if (state.turnState.step === "COMBAT_DAMAGE") {
+    const emittedPayloads: GameEventPayload[] = [];
+    const damageActions = createCombatDamageActions(processedState);
+    const damagedState = applyActions(processedState, damageActions, rng, (payload) =>
+      emittedPayloads.push(payload)
+    );
+
+    let seq = processedState.version + 1;
+    const damageEvents = emittedPayloads.map((payload) =>
+      createEvent(
+        {
+          engineVersion: state.engineVersion,
+          schemaVersion: 1,
+          gameId: state.id
+        },
+        seq++,
+        payload
+      )
+    );
+
+    const stateAfterDamage: GameState = {
+      ...damagedState,
+      version: seq - 1
+    };
+    const sbaResult = runSBALoop(stateAfterDamage);
+    processedState = sbaResult.state;
+    events = [...events, ...damageEvents, ...sbaResult.events];
+  }
+
   if (state.turnState.step === "CLEANUP") {
+    const clearedDamageObjectPool = new Map(processedState.objectPool);
+    for (const [objectId, object] of processedState.objectPool) {
+      if (object.zone.kind !== "battlefield" || object.damage === 0) {
+        continue;
+      }
+
+      clearedDamageObjectPool.set(objectId, {
+        ...object,
+        damage: 0
+      });
+    }
+    processedState = {
+      ...processedState,
+      objectPool: clearedDamageObjectPool
+    };
+
     const endOfTurnCleanup = cleanupExpiredEffects(processedState);
     const untilCleanupResult = cleanupUntilCleanupEffects(endOfTurnCleanup.state);
     const asLongAsCleanupResult = removeAsLongAsEffects(untilCleanupResult.state);
