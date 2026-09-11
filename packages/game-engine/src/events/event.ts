@@ -33,7 +33,12 @@ export type GameEventPayload =
   | { type: "ABILITY_ACTIVATED"; source: ObjectRef; controller: PlayerId }
   | { type: "SPELL_RESOLVED"; object: ObjectRef }
   | { type: "SPELL_COUNTERED"; object: ObjectRef }
-  | { type: "DAMAGE_DEALT"; source: ObjectRef; target: ObjectRef; amount: number }
+  | {
+      type: "DAMAGE_DEALT";
+      source: ObjectRef;
+      target: { kind: "object"; object: ObjectRef } | { kind: "player"; playerId: PlayerId };
+      amount: number;
+    }
   | { type: "LIFE_CHANGED"; playerId: PlayerId; amount: number; newTotal: number }
   | { type: "PRIORITY_PASSED"; playerId: PlayerId }
   | { type: "PHASE_CHANGED"; phase: TurnPhase; step: TurnStep }
