@@ -55,6 +55,7 @@ describe("stack/effects/handlers table", () => {
       "choose_mode",
       "mill_cards",
       "move_zone_contents",
+      "each_player_draws",
       "exile_from_library_top",
       "shuffle_zone"
     ];

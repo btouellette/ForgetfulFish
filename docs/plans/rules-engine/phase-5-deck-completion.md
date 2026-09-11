@@ -38,7 +38,10 @@ Test: **Write tests FIRST**, then implement.
 Acceptance: Complex multi-zone card works with shared-deck hooks.
 
 Built on Phase 4.1 nodes: `for_each_player` (`apnap`) around `move_zone_contents` + `shuffle_zone`,
-then `exile_from_library_top`, then a second `for_each_player` draw. Exiling the top of a library
+then `exile_from_library_top`, then `each_player_draws`. The draws are one effect, so they deal a
+card at a time through `GameMode.simultaneousDrawOrder` (active player first) rather than seven to
+one player and then seven to the other — that ordering is observable whenever the shared library
+is shorter than the total draw. Exiling the top of a library
 that earlier effects in the same resolution just shuffled required a new
 `ResolveEffectHandlerContext.flushActions()`, since enqueued actions otherwise only apply at the end
 of resolution.

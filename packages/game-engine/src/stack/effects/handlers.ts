@@ -19,6 +19,7 @@ import type {
   ChooseCardsSpec,
   CounterTargetSpellSpec,
   DrawCardsSpec,
+  EachPlayerDrawsSpec,
   ExileFromLibraryTopSpec,
   MillCardsSpec,
   MoveOrderedCardsSpec,
@@ -457,6 +458,29 @@ function resolveMoveZoneContents(
   return { kind: "continue" };
 }
 
+function resolveEachPlayerDraws(
+  spec: EachPlayerDrawsSpec,
+  context: ResolveEffectHandlerContext
+): ResolveEffectResult {
+  const countPerPlayer = resolveCount(spec.countPerPlayer, context);
+  if (countPerPlayer <= 0) {
+    return { kind: "continue" };
+  }
+
+  const playerOrder: [string, string] = [context.state.players[0].id, context.state.players[1].id];
+  const dealOrder = context.state.mode.simultaneousDrawOrder(
+    countPerPlayer * playerOrder.length,
+    context.state.turnState.activePlayerId,
+    playerOrder
+  );
+
+  for (let index = 0; index < dealOrder.length; index += 1) {
+    enqueueDrawAction(context, dealOrder[index]!, 1, `${spec.kind}-${index}`);
+  }
+
+  return { kind: "continue" };
+}
+
 function resolveExileFromLibraryTop(
   spec: ExileFromLibraryTopSpec,
   context: ResolveEffectHandlerContext
@@ -748,6 +772,7 @@ export const resolveEffectHandlers: Record<ResolveEffectKind, ResolveEffectHandl
   choose_mode: defineHandler("choose_mode", "none", resolveChooseMode),
   mill_cards: defineHandler("mill_cards", "none", resolveMillCards),
   move_zone_contents: defineHandler("move_zone_contents", "none", resolveMoveZoneContents),
+  each_player_draws: defineHandler("each_player_draws", "none", resolveEachPlayerDraws),
   exile_from_library_top: defineHandler(
     "exile_from_library_top",
     "none",

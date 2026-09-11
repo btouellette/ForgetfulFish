@@ -40,23 +40,7 @@ export const diminishingReturnsCardDefinition: CardDefinition = {
       }
     },
     { kind: "exile_from_library_top", count: 10, player: "controller" },
-    {
-      kind: "for_each_player",
-      order: "apnap",
-      body: {
-        kind: "draw_cards",
-        player: "iteration_player",
-        count: {
-          kind: "clamp",
-          min: 0,
-          value: {
-            kind: "subtract",
-            left: { kind: "literal", value: 7 },
-            right: { kind: "zone_size", zone: "hand", player: "iteration_player" }
-          }
-        }
-      }
-    }
+    { kind: "each_player_draws", countPerPlayer: 7 }
   ],
   continuousEffects: [],
   replacementEffects: []

@@ -87,6 +87,15 @@ export type MoveZoneContentsSpec = {
   player: ResolvePlayerSelector;
 };
 
+/**
+ * "Each player draws N": one effect, so the cards are dealt one at a time in the order the
+ * variant's `GameMode.simultaneousDrawOrder` gives, not N to one player and then N to the other.
+ */
+export type EachPlayerDrawsSpec = {
+  kind: "each_player_draws";
+  countPerPlayer: ResolveCount;
+};
+
 export type ExileFromLibraryTopSpec = {
   kind: "exile_from_library_top";
   count: ResolveCount;
@@ -157,6 +166,7 @@ export type ResolveEffectSpec =
   | ChooseModeSpec
   | MillCardsSpec
   | MoveZoneContentsSpec
+  | EachPlayerDrawsSpec
   | ExileFromLibraryTopSpec
   | AddSubtypeFromChoiceToTargetSpec
   | CounterTargetSpellSpec

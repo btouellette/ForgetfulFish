@@ -228,6 +228,47 @@ describe("cards/diminishing-returns", () => {
     expect(handZone(resolved.nextState, "p2").length).toBe(7);
   });
 
+  it("deals the draws one card at a time, alternating from the active player", () => {
+    const state = createDiminishingReturnsState();
+    const resolved = castAndResolve(state);
+
+    const drawnBy = resolved.newEvents
+      .filter((event) => event.type === "CARD_DRAWN")
+      .map((event) => (event.type === "CARD_DRAWN" ? event.playerId : ""));
+
+    expect(drawnBy).toEqual([
+      "p1",
+      "p2",
+      "p1",
+      "p2",
+      "p1",
+      "p2",
+      "p1",
+      "p2",
+      "p1",
+      "p2",
+      "p1",
+      "p2",
+      "p1",
+      "p2"
+    ]);
+  });
+
+  it("splits a short library between both players instead of filling one hand first", () => {
+    // 14 library + 5 hands + 4 graveyard, minus the ten exiled, leaves 13 for 14 draws.
+    const state = createDiminishingReturnsState({
+      libraryCount: 14,
+      p1HandCount: 2,
+      p2HandCount: 3,
+      graveyardCount: 4
+    });
+    const resolved = castAndResolve(state);
+
+    expect(handZone(resolved.nextState, "p1").length).toBe(7);
+    expect(handZone(resolved.nextState, "p2").length).toBe(6);
+    expect(sharedZone(resolved.nextState, "library")).toEqual([]);
+  });
+
   it("accounts for every card across the shuffle, exile, and draws", () => {
     const state = createDiminishingReturnsState({ p1HandCount: 2, p2HandCount: 3 });
     const resolved = castAndResolve(state);
