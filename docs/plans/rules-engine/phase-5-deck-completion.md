@@ -34,6 +34,9 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after the massive multi-zone state change.
 Acceptance: Complex multi-zone card works with shared-deck hooks.
 
+Shipped with known gaps (README open question 40): not yet in `deck-preset.ts`, so unreachable in real rooms
+until `PS1.4`.
+
 ### [ ] P5.2 — Card: Supplant Form
 
 **Files**: `cards/supplant-form.ts`
@@ -151,6 +154,10 @@ Test: **Write tests FIRST**, then implement.
 7. (Interaction) Phased out permanent returns during its owner's next untap step.
 8. (State) `assertStateInvariants` passes after each mode's resolution.
 Acceptance: All three modes work.
+
+Shipped with known gaps (README open questions 35–39; decision log "Composable Resolve Specs — Known gaps"):
+"target artifact" is not enforced, the first land-type choice offers only basic types, the type change keeps the
+printed mana ability, the mode is chosen on resolution, and phasing is a flag rather than a subsystem.
 
 ### [ ] P5.7 — Card: Mystic Retrieval
 
