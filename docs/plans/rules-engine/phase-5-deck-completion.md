@@ -1,17 +1,15 @@
 # Rules Engine Implementation: Phase 5 — Full deck completion + complex cards
 
-Status: planned
+Status: in progress
 
-> Decide before starting: whether to land the composable `sequence`/`conditional` resolve-spec refactor first.
-> `stack/effects/handlers.ts` is still a monolithic `ResolveEffectSpec` union plus a switch interpreter, and this
-> phase adds 13 more cards on top of it — doing the refactor afterwards means migrating a much larger card
-> surface. Record the outcome in `docs/decisions/decision-log.md`; see open question 32 in
-> `docs/plans/rules-engine/README.md`.
+> The composable resolve-spec refactor landed first (see `docs/decisions/decision-log.md`, "Composable Resolve
+> Specs"). New cards should be expressed as trees of `conditional` / `modal` / `for_each_player` nodes over the
+> generic leaves in `cards/resolveEffect.ts`; add a dedicated leaf kind only when the mechanic has no reusable shape.
 >
 > Every card landed here must also be added to `apps/server/src/room-store/deck-preset.ts` or it stays
 > unreachable in real rooms; `PS1.4` adds the test that enforces this.
 
-### [ ] P5.1 — Card: Diminishing Returns
+### [x] P5.1 — Card: Diminishing Returns
 
 **Files**: `cards/diminishing-returns.ts`
 
@@ -128,7 +126,7 @@ Test: **Write tests FIRST**, then implement.
 8. (State) `assertStateInvariants` passes after hand-return.
 Acceptance: Dual-mode bounce works for both battlefield creatures and stack spells.
 
-### [ ] P5.6 — Card: Vision Charm
+### [x] P5.6 — Card: Vision Charm
 
 **Files**: `cards/vision-charm.ts`
 
@@ -138,8 +136,8 @@ Implement:
 - CardDefinition: instant, {U}, `onResolve`:
   - Mode choice: `PendingChoice { type: 'CHOOSE_MODE'; modes: [mill, typeChange, phaseOut] }`
   - Mode 1: mill top 4 of target player's library → graveyard (shared library in variant)
-  - Mode 2: choose artifact, choose basic land type, artifact becomes that type until EOT
-  - Mode 3: target permanent phases out
+  - Mode 2: choose a land type and a basic land type; each land of the first type becomes the second until EOT
+  - Mode 3: target artifact phases out
 
 **Test file**: `test/cards/visionCharm.test.ts`
 Depends: P0.6, P0.7, P0.11, P2.1, P2.2
@@ -147,7 +145,7 @@ Test: **Write tests FIRST**, then implement.
 1. (Definition) Loads as 1-mana blue instant.
 2. (Resolution) Player is offered a choice of 3 modes.
 3. (Mode 1) Exactly 4 cards move from library to shared graveyard.
-4. (Mode 2) Artifact permanent gains a basic land type until end of turn.
+4. (Mode 2) Every land of the chosen type becomes the chosen basic land type until end of turn.
 5. (Mode 3) Targeted permanent is marked as "phased out" and treated as non-existent.
 6. (Shared-deck) Mill uses the common library zone.
 7. (Interaction) Phased out permanent returns during its owner's next untap step.

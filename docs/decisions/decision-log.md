@@ -120,6 +120,19 @@
 - Creatures entering the battlefield become summoning sick through centralized battlefield-entry handling, with computed haste clearing that restriction in the derived view.
 - Attacker legality and must-attack enforcement already live on the computed-view combat path ahead of Phase 4, while blocker declaration remains scaffolding pending full combat implementation.
 
+## 2026-09-15 Composable Resolve Specs
+
+- Resolves open question 32: the composable resolve-spec refactor lands before the rest of Phase 5, so new cards compose existing building blocks instead of adding card-specific `ResolveEffectSpec` kinds.
+- `ResolveEffectSpec` is now a tree. Composite nodes (`conditional`, `modal`, `for_each_player`) contain ordered lists of specs; leaf nodes are generic operations (`draw_cards`, `each_player_draws`, `move_cards`, `mill_cards`, `shuffle_zone`, `add_continuous_effect`, `phase_out_target`, choice prompts) parameterised by data selectors rather than card names:
+  - `ResolveCardsSelector` picks cards from a mode-routed zone, the top of a library, a stored scratch list, or the object target, with optional filters (card type, basic land type, same card as source, stored name).
+  - `ResolveAmount` is a numeric expression (`count`/`plus`/`minus`) and `ResolveCondition` is a boolean expression over selectors and scratch values.
+  - Player references use `controller` / `opponent` / `target_player_or_controller` / `iterated_player`, the last bound by `for_each_player` and `each_player_draws`.
+- Card-specific kinds (`draw_by_named_hit`, `draw_by_graveyard_self_count`, `move_ordered_cards`, `add_continuous_effect_to_target`) were removed; Predict, Accumulated Knowledge, Brainstorm, Mystical Tutor, Dance of the Skywise, and Ray of Command are expressed with the generic blocks. Mechanics with no reusable shape (`counter_target_spell`, `set_control_of_target`, `untap_target`, `add_text_change_effect_to_target`) stay as dedicated leaves — the intended escape hatch for genuinely unique text.
+- Resolution walks the tree with a path cursor (`onResolvePath` + `onResolveSkipLeaf` in scratch) instead of a flat step index, so a `PendingChoice` raised inside a modal branch or per-player loop resumes at the same nested position. Pending actions are flushed after every leaf so later selectors observe the state produced by earlier steps (Brainstorm's put-back sees the drawn cards; Diminishing Returns' exile sees the shuffled library).
+- `OnResolveRegistry` recurses composite branches. A target is *required* only if every branch uses it, so a modal card with one targeted mode (Vision Charm) stays castable without a target.
+- Phasing is modelled minimally: `PHASE_OUT` action sets `GameObject.phasedOut`; phased-out permanents stay in the battlefield zone but are illegal targets, cannot attack/block, cannot tap for mana, and phase in during their controller's untap step. Phasing triggers, attached-object phasing, and "phased out" hidden-state redaction remain deferred until a card needs them.
+- Vision Charm's land-type mode offers only basic land types for the "land type" choice and applies a Layer 4 type change; swapping the intrinsic mana ability (CR 305.7) is deferred with the rest of basic-land-type identity handling. Mode selection happens on resolution, matching the existing `choose_mode` convention.
+
 ## Notes
 
 - These decisions can be revised, but current architecture and roadmap docs should treat them as defaults.

@@ -7,9 +7,15 @@ import { createEvent, type GameEvent, type GameEventPayload } from "../events/ev
 import type { Rng } from "../rng/rng";
 import type { GameState } from "../state/gameState";
 import { bumpZcc, zoneKey } from "../state/zones";
-import { resolveOnResolveEffect } from "./effects/handlers";
-import type { ResolveMutableState } from "./effects/types";
-import { OnResolveRegistry } from "./onResolveRegistry";
+import {
+  readResumePoint,
+  resumePointScratch,
+  runResolveSteps,
+  type ResolveResumePoint
+} from "./effects/interpreter";
+import { snapshotState } from "./effects/selectors";
+import type { PauseResult, ResolveMutableState, ResolveStepPath } from "./effects/types";
+import type { StackItem } from "./stackItem";
 
 export type ResolveStackResult = {
   state: GameState;
@@ -72,16 +78,15 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
   }
 
   const validatedTargets = partitionResolvedTargets(state, stackItem.targets);
-  const onResolveRegistry = new OnResolveRegistry(cardDefinition.onResolve);
   const allTargetsIllegal =
     stackItem.targets.length > 0 &&
     validatedTargets.legalTargets.length === 0 &&
     validatedTargets.illegalTargets.length > 0;
-  const resumeOnResolveIndexRaw = stackItem.effectContext.whiteboard.scratch.onResolveEffectIndex;
-  const resumeOnResolveIndex =
-    typeof resumeOnResolveIndexRaw === "number" && resumeOnResolveIndexRaw >= 0
-      ? resumeOnResolveIndexRaw
-      : 0;
+  const resumePoint = readResumePoint(stackItem);
+  const pipelineChoiceKey = `pipelineChoice:${stackItem.id}`;
+  const isResumingPipelineChoice =
+    stackItem.effectContext.cursor.kind === "step" &&
+    stackItem.effectContext.whiteboard.scratch[pipelineChoiceKey] === true;
 
   const stackZone = state.mode.resolveZone(state, "stack", stackItem.controller);
   const destinationZone = allTargetsIllegal
@@ -138,6 +143,7 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
   };
 
   let activeStackItem = stackItem;
+  let pendingWhiteboardActions = [...stackItem.effectContext.whiteboard.actions];
 
   const writeScratch = (entries: Record<string, unknown>): void => {
     activeStackItem = {
@@ -157,44 +163,18 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
 
   const pauseWithChoice = (
     choice: NonNullable<GameState["pendingChoice"]>,
-    updatedTopItem: GameState["stack"][number]
-  ): ResolveStackResult => {
-    if (choice.type !== "CHOOSE_REPLACEMENT" && mutable.nextActions.length > 0) {
-      const prePauseState: GameState = {
-        ...state,
-        version: nextVersion,
-        players: mutable.nextPlayers,
-        stack: mutable.nextStack,
-        zones: mutable.nextZones,
-        objectPool: mutable.nextObjectPool,
-        continuousEffects: mutable.nextContinuousEffects,
-        lkiStore: mutable.nextLkiStore,
-        pendingChoice: null
-      };
-      const postActionState = applyActions(prePauseState, mutable.nextActions, rng, emit);
-      mutable.nextPlayers = postActionState.players;
-      mutable.nextZones = postActionState.zones;
-      mutable.nextObjectPool = postActionState.objectPool;
-      mutable.nextContinuousEffects = postActionState.continuousEffects;
-      mutable.nextLkiStore = postActionState.lkiStore;
-      mutable.nextStack = postActionState.stack;
-      mutable.nextActions = [];
-    }
-
-    const pausedStack = state.stack.slice();
-    pausedStack[pausedStack.length - 1] = updatedTopItem;
-    mutable.nextZones.set(stackKey, [...currentStackZone]);
+    updatedTopItem: StackItem
+  ): PauseResult => {
+    const pausedStack = [...mutable.nextStack, updatedTopItem];
+    mutable.nextZones.set(stackKey, [
+      ...(mutable.nextZones.get(stackKey) ?? []),
+      stackItem.object.id
+    ]);
     nextVersion += 1;
 
     const nextState: GameState = {
-      ...state,
-      version: nextVersion,
-      players: mutable.nextPlayers,
+      ...snapshotState(state, mutable, nextVersion),
       stack: pausedStack,
-      zones: mutable.nextZones,
-      objectPool: mutable.nextObjectPool,
-      continuousEffects: mutable.nextContinuousEffects,
-      lkiStore: mutable.nextLkiStore,
       pendingChoice: choice
     };
 
@@ -205,121 +185,101 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
     };
   };
 
-  if (!allTargetsIllegal) {
-    const isResumingPipelineChoice =
-      stackItem.effectContext.cursor.kind === "step" &&
-      stackItem.effectContext.whiteboard.scratch[`pipelineChoice:${stackItem.id}`] === true;
-
-    if (!isResumingPipelineChoice) {
-      for (
-        let effectIndex = resumeOnResolveIndex;
-        effectIndex < cardDefinition.onResolve.length;
-        effectIndex += 1
-      ) {
-        const effectSpec = cardDefinition.onResolve[effectIndex];
-        if (effectSpec === undefined) {
-          continue;
-        }
-
-        const effectResult = resolveOnResolveEffect(effectSpec, {
-          state,
-          stackItem: activeStackItem,
-          cardDefinition,
-          rng,
-          mutable,
-          effects: onResolveRegistry,
-          writeScratch,
-          enqueueAction,
-          emit,
-          pauseWithChoice
-        });
-
-        if (effectResult.kind === "pause") {
-          const pausedTopIndex = effectResult.result.state.stack.length - 1;
-          const pausedTopItem = effectResult.result.state.stack[pausedTopIndex];
-          if (pausedTopItem === undefined) {
-            return effectResult.result;
-          }
-
-          const nextStack = effectResult.result.state.stack.slice();
-          nextStack[pausedTopIndex] = {
-            ...pausedTopItem,
-            effectContext: {
-              ...pausedTopItem.effectContext,
-              whiteboard: {
-                ...pausedTopItem.effectContext.whiteboard,
-                scratch: {
-                  ...pausedTopItem.effectContext.whiteboard.scratch,
-                  onResolveEffectIndex: effectIndex
-                }
-              }
-            }
-          };
-
-          return {
-            ...effectResult.result,
-            state: {
-              ...effectResult.result.state,
-              stack: nextStack
-            }
-          };
-        }
-      }
+  /**
+   * Runs every pending action through the replacement pipeline and applies it.
+   * A replacement choice persists the rewritten actions and where to resume.
+   */
+  const flushActions = (resumeAfter: ResolveResumePoint | null): PauseResult | null => {
+    const actions = [...pendingWhiteboardActions, ...mutable.nextActions];
+    pendingWhiteboardActions = [];
+    mutable.nextActions = [];
+    if (actions.length === 0) {
+      return null;
     }
-  }
 
-  const pipelineState: GameState = {
-    ...state,
-    version: nextVersion,
-    players: mutable.nextPlayers,
-    stack: mutable.nextStack,
-    zones: mutable.nextZones,
-    objectPool: mutable.nextObjectPool,
-    continuousEffects: mutable.nextContinuousEffects,
-    lkiStore: mutable.nextLkiStore,
-    pendingChoice: null
-  };
-
-  const pipelineResult = runPipelineWithResult(
-    pipelineState,
-    [...stackItem.effectContext.whiteboard.actions, ...mutable.nextActions],
-    {
-      replacementSelections: collectReplacementSelections(
-        stackItem.effectContext.whiteboard.scratch
-      )
-    }
-  );
-  if (pipelineResult.pendingChoice !== null) {
-    const choice = pipelineResult.pendingChoice;
-    const resumeStepIndex =
-      stackItem.effectContext.cursor.kind === "step" ? stackItem.effectContext.cursor.index : 0;
-    const pausedTopItem: GameState["stack"][number] = {
-      ...stackItem,
+    activeStackItem = {
+      ...activeStackItem,
       effectContext: {
-        ...stackItem.effectContext,
-        cursor: { kind: "waiting_choice", choiceId: choice.id },
-        whiteboard: {
-          ...stackItem.effectContext.whiteboard,
-          actions: pipelineResult.actions,
-          scratch: {
-            ...stackItem.effectContext.whiteboard.scratch,
-            [`pipelineChoice:${stackItem.id}`]: true,
-            [`resumeStepIndex:${choice.id}`]: resumeStepIndex
-          }
-        }
+        ...activeStackItem.effectContext,
+        whiteboard: { ...activeStackItem.effectContext.whiteboard, actions: [] }
       }
     };
 
-    return pauseWithChoice(choice, pausedTopItem);
+    const pipelineState = snapshotState(state, mutable, nextVersion);
+    const pipelineResult = runPipelineWithResult(pipelineState, actions, {
+      replacementSelections: collectReplacementSelections(
+        activeStackItem.effectContext.whiteboard.scratch
+      )
+    });
+    if (pipelineResult.pendingChoice !== null) {
+      const choice = pipelineResult.pendingChoice;
+      const pausedTopItem: StackItem = {
+        ...activeStackItem,
+        effectContext: {
+          ...activeStackItem.effectContext,
+          cursor: { kind: "waiting_choice", choiceId: choice.id },
+          whiteboard: {
+            actions: pipelineResult.actions,
+            scratch: {
+              ...activeStackItem.effectContext.whiteboard.scratch,
+              [pipelineChoiceKey]: true,
+              ...(resumeAfter === null ? {} : resumePointScratch(resumeAfter))
+            }
+          }
+        }
+      };
+
+      return pauseWithChoice(choice, pausedTopItem);
+    }
+
+    const postActionState = applyActions(pipelineState, pipelineResult.actions, rng, emit);
+    mutable.nextPlayers = postActionState.players;
+    mutable.nextZones = postActionState.zones;
+    mutable.nextObjectPool = postActionState.objectPool;
+    mutable.nextContinuousEffects = postActionState.continuousEffects;
+    mutable.nextLkiStore = postActionState.lkiStore;
+    mutable.nextStack = postActionState.stack;
+    return null;
+  };
+
+  if (isResumingPipelineChoice) {
+    writeScratch({ [pipelineChoiceKey]: false });
+    const pipelinePause = flushActions(resumePoint);
+    if (pipelinePause !== null) {
+      return pipelinePause;
+    }
   }
 
-  const postActionState = applyActions(pipelineState, pipelineResult.actions, rng, emit);
-  mutable.nextPlayers = postActionState.players;
-  mutable.nextZones = postActionState.zones;
-  mutable.nextObjectPool = postActionState.objectPool;
-  mutable.nextContinuousEffects = postActionState.continuousEffects;
-  mutable.nextLkiStore = postActionState.lkiStore;
-  mutable.nextStack = postActionState.stack;
+  if (!allTargetsIllegal) {
+    const resumeFrom =
+      isResumingPipelineChoice && resumePoint !== null
+        ? { path: resumePoint.path, skipLeaf: true }
+        : resumePoint;
+    const stepsResult = runResolveSteps(
+      cardDefinition.onResolve,
+      {
+        state,
+        currentStackItem: () => activeStackItem,
+        cardDefinition,
+        rng,
+        mutable,
+        writeScratch,
+        enqueueAction,
+        emit,
+        pauseWithChoice,
+        flushActions: (path: ResolveStepPath) => flushActions({ path, skipLeaf: true })
+      },
+      resumeFrom
+    );
+    if (stepsResult.kind === "pause") {
+      return stepsResult.result;
+    }
+  }
+
+  const finalPause = flushActions({ path: [cardDefinition.onResolve.length], skipLeaf: true });
+  if (finalPause !== null) {
+    return finalPause;
+  }
 
   const movedObject = bumpZcc({
     ...object,
@@ -344,20 +304,8 @@ export function resolveTopOfStack(state: Readonly<GameState>, rng: Rng): Resolve
       : { type: "SPELL_RESOLVED", object: { id: movedObject.id, zcc: movedObject.zcc } }
   );
 
-  const nextState: GameState = {
-    ...state,
-    version: nextVersion,
-    players: mutable.nextPlayers,
-    stack: mutable.nextStack,
-    zones: mutable.nextZones,
-    objectPool: mutable.nextObjectPool,
-    continuousEffects: mutable.nextContinuousEffects,
-    lkiStore: mutable.nextLkiStore,
-    pendingChoice: null
-  };
-
   return {
-    state: nextState,
+    state: snapshotState(state, mutable, nextVersion),
     events: resolutionEvents,
     pendingChoice: null
   };

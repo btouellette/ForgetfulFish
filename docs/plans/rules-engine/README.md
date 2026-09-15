@@ -173,9 +173,9 @@ Collected from the phase files below — items needing clarification before or d
 18. **P4.1** — Dandan attack legality: check Layer 3-rewritten condition at declaration time
 19. **P4.7** — Mystic Sanctuary: "3+ other Islands" — self doesn't count
 20. **P4.9** — Scry choice type (CHOOSE_YES_NO vs CHOOSE_CARDS)
-21. **P5.1** — Diminishing Returns: confirm shared-deck handling for "shuffle hand/graveyard into library", "exile top ten", and "draw up to seven"
+21. **P5.1** — Resolved: Diminishing Returns routes each player's hand/graveyard into the mode-resolved library (the shared library in shared-deck), exiles the top ten of the controller's library, and draws via `GameMode.simultaneousDrawOrder`
 22. **P5.4** — Metamorphose: actual Oracle text vs architecture doc characterization
-23. **P5.6** — Vision Charm phase out: minimal scope needed
+23. **P5.6** — Resolved: Vision Charm phase out ships as a `phasedOut` flag (illegal target, no attack/block/mana, phases in at controller's untap); triggers and attachment phasing deferred
 24. **P5.7** — Flashback subsystem design (alternative cost + exile replacement)
 25. **P5.10** — ETB lookahead: review if any card needs CR 614.12
 26. **P5.11** — Cross-layer dependency scenarios enumeration
@@ -184,6 +184,6 @@ Collected from the phase files below — items needing clarification before or d
 29. **P7.4** — Property-testing library selection (fast-check recommended)
 30. **P0.14** — State Invariant Checker: ensure all objectPool entries have valid zone references
 31. **P0.15** — Property-Based Test Utilities: generate diverse but internally consistent GameStates
-32. **P5 entry** — Whether the composable `sequence`/`conditional` resolve-spec refactor lands before Phase 5 adds 13 more cards to the monolithic `ResolveEffectSpec` switch interpreter; needs a decision-log entry
+32. **P5 entry** — Resolved: the composable resolve-spec refactor landed before the remaining Phase 5 cards (decision log, "Composable Resolve Specs")
 33. **P6.8** — Whether a draw (simultaneous loss) is reachable in the shared-deck variant and how it should be reported
 34. **P8.1** — Whether the free-mulligan condition is evaluated once per opener or re-evaluated after each mulligan (product overview states the condition but not the repeat rule)

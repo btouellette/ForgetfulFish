@@ -18,8 +18,8 @@ export const danceOfTheSkywiseCardDefinition: CardDefinition = {
   activatedAbilities: [],
   onResolve: [
     {
-      kind: "add_continuous_effect_to_target",
-      target: "first_object_target",
+      kind: "add_continuous_effect",
+      to: { kind: "target_object" },
       layer: 4,
       duration: "until_end_of_turn",
       effect: {
@@ -33,8 +33,8 @@ export const danceOfTheSkywiseCardDefinition: CardDefinition = {
       }
     },
     {
-      kind: "add_continuous_effect_to_target",
-      target: "first_object_target",
+      kind: "add_continuous_effect",
+      to: { kind: "target_object" },
       layer: 5,
       duration: "until_end_of_turn",
       effect: {
@@ -43,22 +43,22 @@ export const danceOfTheSkywiseCardDefinition: CardDefinition = {
       }
     },
     {
-      kind: "add_continuous_effect_to_target",
-      target: "first_object_target",
+      kind: "add_continuous_effect",
+      to: { kind: "target_object" },
       layer: 6,
       duration: "until_end_of_turn",
       effect: { kind: "remove_all_abilities" }
     },
     {
-      kind: "add_continuous_effect_to_target",
-      target: "first_object_target",
+      kind: "add_continuous_effect",
+      to: { kind: "target_object" },
       layer: 6,
       duration: "until_end_of_turn",
       effect: { kind: "grant_keyword", payload: { keyword: "flying" } }
     },
     {
-      kind: "add_continuous_effect_to_target",
-      target: "first_object_target",
+      kind: "add_continuous_effect",
+      to: { kind: "target_object" },
       layer: "7a",
       duration: "until_end_of_turn",
       effect: { kind: "set_pt", payload: { power: 4, toughness: 4 } }

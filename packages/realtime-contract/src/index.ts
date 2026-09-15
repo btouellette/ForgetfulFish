@@ -326,6 +326,7 @@ export const gameObjectViewSchema = z
     damage: z.number().int().min(0),
     tapped: z.boolean(),
     summoningSick: z.boolean(),
+    phasedOut: z.boolean().optional(),
     attachments: z.array(objectIdSchema),
     zone: zoneRefSchema
   })

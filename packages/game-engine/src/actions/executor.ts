@@ -461,6 +461,16 @@ export function applyActions(
         });
         break;
       }
+      case "PHASE_OUT": {
+        const object = next.objectPool.get(action.objectId);
+        if (object !== undefined && object.zone.kind === "battlefield") {
+          next.objectPool.set(action.objectId, {
+            ...object,
+            phasedOut: true
+          });
+        }
+        break;
+      }
       default: {
         const neverAction: never = action;
         throw new Error(`unsupported action payload '${JSON.stringify(neverAction)}'`);
