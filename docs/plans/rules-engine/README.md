@@ -173,9 +173,9 @@ Collected from the phase files below — items needing clarification before or d
 18. **P4.1** — Dandan attack legality: check Layer 3-rewritten condition at declaration time
 19. **P4.7** — Mystic Sanctuary: "3+ other Islands" — self doesn't count
 20. **P4.9** — Scry choice type (CHOOSE_YES_NO vs CHOOSE_CARDS)
-21. **P5.1** — Diminishing Returns: confirm shared-deck handling for "shuffle hand/graveyard into library", "exile top ten", and "draw up to seven"
+21. **P5.1** — Resolved: Diminishing Returns routes each player's hand/graveyard into the mode-resolved library (the shared library in shared-deck), exiles the top ten of the controller's library, and draws via `GameMode.simultaneousDrawOrder`
 22. **P5.4** — Metamorphose: actual Oracle text vs architecture doc characterization
-23. **P5.6** — Vision Charm phase out: minimal scope needed
+23. **P5.6** — Resolved: Vision Charm phase out ships as a `phasedOut` flag (illegal target, no attack/block/mana, phases in at controller's untap); triggers and attachment phasing deferred
 24. **P5.7** — Flashback subsystem design (alternative cost + exile replacement)
 25. **P5.10** — ETB lookahead: review if any card needs CR 614.12
 26. **P5.11** — Cross-layer dependency scenarios enumeration
@@ -184,6 +184,13 @@ Collected from the phase files below — items needing clarification before or d
 29. **P7.4** — Property-testing library selection (fast-check recommended)
 30. **P0.14** — State Invariant Checker: ensure all objectPool entries have valid zone references
 31. **P0.15** — Property-Based Test Utilities: generate diverse but internally consistent GameStates
-32. **P5 entry** — Whether the composable `sequence`/`conditional` resolve-spec refactor lands before Phase 5 adds 13 more cards to the monolithic `ResolveEffectSpec` switch interpreter; needs a decision-log entry
+32. **P5 entry** — Resolved: the composable resolve-spec refactor landed before the remaining Phase 5 cards (decision log, "Composable Resolve Specs")
 33. **P6.8** — Whether a draw (simultaneous loss) is reachable in the shared-deck variant and how it should be reported
 34. **P8.1** — Whether the free-mulligan condition is evaluated once per opener or re-evaluated after each mulligan (product overview states the condition but not the repeat rule)
+35. **P5.1 / P5.6 follow-up** — Target restrictions (type, zone, controller) are not enforced; "target artifact" / "target creature" accept any object. See decision log "Composable Resolve Specs — Known gaps" item 1.
+36. **P5.6 follow-up** — Only basic land types exist as subtypes / choices; Vision Charm's first choice should offer all land types (CR 205.3i). Known gaps item 2.
+37. **P5.6 follow-up** — Layer 4 land-type changes do not swap intrinsic mana abilities (CR 305.7). Known gaps item 3.
+38. **P5.6 follow-up** — Modal / `choose_mode` choices happen on resolution instead of on cast (CR 601.2b). Known gaps item 4.
+39. **P5.6 follow-up** — `phasedOut` is a flag only: still counted by zone selectors, static abilities, and SBAs; no attachment phasing, triggers, view redaction, or control-change handling. Known gaps item 5.
+40. **PS1.4** — Diminishing Returns, Vision Charm, Ray of Command, and Dance of the Skywise are not in `deck-preset.ts` and are unreachable in real rooms. Known gaps item 6.
+41. **P5 entry follow-up** — `ResolutionCursor.step.index` is vestigial (position lives in `onResolvePath` scratch); composable model lacks `each_opponent`, numeric comparisons, min/max, and stack selectors — extend on demand. Known gaps items 7–8.

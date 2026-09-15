@@ -2,6 +2,8 @@ import { writeToScratch } from "../actions/whiteboard";
 import type { ChoicePayload, MakeChoiceCommand } from "../commands/command";
 import type { PendingChoice } from "./pendingChoice";
 import type { GameState } from "../state/gameState";
+import { readResumePoint } from "../stack/effects/interpreter";
+import type { StackItem } from "../stack/stackItem";
 
 type ResumeChoiceResult = {
   state: GameState;
@@ -163,23 +165,9 @@ function validateChoicePayload(choice: PendingChoice, payload: ChoicePayload): v
   }
 }
 
-function getResumeStepIndex(state: Readonly<GameState>, choice: PendingChoice): number {
-  const topItem = state.stack[state.stack.length - 1];
-  if (topItem === undefined) {
-    return 0;
-  }
-
-  const byId = topItem.effectContext.whiteboard.scratch[`resumeStepIndex:${choice.id}`];
-  if (typeof byId === "number" && Number.isInteger(byId) && byId >= 0) {
-    return byId;
-  }
-
-  const fallback = topItem.effectContext.whiteboard.scratch.resumeStepIndex;
-  if (typeof fallback === "number" && Number.isInteger(fallback) && fallback >= 0) {
-    return fallback;
-  }
-
-  return 0;
+/** The cursor index mirrors the top-level `onResolve` step being resumed; nested position lives in scratch. */
+function getResumeStepIndex(topItem: StackItem): number {
+  return readResumePoint(topItem)?.path[0] ?? 0;
 }
 
 export function resumeChoiceResolution(
@@ -221,7 +209,7 @@ export function resumeChoiceResolution(
   const isPipelineChoice =
     resumedContext.whiteboard.scratch[`pipelineChoice:${topItem.id}`] === true &&
     state.pendingChoice.type === "CHOOSE_REPLACEMENT";
-  const nextStep = getResumeStepIndex(state, state.pendingChoice) + 1;
+  const nextStep = getResumeStepIndex(topItem);
 
   const nextStack = state.stack.slice(0, -1);
   nextStack.push({

@@ -230,6 +230,27 @@ describe("engine/combatAttack", () => {
     ).toThrow("declared attackers must be legal attackers");
   });
 
+  it("rejects phased-out creatures as attackers", () => {
+    const state = createAttackState();
+    putOnBattlefield(
+      state,
+      makeCard("obj-defender-island", "island", "p2", { kind: "battlefield", scope: "shared" })
+    );
+    const attacker = state.objectPool.get("obj-attacker");
+    if (attacker === undefined) {
+      throw new Error("expected attacker to exist");
+    }
+    state.objectPool.set("obj-attacker", { ...attacker, phasedOut: true });
+
+    expect(() =>
+      processCommand(
+        state,
+        { type: "DECLARE_ATTACKERS", attackers: ["obj-attacker"] },
+        new Rng(state.rngSeed)
+      )
+    ).toThrow("declared attackers must be legal attackers");
+  });
+
   it("enforces must-attack creatures that are able to attack", () => {
     const state = createAttackState();
     putOnBattlefield(

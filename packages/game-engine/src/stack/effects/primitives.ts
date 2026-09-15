@@ -1,39 +1,7 @@
 import type { ChoicePayload } from "../../commands/command";
 import type { GameState } from "../../state/gameState";
 import type { StackItem } from "../stackItem";
-import type { PauseResult, ResolveEffectHandlerContext, ResolveEffectResult } from "./types";
-
-export type StepHandler = {
-  matches: (stepIndex: number) => boolean;
-  execute: (context: ResolveEffectHandlerContext, stepIndex: number) => ResolveEffectResult;
-};
-
-export function getStepIndex(stackItem: StackItem): number {
-  const cursor = stackItem.effectContext.cursor;
-  if (cursor.kind === "start") {
-    return 0;
-  }
-
-  if (cursor.kind === "step") {
-    return cursor.index;
-  }
-
-  return -1;
-}
-
-export function runStepHandlers(
-  context: ResolveEffectHandlerContext,
-  handlers: readonly StepHandler[]
-): ResolveEffectResult {
-  const stepIndex = getStepIndex(context.stackItem);
-  for (const handler of handlers) {
-    if (handler.matches(stepIndex)) {
-      return handler.execute(context, stepIndex);
-    }
-  }
-
-  return { kind: "continue" };
-}
+import type { PauseResult, ResolveEffectResult } from "./types";
 
 type PauseContext = {
   stackItem: StackItem;

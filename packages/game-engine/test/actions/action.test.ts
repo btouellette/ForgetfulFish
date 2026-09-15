@@ -192,8 +192,8 @@ function assertExhaustive(action: GameAction): ActionType {
 }
 
 describe("actions/action", () => {
-  it("exports ACTION_TYPES with all 14 variants", () => {
-    expect(ACTION_TYPES).toHaveLength(14);
+  it("exports ACTION_TYPES with all 15 variants", () => {
+    expect(ACTION_TYPES).toHaveLength(15);
     expect(ACTION_TYPES).toContain("MOVE_ZONE");
   });
 

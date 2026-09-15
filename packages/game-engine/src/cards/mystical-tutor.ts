@@ -19,13 +19,16 @@ export const mysticalTutorCardDefinition: CardDefinition = {
   onResolve: [
     {
       kind: "choose_cards",
-      zone: "library",
-      player: "controller",
+      from: {
+        kind: "zone",
+        zone: "library",
+        player: "controller",
+        filter: { types: ["Instant", "Sorcery"] }
+      },
       min: 0,
       max: 1,
       prompt: "Choose up to one Instant or Sorcery card",
-      storeKey: "mystical-tutor:selected",
-      typeFilter: ["Instant", "Sorcery"]
+      storeKey: "mystical-tutor:selected"
     },
     {
       kind: "shuffle_zone",

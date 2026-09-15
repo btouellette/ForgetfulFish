@@ -640,4 +640,43 @@ describe("actions/executor", () => {
 
     expect(next.objectPool.get("obj-creature")?.summoningSick).toBe(true);
   });
+
+  it("applies PHASE_OUT only to battlefield permanents", () => {
+    const state = createInitialGameState("p1", "p2", { id: "exec-phase", rngSeed: "seed" });
+    const battlefieldZone = state.mode.resolveZone(state, "battlefield", "p1");
+    const handZone = state.mode.resolveZone(state, "hand", "p1");
+    const baseObject = {
+      zcc: 0,
+      cardDefId: "island",
+      owner: "p1" as const,
+      controller: "p1" as const,
+      counters: new Map(),
+      damage: 0,
+      tapped: false,
+      summoningSick: false,
+      attachments: [],
+      abilities: []
+    };
+    state.objectPool.set("obj-permanent", {
+      ...baseObject,
+      id: "obj-permanent",
+      zone: battlefieldZone
+    });
+    state.objectPool.set("obj-in-hand", { ...baseObject, id: "obj-in-hand", zone: handZone });
+    state.zones.set(zoneKey(battlefieldZone), ["obj-permanent"]);
+    state.zones.set(zoneKey(handZone), ["obj-in-hand"]);
+
+    const next = applyActions(
+      state,
+      [
+        { ...baseAction(), id: "phase-1", type: "PHASE_OUT", objectId: "obj-permanent" },
+        { ...baseAction(), id: "phase-2", type: "PHASE_OUT", objectId: "obj-in-hand" }
+      ],
+      new Rng(state.rngSeed)
+    );
+
+    expect(next.objectPool.get("obj-permanent")?.phasedOut).toBe(true);
+    expect(next.objectPool.get("obj-in-hand")?.phasedOut).toBeUndefined();
+    expect(next.zones.get(zoneKey(battlefieldZone))).toEqual(["obj-permanent"]);
+  });
 });

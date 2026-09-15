@@ -337,7 +337,8 @@ export function advanceStepWithEvents(state: Readonly<GameState>, rng: Rng): Ste
 
       nextObjectPool.set(objectId, {
         ...object,
-        tapped: false
+        tapped: false,
+        ...(object.phasedOut === true ? { phasedOut: false } : {})
       });
     }
 
@@ -513,7 +514,7 @@ export function tapForMana(
     throw new Error("permanent is already tapped");
   }
 
-  if (effectiveObject.zone.kind !== "battlefield") {
+  if (effectiveObject.zone.kind !== "battlefield" || effectiveObject.phasedOut === true) {
     throw new Error("only permanents on the battlefield can be tapped for mana");
   }
 
