@@ -20,6 +20,8 @@ services:
       - nginx-proxy
 
   forgetful-fish-web:
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
     image: forgetful-fish-web:latest
     container_name: forgetful-fish-web
     restart: always
@@ -41,6 +43,8 @@ services:
       - nginx-proxy
 
   forgetful-fish-server:
+    labels:
+      com.centurylinklabs.watchtower.enable: "false"
     image: forgetful-fish-server:latest
     container_name: forgetful-fish-server
     restart: always
