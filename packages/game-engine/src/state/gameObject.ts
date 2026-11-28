@@ -12,6 +12,8 @@ export type GameObjectBase = {
   damage: number;
   tapped: boolean;
   summoningSick: boolean;
+  /** Phased-out permanents stay in the battlefield zone but are treated as though they don't exist. */
+  phasedOut?: boolean;
   attachments: ObjectId[];
   abilities: AbilityAst[];
   zone: ZoneRef;

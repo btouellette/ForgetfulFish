@@ -189,4 +189,13 @@ describe("engine/mana", () => {
       "only permanents on the battlefield can be tapped for mana"
     );
   });
+
+  it("tapForMana rejects phased-out lands", () => {
+    const state = createInitialGameState("p1", "p2", { id: "mana-8", rngSeed: "seed-mana-8" });
+    putOnBattlefield(state, { ...createPermanent("obj-island", "island", "p1"), phasedOut: true });
+
+    expect(() => tapForMana(state, "obj-island")).toThrow(
+      "only permanents on the battlefield can be tapped for mana"
+    );
+  });
 });

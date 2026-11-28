@@ -25,7 +25,8 @@ export const ACTION_TYPES = [
   "GAIN_LIFE",
   "ADD_CONTINUOUS_EFFECT",
   "CREATE_TOKEN",
-  "SHUFFLE"
+  "SHUFFLE",
+  "PHASE_OUT"
 ] as const;
 
 export type ActionType = (typeof ACTION_TYPES)[number];
@@ -128,6 +129,11 @@ export interface ShuffleAction extends GameActionBase {
   topObjectId?: ObjectId;
 }
 
+export interface PhaseOutAction extends GameActionBase {
+  type: "PHASE_OUT";
+  objectId: ObjectId;
+}
+
 export type GameAction =
   | DrawAction
   | MoveZoneAction
@@ -142,4 +148,5 @@ export type GameAction =
   | GainLifeAction
   | AddContinuousEffectAction
   | CreateTokenAction
-  | ShuffleAction;
+  | ShuffleAction
+  | PhaseOutAction;

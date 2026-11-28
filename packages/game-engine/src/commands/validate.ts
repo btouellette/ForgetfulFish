@@ -55,7 +55,7 @@ function isLegalTarget(state: Readonly<GameState>, target: Target): boolean {
   }
 
   const currentObject = state.objectPool.get(target.object.id);
-  if (currentObject === undefined) {
+  if (currentObject === undefined || currentObject.phasedOut === true) {
     return false;
   }
 
@@ -227,7 +227,7 @@ export function validateActivateAbility(
     throw new Error("can only activate abilities of permanents you control");
   }
 
-  if (sourceObject.zone.kind !== "battlefield") {
+  if (sourceObject.zone.kind !== "battlefield" || sourceObject.phasedOut === true) {
     throw new Error("can only activate abilities of permanents on the battlefield");
   }
 

@@ -40,7 +40,7 @@ function canObjectAttackWithAccess(
     return false;
   }
 
-  return !object.tapped && !object.summoningSick;
+  return !object.tapped && !object.summoningSick && object.phasedOut !== true;
 }
 
 export function getRequiredAttackerIds(state: Readonly<GameState>, playerId: string): string[] {
@@ -126,7 +126,7 @@ function canComputedObjectBlock(
     return false;
   }
 
-  if (object.zone.kind !== "battlefield") {
+  if (object.zone.kind !== "battlefield" || object.phasedOut === true) {
     return false;
   }
 

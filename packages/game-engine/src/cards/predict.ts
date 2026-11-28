@@ -29,11 +29,17 @@ export const predictCardDefinition: CardDefinition = {
       storeKey: "predict:milled"
     },
     {
-      kind: "draw_by_named_hit",
-      namedCardKey: "predict:named-card",
-      milledCardsKey: "predict:milled",
-      hitCount: 2,
-      missCount: 1
+      kind: "conditional",
+      condition: {
+        kind: "cards_not_empty",
+        cards: {
+          kind: "stored",
+          storeKey: "predict:milled",
+          filter: { name: { kind: "stored", storeKey: "predict:named-card" } }
+        }
+      },
+      then: [{ kind: "draw_cards", count: 2, player: "controller" }],
+      else: [{ kind: "draw_cards", count: 1, player: "controller" }]
     }
   ],
   continuousEffects: [],

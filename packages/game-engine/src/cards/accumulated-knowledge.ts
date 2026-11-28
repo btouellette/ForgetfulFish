@@ -16,7 +16,27 @@ export const accumulatedKnowledgeCardDefinition: CardDefinition = {
   staticAbilities: [],
   triggeredAbilities: [],
   activatedAbilities: [],
-  onResolve: [{ kind: "draw_by_graveyard_self_count", bonus: 1 }],
+  onResolve: [
+    {
+      kind: "draw_cards",
+      player: "controller",
+      count: {
+        kind: "plus",
+        terms: [
+          1,
+          {
+            kind: "count",
+            cards: {
+              kind: "zone",
+              zone: "graveyard",
+              player: "all_players",
+              filter: { sameCardAsSource: true }
+            }
+          }
+        ]
+      }
+    }
+  ],
   continuousEffects: [],
   replacementEffects: []
 };

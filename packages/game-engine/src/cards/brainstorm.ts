@@ -20,8 +20,7 @@ export const brainstormCardDefinition: CardDefinition = {
     { kind: "draw_cards", count: 3, player: "controller" },
     {
       kind: "choose_cards",
-      zone: "hand",
-      player: "controller",
+      from: { kind: "zone", zone: "hand", player: "controller" },
       min: 2,
       max: 2,
       prompt: "Choose 2 cards to put back on top of your library",
@@ -29,16 +28,14 @@ export const brainstormCardDefinition: CardDefinition = {
     },
     {
       kind: "order_cards",
-      sourceKey: "brainstorm:selected",
+      cards: { kind: "stored", storeKey: "brainstorm:selected" },
       prompt: "Order the chosen cards to put back on top",
       storeKey: "brainstorm:ordered"
     },
     {
-      kind: "move_ordered_cards",
-      sourceKey: "brainstorm:ordered",
-      fromZone: "hand",
-      toZone: "library",
-      player: "controller",
+      kind: "move_cards",
+      cards: { kind: "stored", storeKey: "brainstorm:ordered" },
+      to: "library",
       placement: "top"
     }
   ],

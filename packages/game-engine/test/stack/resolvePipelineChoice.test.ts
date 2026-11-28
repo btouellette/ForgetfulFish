@@ -61,13 +61,16 @@ const replacementResumeCardDefinition: CardDefinition = {
   onResolve: [
     {
       kind: "choose_cards",
-      zone: "library",
-      player: "controller",
+      from: {
+        kind: "zone",
+        zone: "library",
+        player: "controller",
+        filter: { types: ["Instant"] }
+      },
       min: 0,
       max: 1,
       prompt: "Choose up to one Instant card",
-      storeKey: "replacement-resume:selected",
-      typeFilter: ["Instant"]
+      storeKey: "replacement-resume:selected"
     },
     {
       kind: "shuffle_zone",
@@ -98,28 +101,31 @@ const controlThenReplacementResumeCardDefinition: CardDefinition = {
     { kind: "set_control_of_target", target: "first_object_target", duration: "until_end_of_turn" },
     { kind: "untap_target", target: "first_object_target" },
     {
-      kind: "add_continuous_effect_to_target",
-      target: "first_object_target",
+      kind: "add_continuous_effect",
+      to: { kind: "target_object" },
       layer: 6,
       duration: "until_end_of_turn",
       effect: { kind: "grant_keyword", payload: { keyword: "haste" } }
     },
     {
-      kind: "add_continuous_effect_to_target",
-      target: "first_object_target",
+      kind: "add_continuous_effect",
+      to: { kind: "target_object" },
       layer: 6,
       duration: "until_end_of_turn",
       effect: { kind: "must_attack" }
     },
     {
       kind: "choose_cards",
-      zone: "library",
-      player: "controller",
+      from: {
+        kind: "zone",
+        zone: "library",
+        player: "controller",
+        filter: { types: ["Instant"] }
+      },
       min: 0,
       max: 1,
       prompt: "Choose up to one Instant card",
-      storeKey: "control-then-replacement:selected",
-      typeFilter: ["Instant"]
+      storeKey: "control-then-replacement:selected"
     },
     {
       kind: "shuffle_zone",
@@ -505,8 +511,8 @@ describe("stack/resolve pipeline choice integration", () => {
       throw new Error("expected CHOOSE_REPLACEMENT pending choice");
     }
 
-    expect(firstResolve.state.continuousEffects).toHaveLength(0);
-    expect(computeGameObject("obj-target", firstResolve.state).controller).toBe("p2");
+    expect(firstResolve.state.continuousEffects).toHaveLength(3);
+    expect(computeGameObject("obj-target", firstResolve.state).controller).toBe("p1");
 
     const chooseReplacement = processCommand(
       firstResolve.state,
